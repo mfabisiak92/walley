@@ -13,6 +13,9 @@ interface AccountDao {
     @Insert
     suspend fun insert(account: AccountEntity): Long
 
-    @Query("UPDATE accounts SET balanceMinorUnits = :balanceMinorUnits WHERE id = :accountId")
-    suspend fun updateBalance(accountId: Long, balanceMinorUnits: Long)
+    @Query("UPDATE accounts SET name = :name, balanceMinorUnits = :balanceMinorUnits WHERE id = :accountId")
+    suspend fun update(accountId: Long, name: String, balanceMinorUnits: Long)
+
+    @Query("DELETE FROM accounts WHERE id = :accountId")
+    suspend fun delete(accountId: Long)
 }

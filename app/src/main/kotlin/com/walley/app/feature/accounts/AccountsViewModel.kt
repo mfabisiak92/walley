@@ -25,7 +25,11 @@ class AccountsViewModel @Inject constructor(
         viewModelScope.launch { repository.addAccount(name, currency, initialBalance) }
     }
 
-    fun updateBalance(accountId: Long, newBalance: BigDecimal) {
-        viewModelScope.launch { repository.updateBalance(accountId, newBalance) }
+    fun updateAccount(accountId: Long, name: String, newBalance: BigDecimal) {
+        viewModelScope.launch { repository.updateAccount(accountId, name, newBalance) }
+    }
+
+    fun deleteAccount(accountId: Long) {
+        viewModelScope.launch { repository.deleteAccount(accountId) }
     }
 }

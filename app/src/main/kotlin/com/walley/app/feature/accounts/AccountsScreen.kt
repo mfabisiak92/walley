@@ -1,24 +1,26 @@
 package com.walley.app.feature.accounts
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,12 +31,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountsScreen(
     modifier: Modifier = Modifier,
+    onNavigateHome: () -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
 ) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
@@ -43,7 +48,7 @@ fun AccountsScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Walley") }) },
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add account")
@@ -51,13 +56,25 @@ fun AccountsScreen(
         }
     ) { innerPadding ->
         if (accounts.isEmpty()) {
-            Box(
+            Column(
                 modifier = Modifier
                     .padding(innerPadding)
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text("No accounts yet — tap + to add one.")
+                Icon(
+                    Icons.Default.AccountBox,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "No accounts yet — tap + to add one.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         } else {
             LazyColumn(
@@ -85,11 +102,15 @@ fun AccountsScreen(
     }
 
     editingAccount?.let { account ->
-        UpdateBalanceDialog(
+        EditAccountDialog(
             account = account,
             onDismiss = { editingAccount = null },
-            onConfirm = { newBalance ->
-                viewModel.updateBalance(account.id, newBalance)
+            onSave = { name, newBalance ->
+                viewModel.updateAccount(account.id, name, newBalance)
+                editingAccount = null
+            },
+            onDelete = {
+                viewModel.deleteAccount(account.id)
                 editingAccount = null
             }
         )
@@ -98,7 +119,11 @@ fun AccountsScreen(
 
 @Composable
 private fun AccountRow(account: Account, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

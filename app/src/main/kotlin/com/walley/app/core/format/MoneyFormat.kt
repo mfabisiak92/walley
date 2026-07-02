@@ -1,4 +1,4 @@
-package com.walley.app.feature.accounts
+package com.walley.app.core.format
 
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal

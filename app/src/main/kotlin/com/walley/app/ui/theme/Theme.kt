@@ -11,21 +11,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = TealLight,
+    onPrimary = TealOnContainerDark,
+    primaryContainer = TealContainerDark,
+    onPrimaryContainer = TealOnContainerDark,
+    secondary = AmberLight,
+    secondaryContainer = AmberContainerDark,
+    onSecondaryContainer = AmberOnContainerDark,
+    tertiary = BlueLight
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = TealDark,
+    primaryContainer = TealContainerLight,
+    onPrimaryContainer = TealOnContainerLight,
+    secondary = AmberDark,
+    secondaryContainer = AmberContainerLight,
+    onSecondaryContainer = AmberOnContainerLight,
+    tertiary = BlueDark
 )
 
 @Composable
 fun WalleyTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

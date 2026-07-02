@@ -28,7 +28,11 @@ class AccountRepositoryImpl @Inject constructor(
         )
     }
 
-    override suspend fun updateBalance(accountId: Long, newBalance: BigDecimal) {
-        accountDao.updateBalance(accountId, newBalance.toMinorUnits())
+    override suspend fun updateAccount(accountId: Long, name: String, newBalance: BigDecimal) {
+        accountDao.update(accountId, name, newBalance.toMinorUnits())
+    }
+
+    override suspend fun deleteAccount(accountId: Long) {
+        accountDao.delete(accountId)
     }
 }

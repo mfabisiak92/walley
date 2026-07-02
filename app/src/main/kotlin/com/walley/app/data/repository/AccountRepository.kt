@@ -8,5 +8,6 @@ import kotlinx.coroutines.flow.Flow
 interface AccountRepository {
     fun observeAccounts(): Flow<List<Account>>
     suspend fun addAccount(name: String, currency: Currency, initialBalance: BigDecimal)
-    suspend fun updateBalance(accountId: Long, newBalance: BigDecimal)
+    suspend fun updateAccount(accountId: Long, name: String, newBalance: BigDecimal)
+    suspend fun deleteAccount(accountId: Long)
 }
