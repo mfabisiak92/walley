@@ -21,20 +21,21 @@ import com.walley.app.domain.model.Currency
 
 @Composable
 fun AddBudgetItemDialog(
+    initial: WizardItemDraft? = null,
     onDismiss: () -> Unit,
     onConfirm: (name: String, amount: java.math.BigDecimal, paymentDay: Int?, isLastOfMonth: Boolean) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf("") }
-    var paymentDay by remember { mutableStateOf<Int?>(null) }
-    var isLastOfMonth by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
+    var paymentDay by remember { mutableStateOf(initial?.paymentDay) }
+    var isLastOfMonth by remember { mutableStateOf(initial?.paymentDayIsLastOfMonth ?: false) }
 
     val parsedAmount = amountText.toBigDecimalOrNull()
     val isValid = name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add item") },
+        title = { Text(if (initial != null) "Edit item" else "Add item") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -68,7 +69,7 @@ fun AddBudgetItemDialog(
             TextButton(
                 onClick = { onConfirm(name.trim(), parsedAmount!!, paymentDay, isLastOfMonth) },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text(if (initial != null) "Save" else "Add") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

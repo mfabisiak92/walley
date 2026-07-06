@@ -7,6 +7,7 @@ import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -79,9 +80,9 @@ class BudgetRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteBudget(budgetId: Long) {
-        val items = budgetDao.observeItemsForBudget(budgetId).first().map { it.toDomain() }
-        if (items.any { it.hasAppliedAccountEffect }) {
-            throw BudgetHasAppliedItemsException()
+        val budget = budgetDao.observeBudgetById(budgetId).first()
+        if (budget?.status == BudgetStatus.COMPLETED) {
+            throw BudgetIsCompletedException()
         }
         budgetDao.deleteItemsForBudget(budgetId)
         budgetDao.deleteBudget(budgetId)
@@ -106,6 +107,10 @@ class BudgetRepositoryImpl @Inject constructor(
                 paidAmountMinorUnits = item.paidAmount.toMinorUnits()
             )
         )
+    }
+
+    override suspend fun markBudgetCompleted(budgetId: Long) {
+        budgetDao.updateStatus(budgetId, BudgetStatus.COMPLETED)
     }
 
     override suspend fun checkAndAutoCompleteDueItems() {

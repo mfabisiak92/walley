@@ -40,6 +40,7 @@ For non-liquid assets (property, vehicles, etc.) that aren't bank accounts or in
 - Name, currency, purchase value, purchase date, and current value (manually updated over time).
 - Shows gain/loss versus purchase value, same as Investments.
 - Included in Home's net worth calculation and breakdown.
+- Assets can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
 
 ## Budget
 
@@ -56,7 +57,9 @@ Monthly budgeting with a guided creation flow and payment tracking.
 - **Paying items**: each item can be marked fully paid or partially paid (with a custom amount). Items with a payment day are **automatically marked fully paid** the moment that day arrives, checked whenever the Budget tab or a budget's detail screen is opened.
 - **Account side effects**: completing a Savings item adds its amount to that account's balance; completing an Investments item adds its amount to the linked account's **uninvested cash** (making clear it's cash sitting in the account, not an actual invested position). These updates are delta-based, so partial → full transitions never double-count.
 - **Deleting an item**: swipe a budget item left and tap the red trash icon to delete it immediately (even in a created/locked budget); a 5-second "Undo" snackbar follows. Deleting an item does **not** reverse any account balance change it already applied.
-- **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A budget **can't be deleted** while it has completed Savings/Investments items that already affected an account balance.
+- **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A **Completed** budget can't be deleted.
+- **Status: Active → Completed**: every budget starts Active. From its detail screen, a one-way "Mark as completed" action switches it to Completed (with a confirmation, since it can no longer be deleted afterwards). Completed budgets show a "Completed" label and a muted card color in the Budget list to set them apart from Active ones; items on a completed budget can still be marked paid.
+- **Cloning a budget**: from a budget's detail screen, the clone icon opens the creation wizard pre-filled with that budget's items (defaulting to the following month, paid/completed state reset). Every item can still be edited (tap it) or removed before creating, and a new month must be chosen if the default is already taken.
 
 ## Settings
 

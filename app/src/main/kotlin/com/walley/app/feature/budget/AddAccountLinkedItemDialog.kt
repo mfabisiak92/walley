@@ -32,14 +32,15 @@ import java.math.BigDecimal
 @Composable
 fun AddAccountLinkedItemDialog(
     accounts: List<Account>,
+    initial: WizardItemDraft? = null,
     onDismiss: () -> Unit,
     onConfirm: (accountId: Long, amount: BigDecimal, paymentDay: Int?, isLastOfMonth: Boolean) -> Unit
 ) {
-    var accountId by remember { mutableStateOf(accounts.firstOrNull()?.id) }
+    var accountId by remember { mutableStateOf(initial?.accountId ?: accounts.firstOrNull()?.id) }
     var accountMenuExpanded by remember { mutableStateOf(false) }
-    var amountText by remember { mutableStateOf("") }
-    var paymentDay by remember { mutableStateOf<Int?>(null) }
-    var isLastOfMonth by remember { mutableStateOf(false) }
+    var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
+    var paymentDay by remember { mutableStateOf(initial?.paymentDay) }
+    var isLastOfMonth by remember { mutableStateOf(initial?.paymentDayIsLastOfMonth ?: false) }
 
     val selectedAccount = accounts.find { it.id == accountId }
     val parsedAmount = amountText.toBigDecimalOrNull()
@@ -47,7 +48,7 @@ fun AddAccountLinkedItemDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add item") },
+        title = { Text(if (initial != null) "Edit item" else "Add item") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -111,7 +112,7 @@ fun AddAccountLinkedItemDialog(
             TextButton(
                 onClick = { onConfirm(selectedAccount!!.id, parsedAmount!!, paymentDay, isLastOfMonth) },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text(if (initial != null) "Save" else "Add") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

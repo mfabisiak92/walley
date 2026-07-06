@@ -4,7 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
-import com.walley.app.data.repository.BudgetHasAppliedItemsException
+import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
@@ -58,10 +58,8 @@ class BudgetDetailViewModel @Inject constructor(
             try {
                 budgetRepository.deleteBudget(budgetId)
                 onDeleted()
-            } catch (e: BudgetHasAppliedItemsException) {
-                _deleteBlockedMessage.value =
-                    "This budget has completed Savings/Investments items that already affected " +
-                        "account balances, so it can't be deleted."
+            } catch (e: BudgetIsCompletedException) {
+                _deleteBlockedMessage.value = "This budget is marked as completed and can't be deleted."
             }
         }
     }
@@ -72,5 +70,9 @@ class BudgetDetailViewModel @Inject constructor(
 
     fun restoreItem(item: BudgetItem) {
         viewModelScope.launch { budgetRepository.restoreBudgetItem(item) }
+    }
+
+    fun markCompleted() {
+        viewModelScope.launch { budgetRepository.markBudgetCompleted(budgetId) }
     }
 }

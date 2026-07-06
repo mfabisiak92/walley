@@ -14,11 +14,13 @@ import com.walley.app.feature.settings.SettingsScreen
 private object WalleyDestinations {
     const val MAIN = "main"
     const val SETTINGS = "settings"
-    const val BUDGET_WIZARD = "budget_wizard"
+    const val BUDGET_WIZARD = "budget_wizard?cloneFrom={cloneFromBudgetId}"
     const val BUDGET_DETAIL = "budget_detail/{budgetId}"
     const val NET_WORTH_DETAIL = "net_worth_detail"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
+    fun budgetWizard(cloneFromBudgetId: Long? = null) =
+        if (cloneFromBudgetId != null) "budget_wizard?cloneFrom=$cloneFromBudgetId" else "budget_wizard"
 }
 
 @Composable
@@ -29,7 +31,7 @@ fun WalleyNavHost() {
         composable(WalleyDestinations.MAIN) {
             MainTabsScreen(
                 onNavigateToSettings = { navController.navigate(WalleyDestinations.SETTINGS) },
-                onNavigateToBudgetWizard = { navController.navigate(WalleyDestinations.BUDGET_WIZARD) },
+                onNavigateToBudgetWizard = { navController.navigate(WalleyDestinations.budgetWizard()) },
                 onNavigateToBudgetDetail = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetDetail(budgetId))
                 },
@@ -46,7 +48,10 @@ fun WalleyNavHost() {
                 }
             )
         }
-        composable(WalleyDestinations.BUDGET_WIZARD) {
+        composable(
+            WalleyDestinations.BUDGET_WIZARD,
+            arguments = listOf(navArgument("cloneFromBudgetId") { type = NavType.LongType; defaultValue = -1L })
+        ) {
             BudgetWizardScreen(
                 onDone = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetDetail(budgetId)) {
@@ -60,7 +65,12 @@ fun WalleyNavHost() {
             WalleyDestinations.BUDGET_DETAIL,
             arguments = listOf(navArgument("budgetId") { type = NavType.LongType })
         ) {
-            BudgetDetailScreen(onNavigateBack = { navController.popBackStack() })
+            BudgetDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onCloneBudget = { budgetId ->
+                    navController.navigate(WalleyDestinations.budgetWizard(budgetId))
+                }
+            )
         }
     }
 }

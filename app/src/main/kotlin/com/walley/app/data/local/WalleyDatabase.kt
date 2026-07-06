@@ -14,7 +14,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BudgetEntity::class,
         BudgetItemEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -113,5 +113,11 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_8_9 = object : Migration(8, 9) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE budgets ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'")
     }
 }

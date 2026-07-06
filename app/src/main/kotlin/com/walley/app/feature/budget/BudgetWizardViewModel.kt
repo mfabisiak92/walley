@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
@@ -21,7 +22,9 @@ import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 const val WIZARD_STEP_MONTH = 0
 const val WIZARD_STEP_SUMMARY = 7
@@ -37,10 +40,13 @@ private val SECTION_STEPS = mapOf(
 
 @HiltViewModel
 class BudgetWizardViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
     accountRepository: AccountRepository,
     private val exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
+
+    private val cloneFromBudgetId: Long? = savedStateHandle.get<Long>("cloneFromBudgetId")?.takeIf { it > 0 }
 
     var year by mutableIntStateOf(LocalDate.now().year)
         private set
@@ -61,6 +67,28 @@ class BudgetWizardViewModel @Inject constructor(
     val plnRates: StateFlow<com.walley.app.domain.model.ExchangeRates?> =
         exchangeRateRepository.observeRates(Currency.PLN)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        cloneFromBudgetId?.let { sourceBudgetId ->
+            viewModelScope.launch {
+                val source = budgetRepository.observeBudget(sourceBudgetId).first() ?: return@launch
+                val nextMonth = source.budget.yearMonth.plusMonths(1)
+                year = nextMonth.year
+                month = nextMonth.monthValue
+                source.items.forEachIndexed { index, item ->
+                    itemsBySection[item.section] = itemsFor(item.section) + WizardItemDraft(
+                        localId = System.nanoTime() + index,
+                        name = item.name,
+                        amount = item.amount,
+                        currency = item.currency,
+                        accountId = item.accountId,
+                        paymentDay = item.paymentDay,
+                        paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth
+                    )
+                }
+            }
+        }
+    }
 
     fun accountsFor(section: BudgetSectionType): List<Account> = when (section) {
         BudgetSectionType.SAVINGS -> accounts.value.filter { it.type == AccountType.SAVING }
@@ -99,6 +127,10 @@ class BudgetWizardViewModel @Inject constructor(
 
     fun removeItem(section: BudgetSectionType, localId: Long) {
         itemsBySection[section] = itemsFor(section).filterNot { it.localId == localId }
+    }
+
+    fun updateItem(section: BudgetSectionType, localId: Long, draft: WizardItemDraft) {
+        itemsBySection[section] = itemsFor(section).map { if (it.localId == localId) draft else it }
     }
 
     /** Converts an amount to PLN using cached rates; null if a needed rate is unavailable. */

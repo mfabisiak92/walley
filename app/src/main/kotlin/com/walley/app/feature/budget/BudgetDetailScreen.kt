@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -43,6 +44,7 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -50,6 +52,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun BudgetDetailScreen(
     onNavigateBack: () -> Unit,
+    onCloneBudget: (Long) -> Unit,
     viewModel: BudgetDetailViewModel = hiltViewModel()
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
@@ -57,20 +60,41 @@ fun BudgetDetailScreen(
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val status = budgetWithItems?.budget?.status
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(budgetWithItems?.budget?.displayName ?: "Budget") },
+                title = {
+                    Column {
+                        Text(budgetWithItems?.budget?.displayName ?: "Budget")
+                        if (status == BudgetStatus.COMPLETED) {
+                            Text(
+                                "Completed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
+                    if (status == BudgetStatus.ACTIVE) {
+                        IconButton(onClick = { showCompleteConfirm = true }) {
+                            Icon(Icons.Filled.CheckCircle, contentDescription = "Mark as completed")
+                        }
+                    }
+                    IconButton(onClick = { budgetWithItems?.budget?.id?.let(onCloneBudget) }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = "Clone to another month")
+                    }
                     IconButton(onClick = { showDeleteConfirm = true }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
                     }
@@ -177,6 +201,30 @@ fun BudgetDetailScreen(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+            }
+        )
+    }
+
+    if (showCompleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCompleteConfirm = false },
+            title = { Text("Mark budget as completed?") },
+            text = {
+                Text(
+                    "This is a one-way change. Once completed, this budget can no longer be deleted, " +
+                        "though items can still be marked paid."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCompleteConfirm = false
+                        viewModel.markCompleted()
+                    }
+                ) { Text("Mark completed") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompleteConfirm = false }) { Text("Cancel") }
             }
         )
     }

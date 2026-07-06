@@ -3,6 +3,7 @@ package com.walley.app.feature.budget
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,7 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 
@@ -148,14 +150,35 @@ private fun BudgetRow(budgetWithItems: BudgetWithItems, onClick: () -> Unit) {
         .filter { it.section == BudgetSectionType.INCOME_RELATED_EXPENSES }
         .sumOf { it.amount }
     val disposable = income - expenses
+    val isCompleted = budgetWithItems.budget.status == BudgetStatus.COMPLETED
 
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        colors = if (isCompleted) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            CardDefaults.cardColors()
+        },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(budgetWithItems.budget.displayName, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(budgetWithItems.budget.displayName, style = MaterialTheme.typography.titleMedium)
+                if (isCompleted) {
+                    Text(
+                        "Completed",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Text(
                 "Disposable income: ${formatMoney(disposable, Currency.PLN)}",
                 style = MaterialTheme.typography.bodySmall,

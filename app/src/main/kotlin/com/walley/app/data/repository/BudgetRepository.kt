@@ -16,7 +16,7 @@ interface BudgetRepository {
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
 
-    /** @throws BudgetHasAppliedItemsException if any Savings/Investments item already affected an account balance. */
+    /** @throws BudgetIsCompletedException if the budget's status is [com.walley.app.domain.model.BudgetStatus.COMPLETED]. */
     suspend fun deleteBudget(budgetId: Long)
 
     /** Deletes a single item, overriding the usual locked-after-creation restriction. */
@@ -25,8 +25,11 @@ interface BudgetRepository {
     /** Re-inserts a previously deleted item (used to support "undo"), preserving its original id. */
     suspend fun restoreBudgetItem(item: BudgetItem)
 
+    /** One-way transition marking a budget as completed; completed budgets can no longer be deleted. */
+    suspend fun markBudgetCompleted(budgetId: Long)
+
     /** Auto-marks items whose payment day has passed as paid; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()
 }
 
-class BudgetHasAppliedItemsException : Exception("Budget has completed items that already affected account balances")
+class BudgetIsCompletedException : Exception("Budget is marked as completed and can't be deleted")

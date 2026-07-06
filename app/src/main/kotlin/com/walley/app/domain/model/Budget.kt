@@ -7,7 +7,8 @@ import java.util.Locale
 data class Budget(
     val id: Long = 0,
     val year: Int,
-    val month: Int
+    val month: Int,
+    val status: BudgetStatus = BudgetStatus.ACTIVE
 ) {
     val yearMonth: YearMonth get() = YearMonth.of(year, month)
 

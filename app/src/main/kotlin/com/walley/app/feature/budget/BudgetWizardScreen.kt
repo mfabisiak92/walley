@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -200,6 +201,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
 @Composable
 private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSectionType) {
     var showAddDialog by remember { mutableStateOf(false) }
+    var editingDraft by remember { mutableStateOf<WizardItemDraft?>(null) }
     val items = viewModel.itemsFor(section)
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val isAccountLinked = section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS
@@ -225,6 +227,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     WizardItemRow(
                         draft = draft,
                         accountName = accounts.find { it.id == draft.accountId }?.name,
+                        onClick = { editingDraft = draft },
                         onRemove = { viewModel.removeItem(section, draft.localId) }
                     )
                 }
@@ -240,46 +243,61 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
         }
     }
 
-    if (showAddDialog) {
+    if (showAddDialog || editingDraft != null) {
+        val initial = editingDraft
         if (isAccountLinked) {
             AddAccountLinkedItemDialog(
                 accounts = linkedAccounts,
-                onDismiss = { showAddDialog = false },
+                initial = initial,
+                onDismiss = {
+                    showAddDialog = false
+                    editingDraft = null
+                },
                 onConfirm = { accountId, amount, day, lastOfMonth ->
                     val account = linkedAccounts.find { it.id == accountId }
                     if (account != null) {
-                        viewModel.addItem(
-                            section,
-                            WizardItemDraft(
-                                localId = System.nanoTime(),
-                                name = account.name,
-                                amount = amount,
-                                currency = account.currency,
-                                accountId = accountId,
-                                paymentDay = day,
-                                paymentDayIsLastOfMonth = lastOfMonth
-                            )
+                        val draft = WizardItemDraft(
+                            localId = initial?.localId ?: System.nanoTime(),
+                            name = account.name,
+                            amount = amount,
+                            currency = account.currency,
+                            accountId = accountId,
+                            paymentDay = day,
+                            paymentDayIsLastOfMonth = lastOfMonth
                         )
+                        if (initial != null) {
+                            viewModel.updateItem(section, initial.localId, draft)
+                        } else {
+                            viewModel.addItem(section, draft)
+                        }
                     }
                     showAddDialog = false
+                    editingDraft = null
                 }
             )
         } else {
             AddBudgetItemDialog(
-                onDismiss = { showAddDialog = false },
-                onConfirm = { name, amount, day, lastOfMonth ->
-                    viewModel.addItem(
-                        section,
-                        WizardItemDraft(
-                            localId = System.nanoTime(),
-                            name = name,
-                            amount = amount,
-                            currency = Currency.PLN,
-                            paymentDay = day,
-                            paymentDayIsLastOfMonth = lastOfMonth
-                        )
-                    )
+                initial = initial,
+                onDismiss = {
                     showAddDialog = false
+                    editingDraft = null
+                },
+                onConfirm = { name, amount, day, lastOfMonth ->
+                    val draft = WizardItemDraft(
+                        localId = initial?.localId ?: System.nanoTime(),
+                        name = name,
+                        amount = amount,
+                        currency = Currency.PLN,
+                        paymentDay = day,
+                        paymentDayIsLastOfMonth = lastOfMonth
+                    )
+                    if (initial != null) {
+                        viewModel.updateItem(section, initial.localId, draft)
+                    } else {
+                        viewModel.addItem(section, draft)
+                    }
+                    showAddDialog = false
+                    editingDraft = null
                 }
             )
         }
@@ -287,10 +305,11 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
 }
 
 @Composable
-private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onRemove: () -> Unit) {
+private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick: () -> Unit, onRemove: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

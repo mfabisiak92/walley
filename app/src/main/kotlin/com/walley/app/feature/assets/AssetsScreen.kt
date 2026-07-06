@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -20,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Asset
 import java.math.RoundingMode
@@ -46,6 +50,7 @@ fun AssetsScreen(
     val assets by viewModel.assets.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAsset by remember { mutableStateOf<Asset?>(null) }
+    var pendingDeleteAsset by remember { mutableStateOf<Asset?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -86,7 +91,12 @@ fun AssetsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(assets, key = { it.id }) { asset ->
-                    AssetRow(asset = asset, onClick = { editingAsset = asset })
+                    SwipeToDeleteBox(
+                        onDelete = { pendingDeleteAsset = asset },
+                        dismissOnDelete = false
+                    ) {
+                        AssetRow(asset = asset, onClick = { editingAsset = asset })
+                    }
                 }
             }
         }
@@ -113,6 +123,26 @@ fun AssetsScreen(
             onDelete = {
                 viewModel.deleteAsset(asset.id)
                 editingAsset = null
+            }
+        )
+    }
+
+    pendingDeleteAsset?.let { asset ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteAsset = null },
+            title = { Text("Delete asset?") },
+            text = { Text("This will permanently delete \"${asset.name}\". This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteAsset(asset.id)
+                        pendingDeleteAsset = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteAsset = null }) { Text("Cancel") }
             }
         )
     }

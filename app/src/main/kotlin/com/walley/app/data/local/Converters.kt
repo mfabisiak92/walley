@@ -4,6 +4,7 @@ import androidx.room.TypeConverter
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -44,4 +45,10 @@ class Converters {
 
     @TypeConverter
     fun toBigDecimal(value: String): BigDecimal = BigDecimal(value)
+
+    @TypeConverter
+    fun fromBudgetStatus(status: BudgetStatus): String = status.name
+
+    @TypeConverter
+    fun toBudgetStatus(value: String): BudgetStatus = BudgetStatus.valueOf(value)
 }
