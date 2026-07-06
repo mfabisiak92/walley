@@ -31,6 +31,9 @@ interface BudgetDao {
     @Insert
     suspend fun insertItems(items: List<BudgetItemEntity>)
 
+    @Insert
+    suspend fun insertItem(item: BudgetItemEntity): Long
+
     @Query("UPDATE budget_items SET paidAmountMinorUnits = :paidAmountMinorUnits WHERE id = :itemId")
     suspend fun updateItemPaidAmount(itemId: Long, paidAmountMinorUnits: Long)
 
@@ -39,4 +42,7 @@ interface BudgetDao {
 
     @Query("DELETE FROM budget_items WHERE budgetId = :budgetId")
     suspend fun deleteItemsForBudget(budgetId: Long)
+
+    @Query("DELETE FROM budget_items WHERE id = :itemId")
+    suspend fun deleteItem(itemId: Long)
 }

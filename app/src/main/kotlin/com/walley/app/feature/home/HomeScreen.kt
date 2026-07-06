@@ -30,6 +30,7 @@ import com.walley.app.domain.model.CurrencyTotal
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onNavigateToSettings: () -> Unit,
+    onNavigateToNetWorthDetail: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val homeBalances by viewModel.homeBalances.collectAsStateWithLifecycle()
@@ -56,7 +57,7 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            netWorth?.let { NetWorthCard(it) }
+            netWorth?.let { NetWorthCard(it, onClick = onNavigateToNetWorthDetail) }
             TotalBalanceCard(title = "Total balance", currencyTotals = homeBalances.total)
             TotalBalanceCard(title = "Savings", currencyTotals = homeBalances.savings)
             netWorth?.let { NetWorthPieChart(breakdown = it.breakdown, baseCurrency = it.currency) }
@@ -65,8 +66,9 @@ fun HomeScreen(
 }
 
 @Composable
-private fun NetWorthCard(netWorth: NetWorthState) {
+private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
     Card(
+        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primary,

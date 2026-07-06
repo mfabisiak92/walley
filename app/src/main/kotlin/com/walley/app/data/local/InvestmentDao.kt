@@ -37,4 +37,7 @@ interface InvestmentDao {
 
     @Query("UPDATE investments SET accountId = NULL WHERE accountId = :accountId")
     suspend fun clearAccountAssociation(accountId: Long)
+
+    @Query("SELECT COUNT(*) FROM investments WHERE accountId = :accountId")
+    suspend fun countForAccount(accountId: Long): Int
 }

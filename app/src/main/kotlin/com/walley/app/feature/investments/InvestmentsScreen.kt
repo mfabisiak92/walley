@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -20,6 +22,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
 import java.math.RoundingMode
@@ -46,6 +50,7 @@ fun InvestmentsScreen(
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
+    var pendingDeleteInvestment by remember { mutableStateOf<Investment?>(null) }
 
     Scaffold(
         modifier = modifier,
@@ -86,13 +91,18 @@ fun InvestmentsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(investments, key = { it.id }) { investment ->
-                    InvestmentRow(
-                        investment = investment,
-                        accountName = investment.accountId?.let { id ->
-                            investmentAccounts.find { it.id == id }?.name
-                        },
-                        onClick = { editingInvestment = investment }
-                    )
+                    SwipeToDeleteBox(
+                        onDelete = { pendingDeleteInvestment = investment },
+                        dismissOnDelete = false
+                    ) {
+                        InvestmentRow(
+                            investment = investment,
+                            accountName = investment.accountId?.let { id ->
+                                investmentAccounts.find { it.id == id }?.name
+                            },
+                            onClick = { editingInvestment = investment }
+                        )
+                    }
                 }
             }
         }
@@ -121,6 +131,26 @@ fun InvestmentsScreen(
             onDelete = {
                 viewModel.deleteInvestment(investment.id)
                 editingInvestment = null
+            }
+        )
+    }
+
+    pendingDeleteInvestment?.let { investment ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteInvestment = null },
+            title = { Text("Delete investment?") },
+            text = { Text("This will permanently delete \"${investment.name}\". This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteInvestment(investment.id)
+                        pendingDeleteInvestment = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteInvestment = null }) { Text("Cancel") }
             }
         )
     }

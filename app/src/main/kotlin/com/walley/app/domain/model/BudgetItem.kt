@@ -18,4 +18,9 @@ data class BudgetItem(
     val isCompleted: Boolean get() = amount.signum() > 0 && paidAmount >= amount
 
     val hasPaymentDay: Boolean get() = paymentDay != null || paymentDayIsLastOfMonth
+
+    /** True once any part of this item has been applied to its linked account's balance. */
+    val hasAppliedAccountEffect: Boolean
+        get() = (section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS) &&
+            paidAmount.signum() > 0
 }

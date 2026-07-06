@@ -3,10 +3,12 @@ package com.walley.app.feature.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.Asset
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
@@ -33,6 +35,14 @@ data class NetWorthByCurrency(
     val percent: BigDecimal
 )
 
+/** One contributor to net worth (an account or an asset), shown in the breakdown screen. */
+data class NetWorthElement(
+    val name: String,
+    val currency: Currency,
+    val originalAmount: BigDecimal,
+    val amountInBaseCurrency: BigDecimal
+)
+
 data class NetWorthState(
     val currency: Currency,
     // null when conversion is impossible (rates unavailable)
@@ -40,13 +50,16 @@ data class NetWorthState(
     // rate date shown when a conversion actually happened
     val rateDate: String?,
     // breakdown of net worth by the original currency of each account, converted to base currency
-    val breakdown: List<NetWorthByCurrency> = emptyList()
+    val breakdown: List<NetWorthByCurrency> = emptyList(),
+    // every account and asset that contributes to net worth, for the detail/breakdown screen
+    val elements: List<NetWorthElement> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     accountRepository: AccountRepository,
+    assetRepository: AssetRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -67,26 +80,53 @@ class HomeViewModel @Inject constructor(
 
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
+        assetRepository.observeAssets(),
         baseCurrencyRates
-    ) { accounts, (base, rates) ->
-        if (accounts.isEmpty()) null else computeNetWorth(accounts, base, rates)
+    ) { accounts, assets, (base, rates) ->
+        if (accounts.isEmpty() && assets.isEmpty()) null else computeNetWorth(accounts, assets, base, rates)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private fun computeNetWorth(accounts: List<Account>, base: Currency, rates: ExchangeRates?): NetWorthState {
+    private fun computeNetWorth(
+        accounts: List<Account>,
+        assets: List<Asset>,
+        base: Currency,
+        rates: ExchangeRates?
+    ): NetWorthState {
         val byCurrency = linkedMapOf<Currency, BigDecimal>()
+        val elements = mutableListOf<NetWorthElement>()
         var usedRates = false
-        for (account in accounts) {
-            val amountInBase = if (account.currency == base) {
-                account.balance
-            } else {
-                val rate = rates?.rates?.get(account.currency)
-                    ?: return NetWorthState(currency = base, amount = null, rateDate = null)
-                // rate is base -> account currency, so convert back by dividing
-                usedRates = true
-                account.balance.divide(rate, 10, RoundingMode.HALF_UP)
-            }
-            byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
+
+        fun convertToBase(amount: BigDecimal, currency: Currency): BigDecimal? {
+            if (currency == base) return amount
+            val rate = rates?.rates?.get(currency) ?: return null
+            // rate is base -> currency, so convert back by dividing
+            usedRates = true
+            return amount.divide(rate, 10, RoundingMode.HALF_UP)
         }
+
+        for (account in accounts) {
+            val amountInBase = convertToBase(account.balance, account.currency)
+                ?: return NetWorthState(currency = base, amount = null, rateDate = null)
+            byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
+            elements += NetWorthElement(
+                name = account.name,
+                currency = account.currency,
+                originalAmount = account.balance,
+                amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
+            )
+        }
+        for (asset in assets) {
+            val amountInBase = convertToBase(asset.currentValue, asset.currency)
+                ?: return NetWorthState(currency = base, amount = null, rateDate = null)
+            byCurrency[asset.currency] = (byCurrency[asset.currency] ?: BigDecimal.ZERO) + amountInBase
+            elements += NetWorthElement(
+                name = asset.name,
+                currency = asset.currency,
+                originalAmount = asset.currentValue,
+                amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
+            )
+        }
+
         val total = byCurrency.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
         val breakdown = byCurrency.entries
             .filter { it.value.signum() > 0 }
@@ -103,7 +143,8 @@ class HomeViewModel @Inject constructor(
             currency = base,
             amount = total.setScale(2, RoundingMode.HALF_UP),
             rateDate = if (usedRates) rates?.date else null,
-            breakdown = breakdown
+            breakdown = breakdown,
+            elements = elements.sortedByDescending { it.amountInBaseCurrency }
         )
     }
 

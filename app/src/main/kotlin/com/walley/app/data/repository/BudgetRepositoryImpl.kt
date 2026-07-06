@@ -79,8 +79,33 @@ class BudgetRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteBudget(budgetId: Long) {
+        val items = budgetDao.observeItemsForBudget(budgetId).first().map { it.toDomain() }
+        if (items.any { it.hasAppliedAccountEffect }) {
+            throw BudgetHasAppliedItemsException()
+        }
         budgetDao.deleteItemsForBudget(budgetId)
         budgetDao.deleteBudget(budgetId)
+    }
+
+    override suspend fun deleteBudgetItem(itemId: Long) {
+        budgetDao.deleteItem(itemId)
+    }
+
+    override suspend fun restoreBudgetItem(item: BudgetItem) {
+        budgetDao.insertItem(
+            BudgetItemEntity(
+                id = item.id,
+                budgetId = item.budgetId,
+                section = item.section,
+                name = item.name,
+                amountMinorUnits = item.amount.toMinorUnits(),
+                currency = item.currency,
+                accountId = item.accountId,
+                paymentDay = item.paymentDay,
+                paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
+                paidAmountMinorUnits = item.paidAmount.toMinorUnits()
+            )
+        )
     }
 
     override suspend fun checkAndAutoCompleteDueItems() {

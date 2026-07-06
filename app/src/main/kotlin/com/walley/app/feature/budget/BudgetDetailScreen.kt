@@ -21,6 +21,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -28,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,8 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,10 +54,14 @@ fun BudgetDetailScreen(
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text(budgetWithItems?.budget?.displayName ?: "Budget") },
@@ -88,11 +100,32 @@ fun BudgetDetailScreen(
                             )
                         }
                         items(sectionItems, key = { it.id }) { item ->
-                            BudgetItemRow(
-                                item = item,
-                                accountName = item.accountId?.let { id -> accounts.find { it.id == id }?.name },
-                                onClick = { itemForPaidDialog = item }
-                            )
+                            SwipeToDeleteBox(
+                                onDelete = {
+                                    viewModel.deleteItem(item.id)
+                                    scope.launch {
+                                        val dismissJob = launch {
+                                            delay(5_000)
+                                            snackbarHostState.currentSnackbarData?.dismiss()
+                                        }
+                                        val result = snackbarHostState.showSnackbar(
+                                            message = "\"${item.name}\" deleted",
+                                            actionLabel = "Undo",
+                                            duration = SnackbarDuration.Indefinite
+                                        )
+                                        dismissJob.cancel()
+                                        if (result == SnackbarResult.ActionPerformed) {
+                                            viewModel.restoreItem(item)
+                                        }
+                                    }
+                                }
+                            ) {
+                                BudgetItemRow(
+                                    item = item,
+                                    accountName = item.accountId?.let { id -> accounts.find { it.id == id }?.name },
+                                    onClick = { itemForPaidDialog = item }
+                                )
+                            }
                         }
                     }
                 }
@@ -122,7 +155,10 @@ fun BudgetDetailScreen(
             text = { Text("This will permanently delete this budget and all its items. This cannot be undone.") },
             confirmButton = {
                 TextButton(
-                    onClick = { viewModel.deleteBudget(onNavigateBack) },
+                    onClick = {
+                        showDeleteConfirm = false
+                        viewModel.deleteBudget(onNavigateBack)
+                    },
                     colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
@@ -130,6 +166,17 @@ fun BudgetDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    deleteBlockedMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteBlockedMessage,
+            title = { Text("Can't delete budget") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
             }
         )
     }

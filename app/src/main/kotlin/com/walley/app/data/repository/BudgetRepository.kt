@@ -15,8 +15,18 @@ interface BudgetRepository {
 
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
+
+    /** @throws BudgetHasAppliedItemsException if any Savings/Investments item already affected an account balance. */
     suspend fun deleteBudget(budgetId: Long)
+
+    /** Deletes a single item, overriding the usual locked-after-creation restriction. */
+    suspend fun deleteBudgetItem(itemId: Long)
+
+    /** Re-inserts a previously deleted item (used to support "undo"), preserving its original id. */
+    suspend fun restoreBudgetItem(item: BudgetItem)
 
     /** Auto-marks items whose payment day has passed as paid; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()
 }
+
+class BudgetHasAppliedItemsException : Exception("Budget has completed items that already affected account balances")

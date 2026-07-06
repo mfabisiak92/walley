@@ -8,7 +8,7 @@ Five bottom tabs, swipeable via a `HorizontalPager`: **Home**, **Accounts**, **B
 
 ## Home
 
-- **Net worth**: total balance across all accounts, converted to your chosen base currency using live FX rates, shown with the rate date used.
+- **Net worth**: total value across all accounts *and* assets, converted to your chosen base currency using live FX rates, shown with the rate date used. Tapping the Net worth tile opens a breakdown screen listing every contributing account/asset with its amount in the base currency, followed by the amount in its original currency when that differs from the base currency.
 - **Currency breakdown**: total balance and total savings broken out per currency.
 - **Pie chart**: share of net worth held in each currency.
 
@@ -25,17 +25,21 @@ Four account types, each with its own extra fields:
 
 Every account also has a **currency** and a **tax rate** (Tax-free or 19%), used for future tax-aware calculations.
 
+Accounts can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog. **An account with linked investments can't be deleted** until those investments are unlinked or deleted first.
+
 ## Investments
 
 - Each investment (name, ticker, quantity, currency, purchase price, current price) can be linked to an Investment-type account.
 - Tracks **cost basis**, **current value**, and **gain/loss** (absolute and %).
 - An account's displayed balance automatically includes the combined current value of everything linked to it, on top of its uninvested cash.
+- Investments can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
 
 ## Assets
 
 For non-liquid assets (property, vehicles, etc.) that aren't bank accounts or investments:
 - Name, currency, purchase value, purchase date, and current value (manually updated over time).
 - Shows gain/loss versus purchase value, same as Investments.
+- Included in Home's net worth calculation and breakdown.
 
 ## Budget
 
@@ -48,10 +52,11 @@ Monthly budgeting with a guided creation flow and payment tracking.
   - Every section except Income and Income-related expenses shows a running **unallocated amount** and **% of disposable income** (disposable income = total income − income-related expenses).
   - Any item can optionally have a **payment day** (a specific day of the month, or the last day of the month).
   - The final step shows the full allocation breakdown plus a pie chart before you confirm creation.
-- **Budgets are locked after creation** — items can't be added, removed, or edited; the whole budget can only be marked-paid item by item or deleted outright.
+- **Budgets are locked after creation** — items can't be added or edited; the whole budget can only be marked-paid item by item or deleted outright. Individual items *can* still be deleted (see below), as an exception to the lock.
 - **Paying items**: each item can be marked fully paid or partially paid (with a custom amount). Items with a payment day are **automatically marked fully paid** the moment that day arrives, checked whenever the Budget tab or a budget's detail screen is opened.
 - **Account side effects**: completing a Savings item adds its amount to that account's balance; completing an Investments item adds its amount to the linked account's **uninvested cash** (making clear it's cash sitting in the account, not an actual invested position). These updates are delta-based, so partial → full transitions never double-count.
-- Deleting a budget does **not** reverse balance changes already applied by items completed before deletion.
+- **Deleting an item**: swipe a budget item left and tap the red trash icon to delete it immediately (even in a created/locked budget); a 5-second "Undo" snackbar follows. Deleting an item does **not** reverse any account balance change it already applied.
+- **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A budget **can't be deleted** while it has completed Savings/Investments items that already affected an account balance.
 
 ## Settings
 

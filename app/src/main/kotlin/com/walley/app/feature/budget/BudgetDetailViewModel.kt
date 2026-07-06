@@ -4,14 +4,18 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.BudgetHasAppliedItemsException
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetWithItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -34,6 +38,13 @@ class BudgetDetailViewModel @Inject constructor(
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }
     }
 
+    private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
+    val deleteBlockedMessage: StateFlow<String?> = _deleteBlockedMessage.asStateFlow()
+
+    fun dismissDeleteBlockedMessage() {
+        _deleteBlockedMessage.value = null
+    }
+
     fun markPaid(itemId: Long) {
         viewModelScope.launch { budgetRepository.markItemPaid(itemId) }
     }
@@ -44,8 +55,22 @@ class BudgetDetailViewModel @Inject constructor(
 
     fun deleteBudget(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            budgetRepository.deleteBudget(budgetId)
-            onDeleted()
+            try {
+                budgetRepository.deleteBudget(budgetId)
+                onDeleted()
+            } catch (e: BudgetHasAppliedItemsException) {
+                _deleteBlockedMessage.value =
+                    "This budget has completed Savings/Investments items that already affected " +
+                        "account balances, so it can't be deleted."
+            }
         }
+    }
+
+    fun deleteItem(itemId: Long) {
+        viewModelScope.launch { budgetRepository.deleteBudgetItem(itemId) }
+    }
+
+    fun restoreItem(item: BudgetItem) {
+        viewModelScope.launch { budgetRepository.restoreBudgetItem(item) }
     }
 }

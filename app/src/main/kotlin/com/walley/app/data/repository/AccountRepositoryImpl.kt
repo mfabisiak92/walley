@@ -75,7 +75,9 @@ class AccountRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAccount(accountId: Long) {
-        investmentDao.clearAccountAssociation(accountId)
+        if (investmentDao.countForAccount(accountId) > 0) {
+            throw AccountHasLinkedInvestmentsException()
+        }
         accountDao.delete(accountId)
     }
 

@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.walley.app.feature.budget.BudgetDetailScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
+import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.settings.SettingsScreen
 
 private object WalleyDestinations {
@@ -15,6 +16,7 @@ private object WalleyDestinations {
     const val SETTINGS = "settings"
     const val BUDGET_WIZARD = "budget_wizard"
     const val BUDGET_DETAIL = "budget_detail/{budgetId}"
+    const val NET_WORTH_DETAIL = "net_worth_detail"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
 }
@@ -30,8 +32,12 @@ fun WalleyNavHost() {
                 onNavigateToBudgetWizard = { navController.navigate(WalleyDestinations.BUDGET_WIZARD) },
                 onNavigateToBudgetDetail = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetDetail(budgetId))
-                }
+                },
+                onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) }
             )
+        }
+        composable(WalleyDestinations.NET_WORTH_DETAIL) {
+            NetWorthDetailScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(WalleyDestinations.SETTINGS) {
             SettingsScreen(

@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import com.walley.app.feature.accounts.AccountsScreen
 import com.walley.app.feature.assets.AssetsScreen
 import com.walley.app.feature.budget.BudgetsScreen
@@ -46,7 +47,8 @@ private val tabs = listOf(
 fun MainTabsScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToBudgetWizard: () -> Unit,
-    onNavigateToBudgetDetail: (Long) -> Unit
+    onNavigateToBudgetDetail: (Long) -> Unit,
+    onNavigateToNetWorthDetail: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -59,7 +61,7 @@ fun MainTabsScreen(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label) },
+                        label = { Text(tab.label, maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false) },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = TabRed,
                             selectedTextColor = TabRed,
@@ -79,7 +81,10 @@ fun MainTabsScreen(
                 .fillMaxSize()
         ) { page ->
             when (page) {
-                0 -> HomeScreen(onNavigateToSettings = onNavigateToSettings)
+                0 -> HomeScreen(
+                    onNavigateToSettings = onNavigateToSettings,
+                    onNavigateToNetWorthDetail = onNavigateToNetWorthDetail
+                )
                 1 -> AccountsScreen(onNavigateHome = goHome)
                 2 -> BudgetsScreen(
                     onNavigateHome = goHome,
