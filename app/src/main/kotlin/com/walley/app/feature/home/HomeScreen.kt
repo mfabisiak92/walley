@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,7 +39,7 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val currencyTotals by viewModel.currencyTotals.collectAsStateWithLifecycle()
+    val homeBalances by viewModel.homeBalances.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -60,7 +61,25 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            TotalBalanceCard(currencyTotals)
+            TotalBalanceCard(currencyTotals = homeBalances.total)
+            if (homeBalances.savings.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SubBalanceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Available",
+                        currencyTotals = homeBalances.available,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    SubBalanceCard(
+                        modifier = Modifier.weight(1f),
+                        title = "Savings",
+                        currencyTotals = homeBalances.savings,
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 ModuleTile(
                     title = "Accounts",
@@ -99,6 +118,41 @@ private fun TotalBalanceCard(currencyTotals: List<CurrencyTotal>) {
                     text = formatMoney(currencyTotal.total, currencyTotal.currency),
                     style = MaterialTheme.typography.headlineMedium
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubBalanceCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    currencyTotals: List<CurrencyTotal>,
+    containerColor: Color,
+    contentColor: Color
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.labelLarge)
+            if (currencyTotals.isEmpty()) {
+                Text("—", style = MaterialTheme.typography.titleMedium)
+            } else {
+                currencyTotals.forEach { currencyTotal ->
+                    Text(
+                        text = formatMoney(currencyTotal.total, currencyTotal.currency),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
             }
         }
     }

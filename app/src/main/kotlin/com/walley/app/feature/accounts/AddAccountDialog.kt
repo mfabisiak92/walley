@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 
@@ -27,11 +28,13 @@ import java.math.BigDecimal
 @Composable
 fun AddAccountDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, currency: Currency, initialBalance: BigDecimal) -> Unit
+    onConfirm: (name: String, type: AccountType, currency: Currency, initialBalance: BigDecimal) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
+    var type by remember { mutableStateOf(AccountType.CHECKING) }
     var currency by remember { mutableStateOf(Currency.PLN) }
     var balanceText by remember { mutableStateOf("0") }
+    var typeMenuExpanded by remember { mutableStateOf(false) }
     var currencyMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
@@ -48,6 +51,33 @@ fun AddAccountDialog(
                     label = { Text("Name") },
                     singleLine = true
                 )
+                ExposedDropdownMenuBox(
+                    expanded = typeMenuExpanded,
+                    onExpandedChange = { typeMenuExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = type.label,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Type") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
+                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = typeMenuExpanded,
+                        onDismissRequest = { typeMenuExpanded = false }
+                    ) {
+                        AccountType.entries.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option.label) },
+                                onClick = {
+                                    type = option
+                                    typeMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
                 ExposedDropdownMenuBox(
                     expanded = currencyMenuExpanded,
                     onExpandedChange = { currencyMenuExpanded = it }
@@ -87,7 +117,7 @@ fun AddAccountDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), currency, parsedBalance!!) },
+                onClick = { onConfirm(name.trim(), type, currency, parsedBalance!!) },
                 enabled = isValid
             ) { Text("Add") }
         },

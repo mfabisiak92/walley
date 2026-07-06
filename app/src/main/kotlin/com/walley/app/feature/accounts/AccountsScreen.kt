@@ -94,8 +94,8 @@ fun AccountsScreen(
     if (showAddDialog) {
         AddAccountDialog(
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, currency, balance ->
-                viewModel.addAccount(name, currency, balance)
+            onConfirm = { name, type, currency, balance ->
+                viewModel.addAccount(name, type, currency, balance)
                 showAddDialog = false
             }
         )
@@ -105,8 +105,8 @@ fun AccountsScreen(
         EditAccountDialog(
             account = account,
             onDismiss = { editingAccount = null },
-            onSave = { name, newBalance ->
-                viewModel.updateAccount(account.id, name, newBalance)
+            onSave = { name, type, newBalance ->
+                viewModel.updateAccount(account.id, name, type, newBalance)
                 editingAccount = null
             },
             onDelete = {
@@ -130,7 +130,14 @@ private fun AccountRow(account: Account, onClick: () -> Unit) {
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(account.name, style = MaterialTheme.typography.titleMedium)
+            Column {
+                Text(account.name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    account.type.label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
         }
     }

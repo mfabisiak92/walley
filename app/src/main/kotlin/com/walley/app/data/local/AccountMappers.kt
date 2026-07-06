@@ -7,6 +7,7 @@ import java.math.RoundingMode
 fun AccountEntity.toDomain(): Account = Account(
     id = id,
     name = name,
+    type = type,
     currency = currency,
     balance = BigDecimal(balanceMinorUnits).movePointLeft(2)
 )

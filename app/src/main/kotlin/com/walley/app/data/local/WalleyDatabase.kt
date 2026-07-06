@@ -6,7 +6,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [AccountEntity::class, InvestmentEntity::class], version = 2, exportSchema = false)
+@Database(entities = [AccountEntity::class, InvestmentEntity::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class WalleyDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
@@ -27,5 +27,11 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE accounts ADD COLUMN type TEXT NOT NULL DEFAULT 'CHECKING'")
     }
 }
