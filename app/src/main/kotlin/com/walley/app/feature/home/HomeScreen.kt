@@ -40,6 +40,7 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val homeBalances by viewModel.homeBalances.collectAsStateWithLifecycle()
+    val netWorth by viewModel.netWorth.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -61,6 +62,7 @@ fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            netWorth?.let { NetWorthCard(it) }
             TotalBalanceCard(currencyTotals = homeBalances.total)
             if (homeBalances.savings.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -90,6 +92,42 @@ fun HomeScreen(
                     title = "Investments",
                     icon = Icons.AutoMirrored.Filled.List,
                     onClick = onNavigateToInvestments
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetWorthCard(netWorth: NetWorthState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("Net worth", style = MaterialTheme.typography.titleMedium)
+            if (netWorth.amount != null) {
+                Text(
+                    text = formatMoney(netWorth.amount, netWorth.currency),
+                    style = MaterialTheme.typography.headlineLarge
+                )
+                netWorth.rateDate?.let { date ->
+                    Text(
+                        text = "ECB rates · $date",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            } else {
+                Text(
+                    text = "Exchange rates unavailable",
+                    style = MaterialTheme.typography.bodyLarge
                 )
             }
         }
