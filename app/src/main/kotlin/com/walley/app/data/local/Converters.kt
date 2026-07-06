@@ -1,6 +1,7 @@
 package com.walley.app.data.local
 
 import androidx.room.TypeConverter
+import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
@@ -17,6 +18,12 @@ class Converters {
 
     @TypeConverter
     fun toAccountType(value: String): AccountType = AccountType.valueOf(value)
+
+    @TypeConverter
+    fun fromAccountTaxRate(taxRate: AccountTaxRate): String = taxRate.name
+
+    @TypeConverter
+    fun toAccountTaxRate(value: String): AccountTaxRate = AccountTaxRate.valueOf(value)
 
     @TypeConverter
     fun fromBigDecimal(value: BigDecimal): String = value.toPlainString()

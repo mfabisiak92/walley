@@ -1,6 +1,7 @@
 package com.walley.app.domain.model
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 
 data class Investment(
     val id: Long = 0,
@@ -9,7 +10,21 @@ data class Investment(
     val quantity: BigDecimal,
     val currency: Currency,
     val price: BigDecimal,
+    val currentPrice: BigDecimal,
     val accountId: Long? = null
 ) {
-    val value: BigDecimal get() = quantity * price
+    /** Cost basis: what was paid for the position. */
+    val costBasis: BigDecimal get() = quantity * price
+
+    /** Current market value based on the manually-entered current price. */
+    val currentValue: BigDecimal get() = quantity * currentPrice
+
+    val gainLoss: BigDecimal get() = currentValue - costBasis
+
+    val gainLossPercent: BigDecimal? get() =
+        if (price.signum() == 0) {
+            null
+        } else {
+            (currentPrice - price).divide(price, 4, RoundingMode.HALF_UP) * BigDecimal(100)
+        }
 }

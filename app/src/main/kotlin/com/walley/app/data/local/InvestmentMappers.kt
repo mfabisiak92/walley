@@ -9,5 +9,6 @@ fun InvestmentEntity.toDomain(): Investment = Investment(
     quantity = quantity,
     currency = currency,
     price = price,
+    currentPrice = currentPrice,
     accountId = accountId
 )

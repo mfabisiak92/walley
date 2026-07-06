@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import java.math.BigDecimal
 
@@ -31,19 +32,31 @@ import java.math.BigDecimal
 fun EditAccountDialog(
     account: Account,
     onDismiss: () -> Unit,
-    onSave: (name: String, type: AccountType, newBalance: BigDecimal) -> Unit,
+    onSave: (
+        name: String,
+        type: AccountType,
+        taxRate: AccountTaxRate,
+        newBalance: BigDecimal,
+        targetAmount: BigDecimal?
+    ) -> Unit,
     onDelete: () -> Unit
 ) {
     var name by remember { mutableStateOf(account.name) }
     var type by remember { mutableStateOf(account.type) }
+    var taxRate by remember { mutableStateOf(account.taxRate) }
     var balanceText by remember { mutableStateOf(account.balance.toPlainString()) }
+    var targetAmountText by remember { mutableStateOf(account.targetAmount?.toPlainString() ?: "") }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
+    var taxRateMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
     // Investment accounts derive their balance from associated investments.
     val isInvestment = type == AccountType.INVESTMENT
-    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null)
+    val isSaving = type == AccountType.SAVING
+    val parsedTargetAmount = targetAmountText.toBigDecimalOrNull()
+    val targetAmountValid = targetAmountText.isBlank() || parsedTargetAmount != null
+    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null) && targetAmountValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -84,6 +97,33 @@ fun EditAccountDialog(
                     }
                 }
                 if (isInvestment) {
+                    ExposedDropdownMenuBox(
+                        expanded = taxRateMenuExpanded,
+                        onExpandedChange = { taxRateMenuExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = taxRate.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Tax rate") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = taxRateMenuExpanded) },
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = taxRateMenuExpanded,
+                            onDismissRequest = { taxRateMenuExpanded = false }
+                        ) {
+                            AccountTaxRate.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        taxRate = option
+                                        taxRateMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                     Text(
                         "Balance is calculated from the investments associated with this account.",
                         style = MaterialTheme.typography.bodySmall,
@@ -99,6 +139,16 @@ fun EditAccountDialog(
                         isError = parsedBalance == null
                     )
                 }
+                if (isSaving) {
+                    OutlinedTextField(
+                        value = targetAmountText,
+                        onValueChange = { targetAmountText = it },
+                        label = { Text("Target amount (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = !targetAmountValid
+                    )
+                }
                 TextButton(
                     onClick = { showDeleteConfirm = true },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -109,7 +159,15 @@ fun EditAccountDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), type, if (isInvestment) account.balance else parsedBalance!!) },
+                onClick = {
+                    onSave(
+                        name.trim(),
+                        type,
+                        taxRate,
+                        if (isInvestment) account.balance else parsedBalance!!,
+                        if (isSaving) parsedTargetAmount else null
+                    )
+                },
                 enabled = isValid
             ) { Text("Save") }
         },

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,12 +23,26 @@ class AccountsViewModel @Inject constructor(
     val accounts: StateFlow<List<Account>> = repository.observeAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addAccount(name: String, type: AccountType, currency: Currency, initialBalance: BigDecimal) {
-        viewModelScope.launch { repository.addAccount(name, type, currency, initialBalance) }
+    fun addAccount(
+        name: String,
+        type: AccountType,
+        currency: Currency,
+        initialBalance: BigDecimal,
+        taxRate: AccountTaxRate,
+        targetAmount: BigDecimal?
+    ) {
+        viewModelScope.launch { repository.addAccount(name, type, currency, initialBalance, taxRate, targetAmount) }
     }
 
-    fun updateAccount(accountId: Long, name: String, type: AccountType, newBalance: BigDecimal) {
-        viewModelScope.launch { repository.updateAccount(accountId, name, type, newBalance) }
+    fun updateAccount(
+        accountId: Long,
+        name: String,
+        type: AccountType,
+        taxRate: AccountTaxRate,
+        newBalance: BigDecimal,
+        targetAmount: BigDecimal?
+    ) {
+        viewModelScope.launch { repository.updateAccount(accountId, name, type, taxRate, newBalance, targetAmount) }
     }
 
     fun deleteAccount(accountId: Long) {

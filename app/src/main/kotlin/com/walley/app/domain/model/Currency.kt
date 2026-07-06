@@ -4,5 +4,7 @@ enum class Currency(val symbol: String) {
     PLN("zł"),
     EUR("€"),
     USD("$"),
-    GBP("£")
+    GBP("£"),
+    NOK("kr"),
+    CHF("Fr.")
 }

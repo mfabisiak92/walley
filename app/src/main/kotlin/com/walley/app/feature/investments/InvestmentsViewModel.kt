@@ -36,9 +36,12 @@ class InvestmentsViewModel @Inject constructor(
         quantity: BigDecimal,
         currency: Currency,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     ) {
-        viewModelScope.launch { repository.addInvestment(name, ticker, quantity, currency, price, accountId) }
+        viewModelScope.launch {
+            repository.addInvestment(name, ticker, quantity, currency, price, currentPrice, accountId)
+        }
     }
 
     fun updateInvestment(
@@ -47,9 +50,12 @@ class InvestmentsViewModel @Inject constructor(
         ticker: String,
         quantity: BigDecimal,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     ) {
-        viewModelScope.launch { repository.updateInvestment(investmentId, name, ticker, quantity, price, accountId) }
+        viewModelScope.launch {
+            repository.updateInvestment(investmentId, name, ticker, quantity, price, currentPrice, accountId)
+        }
     }
 
     fun deleteInvestment(investmentId: Long) {

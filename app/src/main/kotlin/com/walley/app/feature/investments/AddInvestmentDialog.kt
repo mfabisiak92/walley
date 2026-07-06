@@ -6,11 +6,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -26,7 +22,6 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddInvestmentDialog(
     investmentAccounts: List<Account>,
@@ -37,23 +32,24 @@ fun AddInvestmentDialog(
         quantity: BigDecimal,
         currency: Currency,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var ticker by remember { mutableStateOf("") }
     var quantityText by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf(Currency.PLN) }
     var priceText by remember { mutableStateOf("") }
+    var currentPriceText by remember { mutableStateOf("") }
     var accountId by remember { mutableStateOf<Long?>(null) }
-    var currencyMenuExpanded by remember { mutableStateOf(false) }
+    var accountTouched by remember { mutableStateOf(false) }
 
+    val selectedAccount = investmentAccounts.find { it.id == accountId }
     val parsedQuantity = quantityText.toBigDecimalOrNull()
     val parsedPrice = priceText.toBigDecimalOrNull()
-    val isValid = name.isNotBlank() && ticker.isNotBlank() && parsedQuantity != null && parsedPrice != null
-
-    // Only same-currency investment accounts are valid association targets.
-    val selectableAccounts = investmentAccounts.filter { it.currency == currency }
+    val parsedCurrentPrice = currentPriceText.toBigDecimalOrNull() ?: parsedPrice
+    val isValid = name.isNotBlank() && ticker.isNotBlank() &&
+        parsedQuantity != null && parsedPrice != null && selectedAccount != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -63,6 +59,14 @@ fun AddInvestmentDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (investmentAccounts.isEmpty()) {
+                    Text(
+                        "You need an investment account before adding an investment. " +
+                            "Create one from the Accounts screen first.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -75,6 +79,15 @@ fun AddInvestmentDialog(
                     label = { Text("Ticker") },
                     singleLine = true
                 )
+                InvestmentAccountDropdown(
+                    accounts = investmentAccounts,
+                    selectedAccountId = accountId,
+                    onAccountSelected = {
+                        accountId = it
+                        accountTouched = true
+                    },
+                    isError = accountTouched && selectedAccount == null
+                )
                 OutlinedTextField(
                     value = quantityText,
                     onValueChange = { quantityText = it },
@@ -83,53 +96,36 @@ fun AddInvestmentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = quantityText.isNotBlank() && parsedQuantity == null
                 )
-                ExposedDropdownMenuBox(
-                    expanded = currencyMenuExpanded,
-                    onExpandedChange = { currencyMenuExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = currency.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Currency") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyMenuExpanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = currencyMenuExpanded,
-                        onDismissRequest = { currencyMenuExpanded = false }
-                    ) {
-                        Currency.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.name) },
-                                onClick = {
-                                    if (option != currency) accountId = null
-                                    currency = option
-                                    currencyMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
                 OutlinedTextField(
                     value = priceText,
                     onValueChange = { priceText = it },
-                    label = { Text("Price per unit") },
+                    label = { Text("Price per unit" + (selectedAccount?.let { " (${it.currency.symbol})" } ?: "")) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = priceText.isNotBlank() && parsedPrice == null
                 )
-                InvestmentAccountDropdown(
-                    accounts = selectableAccounts,
-                    selectedAccountId = accountId,
-                    onAccountSelected = { accountId = it }
+                OutlinedTextField(
+                    value = currentPriceText,
+                    onValueChange = { currentPriceText = it },
+                    label = { Text("Current price (optional, defaults to price per unit)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = currentPriceText.isNotBlank() && currentPriceText.toBigDecimalOrNull() == null
                 )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    onConfirm(name.trim(), ticker.trim().uppercase(), parsedQuantity!!, currency, parsedPrice!!, accountId)
+                    onConfirm(
+                        name.trim(),
+                        ticker.trim().uppercase(),
+                        parsedQuantity!!,
+                        selectedAccount!!.currency,
+                        parsedPrice!!,
+                        parsedCurrentPrice!!,
+                        selectedAccount.id
+                    )
                 },
                 enabled = isValid
             ) { Text("Add") }

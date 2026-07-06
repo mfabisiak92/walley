@@ -17,7 +17,8 @@ interface InvestmentDao {
     @Query(
         """
         UPDATE investments
-        SET name = :name, ticker = :ticker, quantity = :quantity, price = :price, accountId = :accountId
+        SET name = :name, ticker = :ticker, quantity = :quantity, price = :price,
+            currentPrice = :currentPrice, accountId = :accountId
         WHERE id = :investmentId
         """
     )
@@ -27,6 +28,7 @@ interface InvestmentDao {
         ticker: String,
         quantity: BigDecimal,
         price: BigDecimal,
+        currentPrice: BigDecimal,
         accountId: Long?
     )
 

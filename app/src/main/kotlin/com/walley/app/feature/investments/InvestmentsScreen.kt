@@ -27,12 +27,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
+import java.math.RoundingMode
 
 @Composable
 fun InvestmentsScreen(
@@ -100,8 +102,8 @@ fun InvestmentsScreen(
         AddInvestmentDialog(
             investmentAccounts = investmentAccounts,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, ticker, quantity, currency, price, accountId ->
-                viewModel.addInvestment(name, ticker, quantity, currency, price, accountId)
+            onConfirm = { name, ticker, quantity, currency, price, currentPrice, accountId ->
+                viewModel.addInvestment(name, ticker, quantity, currency, price, currentPrice, accountId)
                 showAddDialog = false
             }
         )
@@ -112,8 +114,8 @@ fun InvestmentsScreen(
             investment = investment,
             investmentAccounts = investmentAccounts,
             onDismiss = { editingInvestment = null },
-            onSave = { name, ticker, quantity, price, accountId ->
-                viewModel.updateInvestment(investment.id, name, ticker, quantity, price, accountId)
+            onSave = { name, ticker, quantity, price, currentPrice, accountId ->
+                viewModel.updateInvestment(investment.id, name, ticker, quantity, price, currentPrice, accountId)
                 editingInvestment = null
             },
             onDelete = {
@@ -149,15 +151,37 @@ private fun InvestmentRow(
                     )
                 }
                 Text(
-                    formatMoney(investment.value, investment.currency),
+                    formatMoney(investment.currentValue, investment.currency),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-            Text(
-                text = "${investment.quantity.toPlainString()} @ ${formatMoney(investment.price, investment.currency)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "${investment.quantity.toPlainString()} @ ${formatMoney(investment.currentPrice, investment.currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                GainLossText(investment)
+            }
         }
     }
+}
+
+@Composable
+private fun GainLossText(investment: Investment) {
+    val gainLoss = investment.gainLoss
+    val isGain = gainLoss.signum() >= 0
+    val color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val sign = if (isGain) "+" else ""
+    val percent = investment.gainLossPercent?.setScale(1, RoundingMode.HALF_UP)
+
+    Text(
+        text = "$sign${formatMoney(gainLoss, investment.currency)}" +
+            (percent?.let { " ($sign${it.toPlainString()}%)" } ?: ""),
+        style = MaterialTheme.typography.bodySmall,
+        color = color
+    )
 }

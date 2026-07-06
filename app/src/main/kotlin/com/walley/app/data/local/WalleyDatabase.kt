@@ -6,7 +6,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [AccountEntity::class, InvestmentEntity::class], version = 4, exportSchema = false)
+@Database(entities = [AccountEntity::class, InvestmentEntity::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class WalleyDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
@@ -39,5 +39,20 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE investments ADD COLUMN accountId INTEGER")
+    }
+}
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE accounts ADD COLUMN taxRate TEXT NOT NULL DEFAULT 'STANDARD_19'")
+        db.execSQL("ALTER TABLE investments ADD COLUMN currentPrice TEXT NOT NULL DEFAULT '0'")
+        // Backfill current price with the buy price so existing positions start at zero gain/loss.
+        db.execSQL("UPDATE investments SET currentPrice = price")
+    }
+}
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE accounts ADD COLUMN targetAmountMinorUnits INTEGER")
     }
 }

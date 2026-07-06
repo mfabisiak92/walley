@@ -9,7 +9,9 @@ fun AccountEntity.toDomain(): Account = Account(
     name = name,
     type = type,
     currency = currency,
-    balance = BigDecimal(balanceMinorUnits).movePointLeft(2)
+    balance = BigDecimal(balanceMinorUnits).movePointLeft(2),
+    taxRate = taxRate,
+    targetAmount = targetAmountMinorUnits?.let { BigDecimal(it).movePointLeft(2) }
 )
 
 fun BigDecimal.toMinorUnits(): Long = movePointRight(2).setScale(0, RoundingMode.HALF_UP).toLong()

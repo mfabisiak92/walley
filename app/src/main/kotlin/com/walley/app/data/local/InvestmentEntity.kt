@@ -13,5 +13,6 @@ data class InvestmentEntity(
     val quantity: BigDecimal,
     val currency: Currency,
     val price: BigDecimal,
+    val currentPrice: BigDecimal,
     val accountId: Long? = null
 )

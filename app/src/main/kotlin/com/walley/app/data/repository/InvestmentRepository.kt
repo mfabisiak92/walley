@@ -13,7 +13,8 @@ interface InvestmentRepository {
         quantity: BigDecimal,
         currency: Currency,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     )
     suspend fun updateInvestment(
         investmentId: Long,
@@ -21,7 +22,8 @@ interface InvestmentRepository {
         ticker: String,
         quantity: BigDecimal,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     )
     suspend fun deleteInvestment(investmentId: Long)
 }

@@ -33,7 +33,8 @@ fun EditInvestmentDialog(
         ticker: String,
         quantity: BigDecimal,
         price: BigDecimal,
-        accountId: Long?
+        currentPrice: BigDecimal,
+        accountId: Long
     ) -> Unit,
     onDelete: () -> Unit
 ) {
@@ -41,15 +42,20 @@ fun EditInvestmentDialog(
     var ticker by remember { mutableStateOf(investment.ticker) }
     var quantityText by remember { mutableStateOf(investment.quantity.toPlainString()) }
     var priceText by remember { mutableStateOf(investment.price.toPlainString()) }
+    var currentPriceText by remember { mutableStateOf(investment.currentPrice.toPlainString()) }
     var accountId by remember { mutableStateOf(investment.accountId) }
+    var accountTouched by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
-
-    val parsedQuantity = quantityText.toBigDecimalOrNull()
-    val parsedPrice = priceText.toBigDecimalOrNull()
-    val isValid = name.isNotBlank() && ticker.isNotBlank() && parsedQuantity != null && parsedPrice != null
 
     // Currency is fixed after creation, so valid targets are same-currency investment accounts.
     val selectableAccounts = investmentAccounts.filter { it.currency == investment.currency }
+    val selectedAccount = selectableAccounts.find { it.id == accountId }
+
+    val parsedQuantity = quantityText.toBigDecimalOrNull()
+    val parsedPrice = priceText.toBigDecimalOrNull()
+    val parsedCurrentPrice = currentPriceText.toBigDecimalOrNull()
+    val isValid = name.isNotBlank() && ticker.isNotBlank() &&
+        parsedQuantity != null && parsedPrice != null && parsedCurrentPrice != null && selectedAccount != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -59,6 +65,14 @@ fun EditInvestmentDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                if (selectableAccounts.isEmpty()) {
+                    Text(
+                        "No investment account in ${investment.currency.name} exists yet. " +
+                            "Create one from the Accounts screen to keep this investment.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
@@ -70,6 +84,15 @@ fun EditInvestmentDialog(
                     onValueChange = { ticker = it },
                     label = { Text("Ticker") },
                     singleLine = true
+                )
+                InvestmentAccountDropdown(
+                    accounts = selectableAccounts,
+                    selectedAccountId = accountId,
+                    onAccountSelected = {
+                        accountId = it
+                        accountTouched = true
+                    },
+                    isError = accountTouched && selectedAccount == null
                 )
                 OutlinedTextField(
                     value = quantityText,
@@ -87,10 +110,13 @@ fun EditInvestmentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = priceText.isNotBlank() && parsedPrice == null
                 )
-                InvestmentAccountDropdown(
-                    accounts = selectableAccounts,
-                    selectedAccountId = accountId,
-                    onAccountSelected = { accountId = it }
+                OutlinedTextField(
+                    value = currentPriceText,
+                    onValueChange = { currentPriceText = it },
+                    label = { Text("Current price (${investment.currency.symbol})") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = currentPriceText.isNotBlank() && parsedCurrentPrice == null
                 )
                 TextButton(
                     onClick = { showDeleteConfirm = true },
@@ -102,7 +128,16 @@ fun EditInvestmentDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), ticker.trim().uppercase(), parsedQuantity!!, parsedPrice!!, accountId) },
+                onClick = {
+                    onSave(
+                        name.trim(),
+                        ticker.trim().uppercase(),
+                        parsedQuantity!!,
+                        parsedPrice!!,
+                        parsedCurrentPrice!!,
+                        selectedAccount!!.id
+                    )
+                },
                 enabled = isValid
             ) { Text("Save") }
         },

@@ -16,18 +16,20 @@ import androidx.compose.ui.Modifier
 import com.walley.app.domain.model.Account
 
 /**
- * Picker for associating an investment with an investment-type account.
- * Callers pass only accounts that are valid targets (investment type, matching currency).
+ * Mandatory picker for associating an investment with an investment-type account.
+ * Callers pass only accounts that are valid targets for the current context
+ * (e.g. same currency as the investment being edited).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentAccountDropdown(
     accounts: List<Account>,
     selectedAccountId: Long?,
-    onAccountSelected: (Long?) -> Unit
+    onAccountSelected: (Long) -> Unit,
+    isError: Boolean = false
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedName = accounts.find { it.id == selectedAccountId }?.name ?: "None"
+    val selectedName = accounts.find { it.id == selectedAccountId }?.name ?: ""
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -37,7 +39,11 @@ fun InvestmentAccountDropdown(
             value = selectedName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Account (optional)") },
+            label = { Text("Account") },
+            isError = isError,
+            supportingText = if (isError) {
+                { Text("Select an account") }
+            } else null,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
         )
@@ -45,13 +51,6 @@ fun InvestmentAccountDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            DropdownMenuItem(
-                text = { Text("None") },
-                onClick = {
-                    onAccountSelected(null)
-                    expanded = false
-                }
-            )
             accounts.forEach { account ->
                 DropdownMenuItem(
                     text = { Text(account.name) },
