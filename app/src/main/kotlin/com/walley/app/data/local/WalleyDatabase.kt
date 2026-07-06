@@ -6,12 +6,23 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [AccountEntity::class, InvestmentEntity::class, AssetEntity::class], version = 7, exportSchema = false)
+@Database(
+    entities = [
+        AccountEntity::class,
+        InvestmentEntity::class,
+        AssetEntity::class,
+        BudgetEntity::class,
+        BudgetItemEntity::class
+    ],
+    version = 8,
+    exportSchema = false
+)
 @TypeConverters(Converters::class)
 abstract class WalleyDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun investmentDao(): InvestmentDao
     abstract fun assetDao(): AssetDao
+    abstract fun budgetDao(): BudgetDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -69,6 +80,36 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
                 `purchaseValueMinorUnits` INTEGER NOT NULL,
                 `currentValueMinorUnits` INTEGER NOT NULL,
                 `purchaseDate` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `budgets` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `year` INTEGER NOT NULL,
+                `month` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `budget_items` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `budgetId` INTEGER NOT NULL,
+                `section` TEXT NOT NULL,
+                `name` TEXT NOT NULL,
+                `amountMinorUnits` INTEGER NOT NULL,
+                `currency` TEXT NOT NULL,
+                `accountId` INTEGER,
+                `paymentDay` INTEGER,
+                `paymentDayIsLastOfMonth` INTEGER NOT NULL DEFAULT 0,
+                `paidAmountMinorUnits` INTEGER NOT NULL DEFAULT 0
             )
             """.trimIndent()
         )

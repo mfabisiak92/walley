@@ -34,4 +34,7 @@ interface AccountDao {
 
     @Query("DELETE FROM accounts WHERE id = :accountId")
     suspend fun delete(accountId: Long)
+
+    @Query("UPDATE accounts SET balanceMinorUnits = balanceMinorUnits + :deltaMinorUnits WHERE id = :accountId")
+    suspend fun addToBalance(accountId: Long, deltaMinorUnits: Long)
 }

@@ -50,12 +50,11 @@ fun AddAccountDialog(
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
-    // Investment accounts derive their balance from associated investments.
     val isInvestment = type == AccountType.INVESTMENT
     val isSaving = type == AccountType.SAVING
     val parsedTargetAmount = targetAmountText.toBigDecimalOrNull()
     val targetAmountValid = targetAmountText.isBlank() || parsedTargetAmount != null
-    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null) && targetAmountValid
+    val isValid = name.isNotBlank() && parsedBalance != null && targetAmountValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -151,9 +150,18 @@ fun AddAccountDialog(
                         }
                     }
                     Text(
-                        "Balance is calculated from the investments associated with this account.",
+                        "This is cash not yet invested. The account's total balance also includes " +
+                            "the current value of any linked investments.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = balanceText,
+                        onValueChange = { balanceText = it },
+                        label = { Text("Uninvested cash") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedBalance == null
                     )
                 } else {
                     OutlinedTextField(
@@ -184,7 +192,7 @@ fun AddAccountDialog(
                         name.trim(),
                         type,
                         currency,
-                        if (isInvestment) BigDecimal.ZERO else parsedBalance!!,
+                        parsedBalance!!,
                         taxRate,
                         if (isSaving) parsedTargetAmount else null
                     )

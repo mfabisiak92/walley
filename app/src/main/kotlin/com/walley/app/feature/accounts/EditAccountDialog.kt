@@ -44,19 +44,26 @@ fun EditAccountDialog(
     var name by remember { mutableStateOf(account.name) }
     var type by remember { mutableStateOf(account.type) }
     var taxRate by remember { mutableStateOf(account.taxRate) }
-    var balanceText by remember { mutableStateOf(account.balance.toPlainString()) }
+    var balanceText by remember {
+        mutableStateOf(
+            if (account.type == AccountType.INVESTMENT) {
+                account.uninvestedCash.toPlainString()
+            } else {
+                account.balance.toPlainString()
+            }
+        )
+    }
     var targetAmountText by remember { mutableStateOf(account.targetAmount?.toPlainString() ?: "") }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
-    // Investment accounts derive their balance from associated investments.
     val isInvestment = type == AccountType.INVESTMENT
     val isSaving = type == AccountType.SAVING
     val parsedTargetAmount = targetAmountText.toBigDecimalOrNull()
     val targetAmountValid = targetAmountText.isBlank() || parsedTargetAmount != null
-    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null) && targetAmountValid
+    val isValid = name.isNotBlank() && parsedBalance != null && targetAmountValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -125,9 +132,18 @@ fun EditAccountDialog(
                         }
                     }
                     Text(
-                        "Balance is calculated from the investments associated with this account.",
+                        "This is cash not yet invested. The account's total balance also includes " +
+                            "the current value of any linked investments.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = balanceText,
+                        onValueChange = { balanceText = it },
+                        label = { Text("Uninvested cash (${account.currency.symbol})") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedBalance == null
                     )
                 } else {
                     OutlinedTextField(
@@ -164,7 +180,7 @@ fun EditAccountDialog(
                         name.trim(),
                         type,
                         taxRate,
-                        if (isInvestment) account.balance else parsedBalance!!,
+                        parsedBalance!!,
                         if (isSaving) parsedTargetAmount else null
                     )
                 },

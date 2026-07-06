@@ -26,4 +26,6 @@ interface AccountRepository {
         targetAmount: BigDecimal?
     )
     suspend fun deleteAccount(accountId: Long)
+    /** Adds (or subtracts, for a negative delta) an amount to an account's stored balance. */
+    suspend fun addToBalance(accountId: Long, delta: BigDecimal)
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PieChart
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.walley.app.feature.accounts.AccountsScreen
 import com.walley.app.feature.assets.AssetsScreen
+import com.walley.app.feature.budget.BudgetsScreen
 import com.walley.app.feature.home.HomeScreen
 import com.walley.app.feature.investments.InvestmentsScreen
 import kotlinx.coroutines.launch
@@ -35,12 +37,17 @@ private data class Tab(val label: String, val icon: ImageVector)
 private val tabs = listOf(
     Tab("Home", Icons.Filled.Home),
     Tab("Accounts", Icons.Filled.AccountBalance),
+    Tab("Budget", Icons.Filled.Calculate),
     Tab("Investments", Icons.Filled.PieChart),
     Tab("Assets", Icons.Filled.Lock)
 )
 
 @Composable
-fun MainTabsScreen(onNavigateToSettings: () -> Unit) {
+fun MainTabsScreen(
+    onNavigateToSettings: () -> Unit,
+    onNavigateToBudgetWizard: () -> Unit,
+    onNavigateToBudgetDetail: (Long) -> Unit
+) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
@@ -74,8 +81,13 @@ fun MainTabsScreen(onNavigateToSettings: () -> Unit) {
             when (page) {
                 0 -> HomeScreen(onNavigateToSettings = onNavigateToSettings)
                 1 -> AccountsScreen(onNavigateHome = goHome)
-                2 -> InvestmentsScreen(onNavigateHome = goHome)
-                3 -> AssetsScreen(onNavigateHome = goHome)
+                2 -> BudgetsScreen(
+                    onNavigateHome = goHome,
+                    onCreateBudget = onNavigateToBudgetWizard,
+                    onOpenBudget = onNavigateToBudgetDetail
+                )
+                3 -> InvestmentsScreen(onNavigateHome = goHome)
+                4 -> AssetsScreen(onNavigateHome = goHome)
             }
         }
     }

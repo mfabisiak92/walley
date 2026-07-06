@@ -21,15 +21,15 @@ class AccountRepositoryImpl @Inject constructor(
     private val investmentDao: InvestmentDao
 ) : AccountRepository {
 
-    // Investment accounts don't hold a stored balance: their balance is derived
-    // from the current market value of the investments associated with them.
+    // Investment accounts' displayed balance is uninvested cash (the stored balance column)
+    // plus the current market value of the investments associated with them.
     override fun observeAccounts(): Flow<List<Account>> =
         combine(accountDao.observeAll(), investmentDao.observeAll()) { accounts, investments ->
             accounts
                 .map { entity ->
                     val account = entity.toDomain()
                     if (account.type == AccountType.INVESTMENT) {
-                        account.copy(balance = investmentsValue(entity.id, investments))
+                        account.copy(balance = account.balance + investmentsValue(entity.id, investments))
                     } else {
                         account
                     }
@@ -77,6 +77,10 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun deleteAccount(accountId: Long) {
         investmentDao.clearAccountAssociation(accountId)
         accountDao.delete(accountId)
+    }
+
+    override suspend fun addToBalance(accountId: Long, delta: BigDecimal) {
+        accountDao.addToBalance(accountId, delta.toMinorUnits())
     }
 
     private companion object {

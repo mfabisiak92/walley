@@ -151,6 +151,14 @@ private fun AccountRow(account: Account, onClick: () -> Unit) {
                 }
                 Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
             }
+            if (account.type == AccountType.INVESTMENT) {
+                Text(
+                    text = "Invested: ${formatMoney(account.balance - account.uninvestedCash, account.currency)} · " +
+                        "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             val progressPercent = account.targetProgressPercent
             if (progressPercent != null) {
                 SavingsGoalProgress(account = account, progressPercent = progressPercent)

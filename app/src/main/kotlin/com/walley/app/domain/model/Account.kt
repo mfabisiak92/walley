@@ -11,7 +11,12 @@ data class Account(
     val balance: BigDecimal,
     val taxRate: AccountTaxRate = AccountTaxRate.STANDARD_19,
     /** Optional savings goal; only meaningful for [AccountType.SAVING] accounts. */
-    val targetAmount: BigDecimal? = null
+    val targetAmount: BigDecimal? = null,
+    /**
+     * Cash held in an [AccountType.INVESTMENT] account that hasn't been put into a position yet.
+     * [balance] for investment accounts is this value plus the current value of linked investments.
+     */
+    val uninvestedCash: BigDecimal = BigDecimal.ZERO
 ) {
     val targetProgressPercent: BigDecimal?
         get() = targetAmount?.takeIf { it.signum() > 0 }
