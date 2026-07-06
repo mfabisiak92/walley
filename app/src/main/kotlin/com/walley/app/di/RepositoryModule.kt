@@ -6,6 +6,8 @@ import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.ExchangeRateRepositoryImpl
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.InvestmentRepositoryImpl
+import com.walley.app.data.repository.SecurityRepository
+import com.walley.app.data.repository.SecurityRepositoryImpl
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SettingsRepositoryImpl
 import dagger.Binds
@@ -28,4 +30,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindExchangeRateRepository(impl: ExchangeRateRepositoryImpl): ExchangeRateRepository
+
+    @Binds
+    abstract fun bindSecurityRepository(impl: SecurityRepositoryImpl): SecurityRepository
 }

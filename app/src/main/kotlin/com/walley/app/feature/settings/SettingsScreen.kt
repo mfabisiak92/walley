@@ -1,5 +1,6 @@
 package com.walley.app.feature.settings
 
+import androidx.biometric.BiometricManager
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,8 +42,15 @@ fun SettingsScreen(
 ) {
     val darkModeOverride by viewModel.darkModeOverride.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val fingerprintUnlock by viewModel.fingerprintUnlock.collectAsStateWithLifecycle()
     val isDarkMode = darkModeOverride ?: isSystemInDarkTheme()
     var currencyMenuExpanded by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val biometricsAvailable = remember {
+        BiometricManager.from(context)
+            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS
+    }
 
     Scaffold(
         modifier = modifier,
@@ -63,6 +72,28 @@ fun SettingsScreen(
             ) {
                 Text("Dark mode", style = MaterialTheme.typography.bodyLarge)
                 Switch(checked = isDarkMode, onCheckedChange = viewModel::setDarkMode)
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Fingerprint unlock", style = MaterialTheme.typography.bodyLarge)
+                    if (!biometricsAvailable) {
+                        Text(
+                            "No fingerprint enrolled on this device",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Switch(
+                    checked = fingerprintUnlock && biometricsAvailable,
+                    enabled = biometricsAvailable,
+                    onCheckedChange = viewModel::setFingerprintUnlock
+                )
             }
 
             Row(
