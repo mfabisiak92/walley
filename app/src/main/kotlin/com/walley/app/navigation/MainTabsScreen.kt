@@ -48,7 +48,8 @@ fun MainTabsScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToBudgetWizard: () -> Unit,
     onNavigateToBudgetDetail: (Long) -> Unit,
-    onNavigateToNetWorthDetail: () -> Unit
+    onNavigateToNetWorthDetail: () -> Unit,
+    onNavigateToAnalytics: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -83,7 +84,8 @@ fun MainTabsScreen(
             when (page) {
                 0 -> HomeScreen(
                     onNavigateToSettings = onNavigateToSettings,
-                    onNavigateToNetWorthDetail = onNavigateToNetWorthDetail
+                    onNavigateToNetWorthDetail = onNavigateToNetWorthDetail,
+                    onNavigateToAnalytics = onNavigateToAnalytics
                 )
                 1 -> AccountsScreen(onNavigateHome = goHome)
                 2 -> BudgetsScreen(

@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.walley.app.feature.analytics.AnalyticsScreen
 import com.walley.app.feature.budget.BudgetDetailScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
@@ -17,6 +18,7 @@ private object WalleyDestinations {
     const val BUDGET_WIZARD = "budget_wizard?cloneFrom={cloneFromBudgetId}"
     const val BUDGET_DETAIL = "budget_detail/{budgetId}"
     const val NET_WORTH_DETAIL = "net_worth_detail"
+    const val ANALYTICS = "analytics"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetWizard(cloneFromBudgetId: Long? = null) =
@@ -35,11 +37,15 @@ fun WalleyNavHost() {
                 onNavigateToBudgetDetail = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetDetail(budgetId))
                 },
-                onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) }
+                onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) },
+                onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) }
             )
         }
         composable(WalleyDestinations.NET_WORTH_DETAIL) {
             NetWorthDetailScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(WalleyDestinations.ANALYTICS) {
+            AnalyticsScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(WalleyDestinations.SETTINGS) {
             SettingsScreen(
