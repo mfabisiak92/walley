@@ -62,6 +62,15 @@ Monthly budgeting with a guided creation flow and payment tracking.
 - **Status: Active → Completed**: every budget starts Active. From its detail screen, a one-way "Mark as completed" action switches it to Completed (with a confirmation, since it becomes permanently read-only). Once Completed, nothing about the budget can change — items can no longer be paid, partially paid, or deleted, and the budget itself can't be deleted. Completed budgets show a "Completed" label and a muted card color in the Budget list to set them apart from Active ones.
 - **Cloning a budget**: from a budget's detail screen, the clone icon opens the creation wizard pre-filled with that budget's items (defaulting to the following month, paid/completed state reset). Every item can still be edited (tap it) or removed before creating, and a new month must be chosen if the default is already taken.
 
+## Analytics
+
+Reachable via an icon on Home's top bar. Charts every past budget (oldest → newest) using the same PLN-conversion helpers as the budget detail screen:
+- **Income vs Expenses vs Savings**: grouped bar chart per budget month.
+- **Savings rate**: (Savings + Investments) ÷ disposable income, per month.
+- **Budget adherence**: overall spent vs planned percentage per month (Fixed + Other + Savings + Investments), the same metric shown on each budget's Summary tab.
+
+Charts are a hand-rolled, horizontally-scrollable bar chart component (no charting library dependency, consistent with Home's pie chart); months with a missing exchange rate show as a gap rather than a wrong value.
+
 ## Settings
 
 - Dark mode toggle (defaults to system setting).
