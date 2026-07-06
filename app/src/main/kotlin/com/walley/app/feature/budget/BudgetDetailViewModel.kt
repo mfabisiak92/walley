@@ -6,9 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.data.repository.BudgetRepository
+import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.ExchangeRates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -23,7 +27,8 @@ import kotlinx.coroutines.launch
 class BudgetDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
-    accountRepository: AccountRepository
+    accountRepository: AccountRepository,
+    exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
     private val budgetId: Long = checkNotNull(savedStateHandle["budgetId"])
@@ -33,6 +38,9 @@ class BudgetDetailViewModel @Inject constructor(
 
     val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val plnRates: StateFlow<ExchangeRates?> = exchangeRateRepository.observeRates(Currency.PLN)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }
@@ -45,11 +53,15 @@ class BudgetDetailViewModel @Inject constructor(
         _deleteBlockedMessage.value = null
     }
 
+    private val isEditable: Boolean get() = budget.value?.budget?.status != BudgetStatus.COMPLETED
+
     fun markPaid(itemId: Long) {
+        if (!isEditable) return
         viewModelScope.launch { budgetRepository.markItemPaid(itemId) }
     }
 
     fun markPartiallyPaid(itemId: Long, amount: BigDecimal) {
+        if (!isEditable) return
         viewModelScope.launch { budgetRepository.markItemPartiallyPaid(itemId, amount) }
     }
 
@@ -65,6 +77,7 @@ class BudgetDetailViewModel @Inject constructor(
     }
 
     fun deleteItem(itemId: Long) {
+        if (!isEditable) return
         viewModelScope.launch { budgetRepository.deleteBudgetItem(itemId) }
     }
 
