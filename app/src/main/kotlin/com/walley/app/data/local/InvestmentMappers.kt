@@ -8,5 +8,6 @@ fun InvestmentEntity.toDomain(): Investment = Investment(
     ticker = ticker,
     quantity = quantity,
     currency = currency,
-    price = price
+    price = price,
+    accountId = accountId
 )

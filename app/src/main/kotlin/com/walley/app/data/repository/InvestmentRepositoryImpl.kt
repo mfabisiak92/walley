@@ -22,7 +22,8 @@ class InvestmentRepositoryImpl @Inject constructor(
         ticker: String,
         quantity: BigDecimal,
         currency: Currency,
-        price: BigDecimal
+        price: BigDecimal,
+        accountId: Long?
     ) {
         investmentDao.insert(
             InvestmentEntity(
@@ -30,8 +31,24 @@ class InvestmentRepositoryImpl @Inject constructor(
                 ticker = ticker,
                 quantity = quantity,
                 currency = currency,
-                price = price
+                price = price,
+                accountId = accountId
             )
         )
+    }
+
+    override suspend fun updateInvestment(
+        investmentId: Long,
+        name: String,
+        ticker: String,
+        quantity: BigDecimal,
+        price: BigDecimal,
+        accountId: Long?
+    ) {
+        investmentDao.update(investmentId, name, ticker, quantity, price, accountId)
+    }
+
+    override suspend fun deleteInvestment(investmentId: Long) {
+        investmentDao.delete(investmentId)
     }
 }

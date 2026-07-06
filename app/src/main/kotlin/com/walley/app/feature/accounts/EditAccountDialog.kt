@@ -41,7 +41,9 @@ fun EditAccountDialog(
     var typeMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
-    val isValid = name.isNotBlank() && parsedBalance != null
+    // Investment accounts derive their balance from associated investments.
+    val isInvestment = type == AccountType.INVESTMENT
+    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -81,14 +83,22 @@ fun EditAccountDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = balanceText,
-                    onValueChange = { balanceText = it },
-                    label = { Text("Balance (${account.currency.symbol})") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = parsedBalance == null
-                )
+                if (isInvestment) {
+                    Text(
+                        "Balance is calculated from the investments associated with this account.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = balanceText,
+                        onValueChange = { balanceText = it },
+                        label = { Text("Balance (${account.currency.symbol})") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedBalance == null
+                    )
+                }
                 TextButton(
                     onClick = { showDeleteConfirm = true },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -99,7 +109,7 @@ fun EditAccountDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), type, parsedBalance!!) },
+                onClick = { onSave(name.trim(), type, if (isInvestment) account.balance else parsedBalance!!) },
                 enabled = isValid
             ) { Text("Save") }
         },

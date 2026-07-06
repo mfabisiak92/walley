@@ -8,6 +8,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -38,7 +39,9 @@ fun AddAccountDialog(
     var currencyMenuExpanded by remember { mutableStateOf(false) }
 
     val parsedBalance = balanceText.toBigDecimalOrNull()
-    val isValid = name.isNotBlank() && parsedBalance != null
+    // Investment accounts derive their balance from associated investments.
+    val isInvestment = type == AccountType.INVESTMENT
+    val isValid = name.isNotBlank() && (isInvestment || parsedBalance != null)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -105,19 +108,27 @@ fun AddAccountDialog(
                         }
                     }
                 }
-                OutlinedTextField(
-                    value = balanceText,
-                    onValueChange = { balanceText = it },
-                    label = { Text("Initial balance") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = parsedBalance == null
-                )
+                if (isInvestment) {
+                    Text(
+                        "Balance is calculated from the investments associated with this account.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = balanceText,
+                        onValueChange = { balanceText = it },
+                        label = { Text("Initial balance") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedBalance == null
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), type, currency, parsedBalance!!) },
+                onClick = { onConfirm(name.trim(), type, currency, if (isInvestment) BigDecimal.ZERO else parsedBalance!!) },
                 enabled = isValid
             ) { Text("Add") }
         },

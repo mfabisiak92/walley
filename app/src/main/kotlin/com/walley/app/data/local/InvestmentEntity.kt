@@ -12,5 +12,6 @@ data class InvestmentEntity(
     val ticker: String,
     val quantity: BigDecimal,
     val currency: Currency,
-    val price: BigDecimal
+    val price: BigDecimal,
+    val accountId: Long? = null
 )

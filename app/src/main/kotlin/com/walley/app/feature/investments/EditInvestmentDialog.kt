@@ -6,11 +6,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,41 +20,40 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.Account
-import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.Investment
 import java.math.BigDecimal
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddInvestmentDialog(
+fun EditInvestmentDialog(
+    investment: Investment,
     investmentAccounts: List<Account>,
     onDismiss: () -> Unit,
-    onConfirm: (
+    onSave: (
         name: String,
         ticker: String,
         quantity: BigDecimal,
-        currency: Currency,
         price: BigDecimal,
         accountId: Long?
-    ) -> Unit
+    ) -> Unit,
+    onDelete: () -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    var ticker by remember { mutableStateOf("") }
-    var quantityText by remember { mutableStateOf("") }
-    var currency by remember { mutableStateOf(Currency.PLN) }
-    var priceText by remember { mutableStateOf("") }
-    var accountId by remember { mutableStateOf<Long?>(null) }
-    var currencyMenuExpanded by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf(investment.name) }
+    var ticker by remember { mutableStateOf(investment.ticker) }
+    var quantityText by remember { mutableStateOf(investment.quantity.toPlainString()) }
+    var priceText by remember { mutableStateOf(investment.price.toPlainString()) }
+    var accountId by remember { mutableStateOf(investment.accountId) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     val parsedQuantity = quantityText.toBigDecimalOrNull()
     val parsedPrice = priceText.toBigDecimalOrNull()
     val isValid = name.isNotBlank() && ticker.isNotBlank() && parsedQuantity != null && parsedPrice != null
 
-    // Only same-currency investment accounts are valid association targets.
-    val selectableAccounts = investmentAccounts.filter { it.currency == currency }
+    // Currency is fixed after creation, so valid targets are same-currency investment accounts.
+    val selectableAccounts = investmentAccounts.filter { it.currency == investment.currency }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add investment") },
+        title = { Text("Edit investment") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -83,38 +79,10 @@ fun AddInvestmentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = quantityText.isNotBlank() && parsedQuantity == null
                 )
-                ExposedDropdownMenuBox(
-                    expanded = currencyMenuExpanded,
-                    onExpandedChange = { currencyMenuExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = currency.name,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Currency") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyMenuExpanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = currencyMenuExpanded,
-                        onDismissRequest = { currencyMenuExpanded = false }
-                    ) {
-                        Currency.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.name) },
-                                onClick = {
-                                    if (option != currency) accountId = null
-                                    currency = option
-                                    currencyMenuExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
                 OutlinedTextField(
                     value = priceText,
                     onValueChange = { priceText = it },
-                    label = { Text("Price per unit") },
+                    label = { Text("Price per unit (${investment.currency.symbol})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = priceText.isNotBlank() && parsedPrice == null
@@ -124,18 +92,39 @@ fun AddInvestmentDialog(
                     selectedAccountId = accountId,
                     onAccountSelected = { accountId = it }
                 )
+                TextButton(
+                    onClick = { showDeleteConfirm = true },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete investment")
+                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = {
-                    onConfirm(name.trim(), ticker.trim().uppercase(), parsedQuantity!!, currency, parsedPrice!!, accountId)
-                },
+                onClick = { onSave(name.trim(), ticker.trim().uppercase(), parsedQuantity!!, parsedPrice!!, accountId) },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text("Save") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirm = false },
+            title = { Text("Delete investment?") },
+            text = { Text("This will permanently delete \"${investment.name}\". This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 }

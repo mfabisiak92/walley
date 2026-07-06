@@ -6,6 +6,7 @@ import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.InvestmentDao
 import com.walley.app.data.local.MIGRATION_1_2
 import com.walley.app.data.local.MIGRATION_2_3
+import com.walley.app.data.local.MIGRATION_3_4
 import com.walley.app.data.local.WalleyDatabase
 import dagger.Module
 import dagger.Provides
@@ -22,7 +23,7 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): WalleyDatabase =
         Room.databaseBuilder(context, WalleyDatabase::class.java, "walley.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
 
     @Provides

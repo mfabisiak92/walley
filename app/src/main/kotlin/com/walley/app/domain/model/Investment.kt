@@ -8,7 +8,8 @@ data class Investment(
     val ticker: String,
     val quantity: BigDecimal,
     val currency: Currency,
-    val price: BigDecimal
+    val price: BigDecimal,
+    val accountId: Long? = null
 ) {
-    val totalBuyAmount: BigDecimal get() = quantity * price
+    val value: BigDecimal get() = quantity * price
 }
