@@ -2,6 +2,8 @@ package com.walley.app.di
 
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AccountRepositoryImpl
+import com.walley.app.data.repository.InvestmentRepository
+import com.walley.app.data.repository.InvestmentRepositoryImpl
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SettingsRepositoryImpl
 import dagger.Binds
@@ -18,4 +20,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository
+
+    @Binds
+    abstract fun bindInvestmentRepository(impl: InvestmentRepositoryImpl): InvestmentRepository
 }

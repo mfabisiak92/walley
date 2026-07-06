@@ -6,11 +6,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.walley.app.feature.accounts.AccountsScreen
 import com.walley.app.feature.home.HomeScreen
+import com.walley.app.feature.investments.InvestmentsScreen
 import com.walley.app.feature.settings.SettingsScreen
 
 private object WalleyDestinations {
     const val HOME = "home"
     const val ACCOUNTS = "accounts"
+    const val INVESTMENTS = "investments"
     const val SETTINGS = "settings"
 }
 
@@ -22,11 +24,19 @@ fun WalleyNavHost() {
         composable(WalleyDestinations.HOME) {
             HomeScreen(
                 onNavigateToAccounts = { navController.navigate(WalleyDestinations.ACCOUNTS) },
+                onNavigateToInvestments = { navController.navigate(WalleyDestinations.INVESTMENTS) },
                 onNavigateToSettings = { navController.navigate(WalleyDestinations.SETTINGS) }
             )
         }
         composable(WalleyDestinations.ACCOUNTS) {
             AccountsScreen(
+                onNavigateHome = {
+                    navController.popBackStack(WalleyDestinations.HOME, inclusive = false)
+                }
+            )
+        }
+        composable(WalleyDestinations.INVESTMENTS) {
+            InvestmentsScreen(
                 onNavigateHome = {
                     navController.popBackStack(WalleyDestinations.HOME, inclusive = false)
                 }

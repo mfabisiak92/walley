@@ -2,12 +2,14 @@ package com.walley.app.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +34,7 @@ import com.walley.app.domain.model.CurrencyTotal
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onNavigateToAccounts: () -> Unit,
+    onNavigateToInvestments: () -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -58,11 +61,18 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             TotalBalanceCard(currencyTotals)
-            ModuleTile(
-                title = "Accounts",
-                icon = Icons.Default.AccountBox,
-                onClick = onNavigateToAccounts
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ModuleTile(
+                    title = "Accounts",
+                    icon = Icons.Default.AccountBox,
+                    onClick = onNavigateToAccounts
+                )
+                ModuleTile(
+                    title = "Investments",
+                    icon = Icons.AutoMirrored.Filled.List,
+                    onClick = onNavigateToInvestments
+                )
+            }
         }
     }
 }

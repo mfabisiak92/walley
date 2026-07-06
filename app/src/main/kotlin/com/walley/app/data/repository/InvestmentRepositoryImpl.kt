@@ -1,0 +1,37 @@
+package com.walley.app.data.repository
+
+import com.walley.app.data.local.InvestmentDao
+import com.walley.app.data.local.InvestmentEntity
+import com.walley.app.data.local.toDomain
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.Investment
+import java.math.BigDecimal
+import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class InvestmentRepositoryImpl @Inject constructor(
+    private val investmentDao: InvestmentDao
+) : InvestmentRepository {
+
+    override fun observeInvestments(): Flow<List<Investment>> =
+        investmentDao.observeAll().map { entities -> entities.map { it.toDomain() } }
+
+    override suspend fun addInvestment(
+        name: String,
+        ticker: String,
+        quantity: BigDecimal,
+        currency: Currency,
+        price: BigDecimal
+    ) {
+        investmentDao.insert(
+            InvestmentEntity(
+                name = name,
+                ticker = ticker,
+                quantity = quantity,
+                currency = currency,
+                price = price
+            )
+        )
+    }
+}
