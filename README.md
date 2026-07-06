@@ -1,6 +1,8 @@
 # Walley
 
-A personal finance tracker for expenses, income, savings, bank accounts, and investments — built as a native Android app.
+A personal finance tracker for expenses, income, savings, bank accounts, budgets, investments, and assets — built as a native Android app.
+
+See [FEATURES.md](FEATURES.md) for a full walkthrough of what's implemented.
 
 ## Tech stack
 
@@ -41,7 +43,24 @@ From the command line:
 app/src/main/kotlin/com/walley/app/
 ├── MainActivity.kt        # single-activity host, sets up Compose content
 ├── WalleyApplication.kt   # Hilt entry point
+├── core/
+│   ├── format/            # money/currency formatting helpers
+│   └── ui/                # shared Compose components (e.g. PieChartCard)
+├── data/
+│   ├── local/              # Room entities, DAOs, TypeConverters, WalleyDatabase + migrations
+│   ├── datastore/           # DataStore-backed prefs (settings, app lock)
+│   ├── remote/              # Frankfurter FX API client
+│   └── repository/         # repository interfaces + impls bridging data sources and the domain layer
+├── domain/model/          # plain Kotlin domain models (Account, Investment, Budget, Asset, ...)
+├── di/                    # Hilt modules (database, repositories)
+├── navigation/            # NavHost + bottom-tab/pager host screen
+├── feature/
+│   ├── home/               # net worth overview + currency breakdown pie chart
+│   ├── accounts/            # bank accounts (checking/cash/investment/saving)
+│   ├── budget/              # monthly budgets: creation wizard, list, detail, payment tracking
+│   ├── investments/         # investment holdings linked to investment accounts
+│   ├── assets/              # non-liquid assets (purchase vs. current value)
+│   ├── settings/            # base currency, preferences
+│   └── lock/                # PIN/biometric app lock
 └── ui/theme/              # Material 3 theme, color, and typography
 ```
-
-As features are added, the plan is to grow this into `data/` (Room entities, DAOs, repositories), `domain/` (use cases), and `feature/<name>/` (screens + view models) packages.
