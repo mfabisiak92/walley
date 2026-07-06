@@ -1,0 +1,175 @@
+package com.walley.app.feature.assets
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.WalleyTopBar
+import com.walley.app.domain.model.Asset
+import java.math.RoundingMode
+import java.time.format.DateTimeFormatter
+
+@Composable
+fun AssetsScreen(
+    modifier: Modifier = Modifier,
+    onNavigateHome: () -> Unit,
+    viewModel: AssetsViewModel = hiltViewModel()
+) {
+    val assets by viewModel.assets.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
+    var editingAsset by remember { mutableStateOf<Asset?>(null) }
+
+    Scaffold(
+        modifier = modifier,
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showAddDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add asset")
+            }
+        }
+    ) { innerPadding ->
+        if (assets.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "No assets yet — tap + to add one.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(assets, key = { it.id }) { asset ->
+                    AssetRow(asset = asset, onClick = { editingAsset = asset })
+                }
+            }
+        }
+    }
+
+    if (showAddDialog) {
+        AddAssetDialog(
+            onDismiss = { showAddDialog = false },
+            onConfirm = { name, currency, purchaseValue, currentValue, purchaseDate ->
+                viewModel.addAsset(name, currency, purchaseValue, currentValue, purchaseDate)
+                showAddDialog = false
+            }
+        )
+    }
+
+    editingAsset?.let { asset ->
+        EditAssetDialog(
+            asset = asset,
+            onDismiss = { editingAsset = null },
+            onSave = { currentValue ->
+                viewModel.updateCurrentValue(asset.id, currentValue)
+                editingAsset = null
+            },
+            onDelete = {
+                viewModel.deleteAsset(asset.id)
+                editingAsset = null
+            }
+        )
+    }
+}
+
+@Composable
+private fun AssetRow(asset: Asset, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text(asset.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = asset.purchaseDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    formatMoney(asset.currentValue, asset.currency),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Purchased for ${formatMoney(asset.purchaseValue, asset.currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                GainLossText(asset)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GainLossText(asset: Asset) {
+    val gain = asset.gain
+    val isGain = gain.signum() >= 0
+    val color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val sign = if (isGain) "+" else ""
+    val percent = asset.gainPercent?.setScale(1, RoundingMode.HALF_UP)
+
+    Text(
+        text = "$sign${formatMoney(gain, asset.currency)}" +
+            (percent?.let { " ($sign${it.toPlainString()}%)" } ?: ""),
+        style = MaterialTheme.typography.bodySmall,
+        color = color
+    )
+}
