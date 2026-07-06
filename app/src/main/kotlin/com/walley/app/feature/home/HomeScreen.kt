@@ -2,14 +2,12 @@ package com.walley.app.feature.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBox
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -20,10 +18,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,8 +29,6 @@ import com.walley.app.domain.model.CurrencyTotal
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    onNavigateToAccounts: () -> Unit,
-    onNavigateToInvestments: () -> Unit,
     onNavigateToSettings: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -59,41 +52,14 @@ fun HomeScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             netWorth?.let { NetWorthCard(it) }
-            TotalBalanceCard(currencyTotals = homeBalances.total)
-            if (homeBalances.savings.isNotEmpty()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    SubBalanceCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Available",
-                        currencyTotals = homeBalances.available,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    SubBalanceCard(
-                        modifier = Modifier.weight(1f),
-                        title = "Savings",
-                        currencyTotals = homeBalances.savings,
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ModuleTile(
-                    title = "Accounts",
-                    icon = Icons.Default.AccountBox,
-                    onClick = onNavigateToAccounts
-                )
-                ModuleTile(
-                    title = "Investments",
-                    icon = Icons.AutoMirrored.Filled.List,
-                    onClick = onNavigateToInvestments
-                )
-            }
+            TotalBalanceCard(title = "Total balance", currencyTotals = homeBalances.total)
+            TotalBalanceCard(title = "Savings", currencyTotals = homeBalances.savings)
+            netWorth?.let { NetWorthPieChart(breakdown = it.breakdown, baseCurrency = it.currency) }
         }
     }
 }
@@ -135,7 +101,7 @@ private fun NetWorthCard(netWorth: NetWorthState) {
 }
 
 @Composable
-private fun TotalBalanceCard(currencyTotals: List<CurrencyTotal>) {
+private fun TotalBalanceCard(title: String, currencyTotals: List<CurrencyTotal>) {
     if (currencyTotals.isEmpty()) return
 
     Card(
@@ -150,76 +116,13 @@ private fun TotalBalanceCard(currencyTotals: List<CurrencyTotal>) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Total balance", style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleMedium)
             currencyTotals.forEach { currencyTotal ->
                 Text(
                     text = formatMoney(currencyTotal.total, currencyTotal.currency),
                     style = MaterialTheme.typography.headlineMedium
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun SubBalanceCard(
-    modifier: Modifier = Modifier,
-    title: String,
-    currencyTotals: List<CurrencyTotal>,
-    containerColor: Color,
-    contentColor: Color
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.labelLarge)
-            if (currencyTotals.isEmpty()) {
-                Text("—", style = MaterialTheme.typography.titleMedium)
-            } else {
-                currencyTotals.forEach { currencyTotal ->
-                    Text(
-                        text = formatMoney(currencyTotal.total, currencyTotal.currency),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ModuleTile(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.size(140.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp))
-            Text(title, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

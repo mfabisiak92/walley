@@ -24,8 +24,13 @@ import kotlinx.coroutines.flow.stateIn
 
 data class HomeBalances(
     val total: List<CurrencyTotal> = emptyList(),
-    val available: List<CurrencyTotal> = emptyList(),
     val savings: List<CurrencyTotal> = emptyList()
+)
+
+data class NetWorthByCurrency(
+    val currency: Currency,
+    val amountInBaseCurrency: BigDecimal,
+    val percent: BigDecimal
 )
 
 data class NetWorthState(
@@ -33,7 +38,9 @@ data class NetWorthState(
     // null when conversion is impossible (rates unavailable)
     val amount: BigDecimal?,
     // rate date shown when a conversion actually happened
-    val rateDate: String?
+    val rateDate: String?,
+    // breakdown of net worth by the original currency of each account, converted to base currency
+    val breakdown: List<NetWorthByCurrency> = emptyList()
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -48,7 +55,6 @@ class HomeViewModel @Inject constructor(
         .map { accounts ->
             HomeBalances(
                 total = currencyTotals(accounts),
-                available = currencyTotals(accounts.filter { it.type != AccountType.SAVING }),
                 savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING })
             )
         }
@@ -67,23 +73,37 @@ class HomeViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun computeNetWorth(accounts: List<Account>, base: Currency, rates: ExchangeRates?): NetWorthState {
-        var total = BigDecimal.ZERO
+        val byCurrency = linkedMapOf<Currency, BigDecimal>()
         var usedRates = false
         for (account in accounts) {
-            if (account.currency == base) {
-                total += account.balance
+            val amountInBase = if (account.currency == base) {
+                account.balance
             } else {
                 val rate = rates?.rates?.get(account.currency)
                     ?: return NetWorthState(currency = base, amount = null, rateDate = null)
                 // rate is base -> account currency, so convert back by dividing
-                total += account.balance.divide(rate, 10, RoundingMode.HALF_UP)
                 usedRates = true
+                account.balance.divide(rate, 10, RoundingMode.HALF_UP)
             }
+            byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
         }
+        val total = byCurrency.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
+        val breakdown = byCurrency.entries
+            .filter { it.value.signum() > 0 }
+            .map { (currency, amount) ->
+                val percent = if (total.signum() == 0) {
+                    BigDecimal.ZERO
+                } else {
+                    amount.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)
+                }
+                NetWorthByCurrency(currency, amount.setScale(2, RoundingMode.HALF_UP), percent)
+            }
+            .sortedByDescending { it.amountInBaseCurrency }
         return NetWorthState(
             currency = base,
             amount = total.setScale(2, RoundingMode.HALF_UP),
-            rateDate = if (usedRates) rates?.date else null
+            rateDate = if (usedRates) rates?.date else null,
+            breakdown = breakdown
         )
     }
 
