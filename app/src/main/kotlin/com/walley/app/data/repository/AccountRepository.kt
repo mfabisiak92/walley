@@ -29,6 +29,8 @@ interface AccountRepository {
     suspend fun deleteAccount(accountId: Long)
     /** Adds (or subtracts, for a negative delta) an amount to an account's stored balance. */
     suspend fun addToBalance(accountId: Long, delta: BigDecimal)
+    /** Makes this the one default account; every other account becomes non-default. */
+    suspend fun setDefaultAccount(accountId: Long)
 }
 
 class AccountHasLinkedInvestmentsException : Exception("Account has linked investments")

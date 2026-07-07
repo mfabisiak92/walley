@@ -16,7 +16,9 @@ data class Account(
      * Cash held in an [AccountType.INVESTMENT] account that hasn't been put into a position yet.
      * [balance] for investment accounts is this value plus the current value of linked investments.
      */
-    val uninvestedCash: BigDecimal = BigDecimal.ZERO
+    val uninvestedCash: BigDecimal = BigDecimal.ZERO,
+    /** Exactly one account is default at a time; the first account created becomes default automatically. */
+    val isDefault: Boolean = false
 ) {
     val targetProgressPercent: BigDecimal?
         get() = targetAmount?.takeIf { it.signum() > 0 }

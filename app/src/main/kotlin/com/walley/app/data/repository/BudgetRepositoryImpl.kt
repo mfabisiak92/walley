@@ -144,8 +144,12 @@ class BudgetRepositoryImpl @Inject constructor(
     private suspend fun applyAccountDelta(item: BudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val accountId = item.accountId ?: return
-        if (item.section == BudgetSectionType.SAVINGS || item.section == BudgetSectionType.INVESTMENTS) {
-            accountRepository.addToBalance(accountId, delta)
+        when (item.section) {
+            BudgetSectionType.SAVINGS, BudgetSectionType.INVESTMENTS, BudgetSectionType.INCOME ->
+                accountRepository.addToBalance(accountId, delta)
+            BudgetSectionType.INCOME_RELATED_EXPENSES ->
+                accountRepository.addToBalance(accountId, delta.negate())
+            else -> Unit
         }
     }
 }

@@ -41,7 +41,6 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.BudgetStatus
-import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -179,12 +178,12 @@ private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
                 }
             }
             Text(
-                "Disposable income: " + (row.disposableIncomePln?.let { formatMoney(it, Currency.PLN) } ?: "—"),
+                "Disposable income: " + (row.disposableIncome?.let { formatMoney(it, row.baseCurrency) } ?: "—"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "Unallocated: " + (row.unallocatedInBaseCurrency?.let { formatMoney(it, row.baseCurrency) }
+                "Unallocated: " + (row.unallocated?.let { formatMoney(it, row.baseCurrency) }
                     ?: "exchange rate unavailable"),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -203,8 +202,8 @@ private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        "${formatMoney(row.progress.spentPln, Currency.PLN)} / " +
-                            formatMoney(row.progress.plannedPln, Currency.PLN),
+                        "${formatMoney(row.progress.spent, row.baseCurrency)} / " +
+                            formatMoney(row.progress.planned, row.baseCurrency),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

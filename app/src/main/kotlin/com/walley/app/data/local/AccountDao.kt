@@ -37,4 +37,16 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET balanceMinorUnits = balanceMinorUnits + :deltaMinorUnits WHERE id = :accountId")
     suspend fun addToBalance(accountId: Long, deltaMinorUnits: Long)
+
+    @Query("SELECT COUNT(*) FROM accounts")
+    suspend fun count(): Int
+
+    @Query("SELECT COUNT(*) FROM accounts WHERE isDefault = 1")
+    suspend fun countDefault(): Int
+
+    @Query("SELECT id FROM accounts ORDER BY id ASC LIMIT 1")
+    suspend fun firstAccountId(): Long?
+
+    @Query("UPDATE accounts SET isDefault = CASE WHEN id = :accountId THEN 1 ELSE 0 END")
+    suspend fun setDefaultAccount(accountId: Long)
 }

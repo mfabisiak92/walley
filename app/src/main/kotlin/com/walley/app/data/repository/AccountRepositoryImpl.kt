@@ -51,6 +51,7 @@ class AccountRepositoryImpl @Inject constructor(
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?
     ) {
+        val isFirstAccount = accountDao.count() == 0
         accountDao.insert(
             AccountEntity(
                 name = name,
@@ -58,7 +59,8 @@ class AccountRepositoryImpl @Inject constructor(
                 currency = currency,
                 balanceMinorUnits = initialBalance.toMinorUnits(),
                 taxRate = taxRate,
-                targetAmountMinorUnits = targetAmount?.toMinorUnits()
+                targetAmountMinorUnits = targetAmount?.toMinorUnits(),
+                isDefault = isFirstAccount
             )
         )
     }
@@ -79,10 +81,18 @@ class AccountRepositoryImpl @Inject constructor(
             throw AccountHasLinkedInvestmentsException()
         }
         accountDao.delete(accountId)
+        // Maintain the invariant that an account is default whenever any accounts remain.
+        if (accountDao.countDefault() == 0) {
+            accountDao.firstAccountId()?.let { accountDao.setDefaultAccount(it) }
+        }
     }
 
     override suspend fun addToBalance(accountId: Long, delta: BigDecimal) {
         accountDao.addToBalance(accountId, delta.toMinorUnits())
+    }
+
+    override suspend fun setDefaultAccount(accountId: Long) {
+        accountDao.setDefaultAccount(accountId)
     }
 
     private companion object {

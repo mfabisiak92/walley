@@ -78,7 +78,7 @@ fun BudgetDetailScreen(
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
-    val plnRates by viewModel.plnRates.collectAsStateWithLifecycle()
+    val (baseCurrency, rates) = viewModel.baseCurrencyRates.collectAsStateWithLifecycle().value
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -150,11 +150,16 @@ fun BudgetDetailScreen(
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     when (val tab = BudgetDetailTab.entries[page]) {
-                        BudgetDetailTab.SUMMARY -> SummaryTabContent(items = budget.items, plnRates = plnRates)
+                        BudgetDetailTab.SUMMARY -> SummaryTabContent(
+                            items = budget.items,
+                            baseCurrency = baseCurrency,
+                            rates = rates
+                        )
                         else -> SectionTabContent(
                             items = budget.items.filter { it.section in tab.sections },
                             tab = tab,
-                            plnRates = plnRates,
+                            baseCurrency = baseCurrency,
+                            rates = rates,
                             accounts = accounts,
                             isEditable = isEditable,
                             onItemClick = { itemForPaidDialog = it },
@@ -259,16 +264,17 @@ fun BudgetDetailScreen(
 private fun SectionTabContent(
     items: List<BudgetItem>,
     tab: BudgetDetailTab,
-    plnRates: ExchangeRates?,
+    baseCurrency: Currency,
+    rates: ExchangeRates?,
     accounts: List<Account>,
     isEditable: Boolean,
     onItemClick: (BudgetItem) -> Unit,
     onDeleteItem: (BudgetItem) -> Unit
 ) {
-    val progress = budgetProgress(items, tab.sections, plnRates)
+    val progress = budgetProgress(items, tab.sections, baseCurrency, rates)
 
     Column(modifier = Modifier.fillMaxSize()) {
-        ProgressSummaryHeader(progress = progress, modifier = Modifier.padding(16.dp))
+        ProgressSummaryHeader(progress = progress, currency = baseCurrency, modifier = Modifier.padding(16.dp))
         HorizontalDivider()
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -308,14 +314,14 @@ private fun SectionTabContent(
 }
 
 @Composable
-private fun SummaryTabContent(items: List<BudgetItem>, plnRates: ExchangeRates?) {
-    val overallProgress = budgetProgress(items, SPENDING_SECTIONS, plnRates)
-    val disposable = disposableIncomePln(items, plnRates)
-    val unallocated = unallocatedPln(items, plnRates)
-    val fixed = sectionTotalPln(items, BudgetSectionType.FIXED_COSTS, plnRates)
-    val other = sectionTotalPln(items, BudgetSectionType.OTHER_COSTS, plnRates)
-    val savings = sectionTotalPln(items, BudgetSectionType.SAVINGS, plnRates)
-    val investments = sectionTotalPln(items, BudgetSectionType.INVESTMENTS, plnRates)
+private fun SummaryTabContent(items: List<BudgetItem>, baseCurrency: Currency, rates: ExchangeRates?) {
+    val overallProgress = budgetProgress(items, SPENDING_SECTIONS, baseCurrency, rates)
+    val disposable = disposableIncome(items, baseCurrency, rates)
+    val unallocated = unallocatedAmount(items, baseCurrency, rates)
+    val fixed = sectionTotal(items, BudgetSectionType.FIXED_COSTS, baseCurrency, rates)
+    val other = sectionTotal(items, BudgetSectionType.OTHER_COSTS, baseCurrency, rates)
+    val savings = sectionTotal(items, BudgetSectionType.SAVINGS, baseCurrency, rates)
+    val investments = sectionTotal(items, BudgetSectionType.INVESTMENTS, baseCurrency, rates)
 
     Column(
         modifier = Modifier
@@ -324,15 +330,15 @@ private fun SummaryTabContent(items: List<BudgetItem>, plnRates: ExchangeRates?)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ProgressSummaryHeader(progress = overallProgress)
+        ProgressSummaryHeader(progress = overallProgress, currency = baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Disposable income", disposable)
-        SummaryRow("Unallocated", unallocated)
+        SummaryRow("Disposable income", disposable, baseCurrency)
+        SummaryRow("Unallocated", unallocated, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Fixed costs", fixed)
-        SummaryRow("Other costs", other)
-        SummaryRow("Savings", savings)
-        SummaryRow("Investments", investments)
+        SummaryRow("Fixed costs", fixed, baseCurrency)
+        SummaryRow("Other costs", other, baseCurrency)
+        SummaryRow("Savings", savings, baseCurrency)
+        SummaryRow("Investments", investments, baseCurrency)
 
         if (disposable != null && disposable.signum() > 0 && fixed != null && other != null &&
             savings != null && investments != null
@@ -345,7 +351,7 @@ private fun SummaryTabContent(items: List<BudgetItem>, plnRates: ExchangeRates?)
                 val percent = amount.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 PieSlice(
                     label = "${labels[index]} · ${percent.setScale(1, RoundingMode.HALF_UP)}% · " +
-                        formatMoney(amount, Currency.PLN),
+                        formatMoney(amount, baseCurrency),
                     percent = percent.toFloat(),
                     color = PieChartColors[index % PieChartColors.size]
                 )
@@ -358,21 +364,21 @@ private fun SummaryTabContent(items: List<BudgetItem>, plnRates: ExchangeRates?)
 }
 
 @Composable
-private fun SummaryRow(label: String, amount: BigDecimal?) {
+private fun SummaryRow(label: String, amount: BigDecimal?, currency: Currency) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Text(
-            amount?.let { formatMoney(it, Currency.PLN) } ?: "—",
+            amount?.let { formatMoney(it, currency) } ?: "—",
             style = MaterialTheme.typography.bodyLarge
         )
     }
 }
 
 @Composable
-private fun ProgressSummaryHeader(progress: BudgetProgress?, modifier: Modifier = Modifier) {
+private fun ProgressSummaryHeader(progress: BudgetProgress?, currency: Currency, modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxWidth()) {
         if (progress == null) {
             Text(
@@ -386,7 +392,7 @@ private fun ProgressSummaryHeader(progress: BudgetProgress?, modifier: Modifier 
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    "${formatMoney(progress.spentPln, Currency.PLN)} / ${formatMoney(progress.plannedPln, Currency.PLN)}",
+                    "${formatMoney(progress.spent, currency)} / ${formatMoney(progress.planned, currency)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(

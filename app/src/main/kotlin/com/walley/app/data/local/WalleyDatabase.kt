@@ -15,7 +15,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BudgetItemEntity::class,
         LiabilityEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -138,5 +138,13 @@ val MIGRATION_9_10 = object : Migration(9, 10) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_10_11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE accounts ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
+        // Backfill: the earliest-created existing account becomes the default one.
+        db.execSQL("UPDATE accounts SET isDefault = 1 WHERE id = (SELECT MIN(id) FROM accounts)")
     }
 }

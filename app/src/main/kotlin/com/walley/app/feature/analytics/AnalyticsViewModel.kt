@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
@@ -11,52 +12,61 @@ import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
-import com.walley.app.feature.budget.disposableIncomePln
-import com.walley.app.feature.budget.sectionTotalPln
+import com.walley.app.feature.budget.disposableIncome
+import com.walley.app.feature.budget.sectionTotal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 data class BudgetHistoryPoint(
     val label: String,
-    val incomePln: BigDecimal?,
-    val expensesPln: BigDecimal?,
-    val savingsPln: BigDecimal?,
+    val income: BigDecimal?,
+    val expenses: BigDecimal?,
+    val savings: BigDecimal?,
     val savingsRatePercent: BigDecimal?,
     val progress: BudgetProgress?
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     budgetRepository: BudgetRepository,
+    settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
-    private val plnRates = exchangeRateRepository.observeRates(Currency.PLN)
+    private val baseCurrencyRates = settingsRepository.observeBaseCurrency()
+        .flatMapLatest { base -> exchangeRateRepository.observeRates(base).map { rates -> base to rates } }
+
+    val baseCurrency: StateFlow<Currency> = settingsRepository.observeBaseCurrency()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
 
     val history: StateFlow<List<BudgetHistoryPoint>> = combine(
         budgetRepository.observeBudgetsWithItems(),
-        plnRates
-    ) { budgetsWithItems, plnRates ->
+        baseCurrencyRates
+    ) { budgetsWithItems, (base, rates) ->
         budgetsWithItems
             .sortedWith(compareBy({ it.budget.year }, { it.budget.month }))
-            .map { toHistoryPoint(it, plnRates) }
+            .map { toHistoryPoint(it, base, rates) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private fun toHistoryPoint(budgetWithItems: BudgetWithItems, plnRates: ExchangeRates?): BudgetHistoryPoint {
+    private fun toHistoryPoint(budgetWithItems: BudgetWithItems, base: Currency, rates: ExchangeRates?): BudgetHistoryPoint {
         val items = budgetWithItems.items
-        val fixed = sectionTotalPln(items, BudgetSectionType.FIXED_COSTS, plnRates)
-        val other = sectionTotalPln(items, BudgetSectionType.OTHER_COSTS, plnRates)
-        val savings = sectionTotalPln(items, BudgetSectionType.SAVINGS, plnRates)
-        val investments = sectionTotalPln(items, BudgetSectionType.INVESTMENTS, plnRates)
-        val disposable = disposableIncomePln(items, plnRates)
+        val fixed = sectionTotal(items, BudgetSectionType.FIXED_COSTS, base, rates)
+        val other = sectionTotal(items, BudgetSectionType.OTHER_COSTS, base, rates)
+        val savings = sectionTotal(items, BudgetSectionType.SAVINGS, base, rates)
+        val investments = sectionTotal(items, BudgetSectionType.INVESTMENTS, base, rates)
+        val disposable = disposableIncome(items, base, rates)
         val expensesTotal = if (fixed != null && other != null) fixed + other else null
         val savingsTotal = if (savings != null && investments != null) savings + investments else null
         val savingsRate = if (disposable != null && disposable.signum() > 0 && savingsTotal != null) {
@@ -67,11 +77,11 @@ class AnalyticsViewModel @Inject constructor(
 
         return BudgetHistoryPoint(
             label = shortLabel(budgetWithItems),
-            incomePln = sectionTotalPln(items, BudgetSectionType.INCOME, plnRates),
-            expensesPln = expensesTotal,
-            savingsPln = savingsTotal,
+            income = sectionTotal(items, BudgetSectionType.INCOME, base, rates),
+            expenses = expensesTotal,
+            savings = savingsTotal,
             savingsRatePercent = savingsRate,
-            progress = budgetProgress(items, SPENDING_SECTIONS, plnRates)
+            progress = budgetProgress(items, SPENDING_SECTIONS, base, rates)
         )
     }
 

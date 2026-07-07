@@ -7,6 +7,7 @@ import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetStatus
@@ -16,18 +17,23 @@ import com.walley.app.domain.model.ExchangeRates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class BudgetDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
     accountRepository: AccountRepository,
+    settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
@@ -39,8 +45,9 @@ class BudgetDetailViewModel @Inject constructor(
     val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val plnRates: StateFlow<ExchangeRates?> = exchangeRateRepository.observeRates(Currency.PLN)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val baseCurrencyRates: StateFlow<Pair<Currency, ExchangeRates?>> = settingsRepository.observeBaseCurrency()
+        .flatMapLatest { base -> exchangeRateRepository.observeRates(base).map { rates -> base to rates } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN to null)
 
     init {
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }

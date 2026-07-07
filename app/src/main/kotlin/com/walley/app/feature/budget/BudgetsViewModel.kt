@@ -25,9 +25,8 @@ import kotlinx.coroutines.launch
 
 data class BudgetRowData(
     val budgetWithItems: BudgetWithItems,
-    val disposableIncomePln: BigDecimal?,
-    val unallocatedPln: BigDecimal?,
-    val unallocatedInBaseCurrency: BigDecimal?,
+    val disposableIncome: BigDecimal?,
+    val unallocated: BigDecimal?,
     val baseCurrency: Currency,
     val progress: BudgetProgress?
 )
@@ -40,17 +39,14 @@ class BudgetsViewModel @Inject constructor(
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
-    private val plnRates = exchangeRateRepository.observeRates(Currency.PLN)
-
     private val baseCurrencyRates = settingsRepository.observeBaseCurrency()
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base).map { rates -> base to rates } }
 
     val budgets: StateFlow<List<BudgetRowData>> = combine(
         repository.observeBudgetsWithItems(),
-        plnRates,
         baseCurrencyRates
-    ) { budgetsWithItems, plnRates, (baseCurrency, baseRates) ->
-        budgetsWithItems.map { budgetWithItems -> toRowData(budgetWithItems, plnRates, baseCurrency, baseRates) }
+    ) { budgetsWithItems, (baseCurrency, baseRates) ->
+        budgetsWithItems.map { budgetWithItems -> toRowData(budgetWithItems, baseCurrency, baseRates) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
@@ -62,20 +58,15 @@ class BudgetsViewModel @Inject constructor(
 
     private fun toRowData(
         budgetWithItems: BudgetWithItems,
-        plnRates: ExchangeRates?,
         baseCurrency: Currency,
         baseRates: ExchangeRates?
-    ): BudgetRowData {
-        val unallocated = unallocatedPln(budgetWithItems.items, plnRates)
-        return BudgetRowData(
-            budgetWithItems = budgetWithItems,
-            disposableIncomePln = disposableIncomePln(budgetWithItems.items, plnRates),
-            unallocatedPln = unallocated,
-            unallocatedInBaseCurrency = unallocated?.let { convertPlnToBase(it, baseCurrency, baseRates) },
-            baseCurrency = baseCurrency,
-            progress = budgetProgress(budgetWithItems.items, SPENDING_SECTIONS, plnRates)
-        )
-    }
+    ): BudgetRowData = BudgetRowData(
+        budgetWithItems = budgetWithItems,
+        disposableIncome = disposableIncome(budgetWithItems.items, baseCurrency, baseRates),
+        unallocated = unallocatedAmount(budgetWithItems.items, baseCurrency, baseRates),
+        baseCurrency = baseCurrency,
+        progress = budgetProgress(budgetWithItems.items, SPENDING_SECTIONS, baseCurrency, baseRates)
+    )
 
     fun dismissDeleteBlockedMessage() {
         _deleteBlockedMessage.value = null

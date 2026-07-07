@@ -65,4 +65,8 @@ class AccountsViewModel @Inject constructor(
             }
         }
     }
+
+    fun setDefaultAccount(accountId: Long) {
+        viewModelScope.launch { repository.setDefaultAccount(accountId) }
+    }
 }

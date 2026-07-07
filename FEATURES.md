@@ -25,6 +25,8 @@ Four account types, each with its own extra fields:
 
 Every account also has a **currency** and a **tax rate** (Tax-free or 19%), used for future tax-aware calculations.
 
+Exactly one account is the **default account** at a time — the first account you create becomes default automatically; tap the star on any other account's row to make it the default instead (deleting the default account promotes another one automatically, as long as any accounts remain). The default account is pre-selected wherever an account picker defaults to one (e.g. new Income/Income-related-expenses budget items).
+
 Accounts can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog. **An account with linked investments can't be deleted** until those investments are unlinked or deleted first.
 
 ## Investments
@@ -54,17 +56,18 @@ Both support swiping a row left and tapping the red trash icon (or the edit dial
 
 Monthly budgeting with a guided creation flow and payment tracking.
 
-- **One budget per calendar month** (e.g. "July 2026"); the list is sorted newest-first. Each row shows disposable income, unallocated amount (converted to your Settings base currency), and an overall spent-vs-planned progress bar with percentage (spent/planned cover Fixed costs, Other costs, Savings, and Investments — not Income).
+- **One budget per calendar month** (e.g. "July 2026"); the list is sorted newest-first. Each row shows disposable income, unallocated amount, and an overall spent-vs-planned progress bar with percentage (spent/planned cover Fixed costs, Other costs, Savings, and Investments — not Income) — all shown in your Settings **base currency**.
 - **Creation wizard**, in order: Income → Income-related expenses → Fixed costs → Other costs → Savings → Investments → Summary. You can move back and forth freely until you hit Create.
-  - Income, Income-related expenses, Fixed costs, and Other costs are free-text name + amount, always in **PLN**.
-  - Savings and Investments are picked from your existing accounts and shows that account's current balance (and target, for Savings) — the amount is entered in **that account's own currency**, then converted to PLN behind the scenes for the running totals.
+  - Income, Income-related expenses, Fixed costs, and Other costs are free-text name + amount, entered in your Settings **base currency**.
+  - Income and Income-related-expenses items also require picking one of your **Checking/Cash accounts** (mandatory dropdown, pre-selected with your default account) — that's the account money is considered to land in/leave from.
+  - Savings and Investments are picked from your existing accounts and shows that account's current balance (and target, for Savings) — the amount is entered in **that account's own currency**, then converted behind the scenes for the running totals.
   - Every section except Income and Income-related expenses shows a running **unallocated amount** and **% of disposable income** (disposable income = total income − income-related expenses).
   - Any item can optionally have a **payment day** (a specific day of the month, or the last day of the month).
   - The final step shows the full allocation breakdown plus a pie chart before you confirm creation.
 - **Budgets are locked after creation** — items can't be added or edited; the whole budget can only be marked-paid item by item or deleted outright. Individual items *can* still be deleted (see below), as an exception to the lock — unless the budget is Completed (see below), in which case nothing about it can change at all.
-- **Detail screen tabs**: Summary, Income (combining Income + Income-related expenses), Fixed costs, Other costs, Savings, Investments. Every tab shows a spent-vs-planned progress header (amount spent / amount planned, plus a percentage progress bar) scoped to that tab's own section(s); the Summary tab additionally shows the overall spending progress (Fixed + Other + Savings + Investments), the unallocated amount, and the same allocation pie chart shown during creation.
+- **Detail screen tabs**: Summary, Income (combining Income + Income-related expenses), Fixed costs, Other costs, Savings, Investments. Every tab shows a spent-vs-planned progress header (amount spent / amount planned, plus a percentage progress bar) scoped to that tab's own section(s); the Summary tab additionally shows the overall spending progress (Fixed + Other + Savings + Investments), the unallocated amount, and the same allocation pie chart shown during creation. All figures use your Settings base currency.
 - **Paying items**: each item can be marked fully paid or partially paid (with a custom amount). Items with a payment day are **automatically marked fully paid** the moment that day arrives, checked whenever the Budget tab or a budget's detail screen is opened.
-- **Account side effects**: completing a Savings item adds its amount to that account's balance; completing an Investments item adds its amount to the linked account's **uninvested cash** (making clear it's cash sitting in the account, not an actual invested position). These updates are delta-based, so partial → full transitions never double-count.
+- **Account side effects**: completing a Savings item adds its amount to that account's balance; completing an Investments item adds its amount to the linked account's **uninvested cash**; completing an Income item adds its amount to its linked Checking/Cash account; completing an Income-related-expense subtracts its amount from its linked account. These updates are delta-based, so partial → full transitions (and un-paying) never double-count.
 - **Deleting an item**: swipe a budget item left and tap the red trash icon to delete it immediately (even in a created/locked budget, as long as it's still Active); a 5-second "Undo" snackbar follows. Deleting an item does **not** reverse any account balance change it already applied.
 - **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A **Completed** budget can't be deleted.
 - **Status: Active → Completed**: every budget starts Active. From its detail screen, a one-way "Mark as completed" action switches it to Completed (with a confirmation, since it becomes permanently read-only). Once Completed, nothing about the budget can change — items can no longer be paid, partially paid, or deleted, and the budget itself can't be deleted. Completed budgets show a "Completed" label and a muted card color in the Budget list to set them apart from Active ones.
@@ -72,7 +75,7 @@ Monthly budgeting with a guided creation flow and payment tracking.
 
 ## Analytics
 
-Reachable via an icon on Home's top bar. Charts every past budget (oldest → newest) using the same PLN-conversion helpers as the budget detail screen:
+Reachable via an icon on Home's top bar. Charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen:
 - **Income vs Expenses vs Savings**: grouped bar chart per budget month.
 - **Savings rate**: (Savings + Investments) ÷ disposable income, per month.
 - **Budget adherence**: overall spent vs planned percentage per month (Fixed + Other + Savings + Investments), the same metric shown on each budget's Summary tab.
@@ -93,4 +96,4 @@ Charts are a hand-rolled, horizontally-scrollable bar chart component (no charti
 ## Currency conversion
 
 - Live exchange rates (ECB reference rates) are fetched from the [Frankfurter](https://frankfurter.dev) API and cached per base currency for 1 hour; a cached rate is shown immediately and refreshed in the background once stale.
-- Used for Home's net worth conversion and for reconciling foreign-currency Savings/Investments budget items back into PLN.
+- Used for Home's net worth conversion and for reconciling every budget figure (including foreign-currency Savings/Investments items) into your Settings base currency.

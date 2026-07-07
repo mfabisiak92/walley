@@ -14,7 +14,8 @@ fun AccountEntity.toDomain(): Account = Account(
     balance = BigDecimal(balanceMinorUnits).movePointLeft(2),
     taxRate = taxRate,
     targetAmount = targetAmountMinorUnits?.let { BigDecimal(it).movePointLeft(2) },
-    uninvestedCash = BigDecimal(balanceMinorUnits).movePointLeft(2)
+    uninvestedCash = BigDecimal(balanceMinorUnits).movePointLeft(2),
+    isDefault = isDefault
 )
 
 fun BigDecimal.toMinorUnits(): Long = movePointRight(2).setScale(0, RoundingMode.HALF_UP).toLong()

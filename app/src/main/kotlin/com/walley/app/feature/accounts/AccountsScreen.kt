@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -22,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -103,7 +106,11 @@ fun AccountsScreen(
                         onDelete = { pendingDeleteAccount = account },
                         dismissOnDelete = false
                     ) {
-                        AccountRow(account = account, onClick = { editingAccount = account })
+                        AccountRow(
+                            account = account,
+                            onClick = { editingAccount = account },
+                            onSetDefault = { viewModel.setDefaultAccount(account.id) }
+                        )
                     }
                 }
             }
@@ -168,7 +175,7 @@ fun AccountsScreen(
 }
 
 @Composable
-private fun AccountRow(account: Account, onClick: () -> Unit) {
+private fun AccountRow(account: Account, onClick: () -> Unit, onSetDefault: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -179,31 +186,50 @@ private fun AccountRow(account: Account, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(account.name, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = if (account.type == AccountType.INVESTMENT) {
-                            "${account.type.label} · ${account.taxRate.label}"
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onSetDefault, modifier = Modifier.size(32.dp)) {
+                        if (account.isDefault) {
+                            Icon(
+                                Icons.Filled.Star,
+                                contentDescription = "Default account",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         } else {
-                            account.type.label
-                        },
+                            Icon(
+                                Icons.Outlined.StarOutline,
+                                contentDescription = "Set as default account",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Column {
+                        Text(account.name, style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = if (account.type == AccountType.INVESTMENT) {
+                                "${account.type.label} · ${account.taxRate.label}"
+                            } else {
+                                account.type.label
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
+            }
+            Column(modifier = Modifier.padding(start = 32.dp)) {
+                if (account.type == AccountType.INVESTMENT) {
+                    Text(
+                        text = "Invested: ${formatMoney(account.balance - account.uninvestedCash, account.currency)} · " +
+                            "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
-            }
-            if (account.type == AccountType.INVESTMENT) {
-                Text(
-                    text = "Invested: ${formatMoney(account.balance - account.uninvestedCash, account.currency)} · " +
-                        "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            val progressPercent = account.targetProgressPercent
-            if (progressPercent != null) {
-                SavingsGoalProgress(account = account, progressPercent = progressPercent)
+                val progressPercent = account.targetProgressPercent
+                if (progressPercent != null) {
+                    SavingsGoalProgress(account = account, progressPercent = progressPercent)
+                }
             }
         }
     }

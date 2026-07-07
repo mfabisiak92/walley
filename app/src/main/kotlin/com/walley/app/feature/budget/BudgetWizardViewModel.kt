@@ -10,19 +10,24 @@ import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.ExchangeRates
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
 import javax.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -38,12 +43,14 @@ private val SECTION_STEPS = mapOf(
     6 to BudgetSectionType.INVESTMENTS
 )
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class BudgetWizardViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
     accountRepository: AccountRepository,
-    private val exchangeRateRepository: ExchangeRateRepository
+    settingsRepository: SettingsRepository,
+    exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
     private val cloneFromBudgetId: Long? = savedStateHandle.get<Long>("cloneFromBudgetId")?.takeIf { it > 0 }
@@ -64,9 +71,12 @@ class BudgetWizardViewModel @Inject constructor(
     val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val plnRates: StateFlow<com.walley.app.domain.model.ExchangeRates?> =
-        exchangeRateRepository.observeRates(Currency.PLN)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val baseCurrency: StateFlow<Currency> = settingsRepository.observeBaseCurrency()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
+
+    private val rates: StateFlow<ExchangeRates?> = settingsRepository.observeBaseCurrency()
+        .flatMapLatest { base -> exchangeRateRepository.observeRates(base) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         cloneFromBudgetId?.let { sourceBudgetId ->
@@ -93,6 +103,8 @@ class BudgetWizardViewModel @Inject constructor(
     fun accountsFor(section: BudgetSectionType): List<Account> = when (section) {
         BudgetSectionType.SAVINGS -> accounts.value.filter { it.type == AccountType.SAVING }
         BudgetSectionType.INVESTMENTS -> accounts.value.filter { it.type == AccountType.INVESTMENT }
+        BudgetSectionType.INCOME, BudgetSectionType.INCOME_RELATED_EXPENSES ->
+            accounts.value.filter { it.type == AccountType.CHECKING || it.type == AccountType.CASH }
         else -> emptyList()
     }
 
@@ -133,33 +145,34 @@ class BudgetWizardViewModel @Inject constructor(
         itemsBySection[section] = itemsFor(section).map { if (it.localId == localId) draft else it }
     }
 
-    /** Converts an amount to PLN using cached rates; null if a needed rate is unavailable. */
-    fun convertToPln(amount: BigDecimal, currency: Currency): BigDecimal? {
-        if (currency == Currency.PLN) return amount
-        val rate = plnRates.value?.rates?.get(currency) ?: return null
+    /** Converts an amount to the Settings base currency using cached rates; null if a needed rate is unavailable. */
+    fun convertToBaseCurrency(amount: BigDecimal, currency: Currency): BigDecimal? {
+        val base = baseCurrency.value
+        if (currency == base) return amount
+        val rate = rates.value?.rates?.get(currency) ?: return null
         return amount.divide(rate, 4, RoundingMode.HALF_UP)
     }
 
-    /** Sum of a section's items converted to PLN; null if a needed rate is unavailable. */
-    fun sectionTotalPln(section: BudgetSectionType): BigDecimal? {
+    /** Sum of a section's items converted to the base currency; null if a needed rate is unavailable. */
+    fun sectionTotal(section: BudgetSectionType): BigDecimal? {
         var total = BigDecimal.ZERO
         for (draft in itemsFor(section)) {
-            total += convertToPln(draft.amount, draft.currency) ?: return null
+            total += convertToBaseCurrency(draft.amount, draft.currency) ?: return null
         }
         return total
     }
 
-    val totalIncomePln: BigDecimal get() = sectionTotalPln(BudgetSectionType.INCOME) ?: BigDecimal.ZERO
-    val totalIncomeExpensesPln: BigDecimal get() = sectionTotalPln(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: BigDecimal.ZERO
-    val disposableIncomePln: BigDecimal get() = totalIncomePln - totalIncomeExpensesPln
+    val totalIncome: BigDecimal get() = sectionTotal(BudgetSectionType.INCOME) ?: BigDecimal.ZERO
+    val totalIncomeExpenses: BigDecimal get() = sectionTotal(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: BigDecimal.ZERO
+    val disposableIncome: BigDecimal get() = totalIncome - totalIncomeExpenses
 
     /** Unallocated amount after Fixed/Other/Savings/Investments; null if conversion unavailable. */
-    fun unallocatedPln(): BigDecimal? {
-        val fixed = sectionTotalPln(BudgetSectionType.FIXED_COSTS) ?: return null
-        val other = sectionTotalPln(BudgetSectionType.OTHER_COSTS) ?: return null
-        val savings = sectionTotalPln(BudgetSectionType.SAVINGS) ?: return null
-        val investments = sectionTotalPln(BudgetSectionType.INVESTMENTS) ?: return null
-        return disposableIncomePln - fixed - other - savings - investments
+    fun unallocatedAmount(): BigDecimal? {
+        val fixed = sectionTotal(BudgetSectionType.FIXED_COSTS) ?: return null
+        val other = sectionTotal(BudgetSectionType.OTHER_COSTS) ?: return null
+        val savings = sectionTotal(BudgetSectionType.SAVINGS) ?: return null
+        val investments = sectionTotal(BudgetSectionType.INVESTMENTS) ?: return null
+        return disposableIncome - fixed - other - savings - investments
     }
 
     suspend fun createBudget(): Long {

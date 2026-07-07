@@ -4,11 +4,46 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Penguin body -->
+    <path
+        android:fillColor="#1B1B1B"
+        android:pathData="M54,20
+            C40,20 31,35 31,53
+            C31,73 39,91 54,91
+            C69,91 77,73 77,53
+            C77,35 68,20 54,20
+            Z" />
+    <!-- Belly -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M29,40 L38,68 L47,48 L56,68 L65,40"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="6"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M54,40
+            C46,40 41,51 41,65
+            C41,79 46,88 54,88
+            C62,88 67,79 67,65
+            C67,51 62,40 54,40
+            Z" />
+    <!-- Feet -->
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M38,90 a6,3.2 0 1,0 12,0 a6,3.2 0 1,0 -12,0" />
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M58,90 a6,3.2 0 1,0 12,0 a6,3.2 0 1,0 -12,0" />
+    <!-- Eyes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M43,33 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M57.8,33 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0" />
+    <path
+        android:fillColor="#1B1B1B"
+        android:pathData="M45,33 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0" />
+    <path
+        android:fillColor="#1B1B1B"
+        android:pathData="M59.8,33 a1.6,1.6 0 1,0 3.2,0 a1.6,1.6 0 1,0 -3.2,0" />
+    <!-- Beak -->
+    <path
+        android:fillColor="#FFA726"
+        android:pathData="M50,39 L58,39 L54,46 Z" />
 </vector>

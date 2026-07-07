@@ -27,7 +27,6 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.ChartSeries
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.TrendChartCard
-import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +36,7 @@ fun AnalyticsScreen(
     viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
     val history by viewModel.history.collectAsStateWithLifecycle()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -85,11 +85,11 @@ fun AnalyticsScreen(
                     title = "Income vs Expenses vs Savings",
                     labels = labels,
                     series = listOf(
-                        ChartSeries("Income", PieChartColors[0], history.map { it.incomePln?.toFloat() }),
-                        ChartSeries("Expenses", PieChartColors[3], history.map { it.expensesPln?.toFloat() }),
-                        ChartSeries("Savings", PieChartColors[5], history.map { it.savingsPln?.toFloat() })
+                        ChartSeries("Income", PieChartColors[0], history.map { it.income?.toFloat() }),
+                        ChartSeries("Expenses", PieChartColors[3], history.map { it.expenses?.toFloat() }),
+                        ChartSeries("Savings", PieChartColors[5], history.map { it.savings?.toFloat() })
                     ),
-                    valueFormatter = { value -> formatMoney(BigDecimal.valueOf(value.toDouble()), Currency.PLN) }
+                    valueFormatter = { value -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
                 )
 
                 TrendChartCard(

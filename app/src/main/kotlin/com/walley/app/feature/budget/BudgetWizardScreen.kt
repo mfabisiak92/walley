@@ -204,9 +204,13 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
     var editingDraft by remember { mutableStateOf<WizardItemDraft?>(null) }
     val items = viewModel.itemsFor(section)
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val isAccountLinked = section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS
+    val requiresCashAccount = section == BudgetSectionType.INCOME ||
+        section == BudgetSectionType.INCOME_RELATED_EXPENSES
     val showFooter = section != BudgetSectionType.INCOME && section != BudgetSectionType.INCOME_RELATED_EXPENSES
     val linkedAccounts = if (isAccountLinked) viewModel.accountsFor(section) else emptyList()
+    val cashAccounts = if (requiresCashAccount) viewModel.accountsFor(section) else emptyList()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -214,8 +218,12 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                 .weight(1f)
                 .padding(16.dp)
         ) {
-            if (isAccountLinked && linkedAccounts.isEmpty()) {
-                val kind = if (section == BudgetSectionType.SAVINGS) "saving" else "investment"
+            if ((isAccountLinked && linkedAccounts.isEmpty()) || (requiresCashAccount && cashAccounts.isEmpty())) {
+                val kind = when (section) {
+                    BudgetSectionType.SAVINGS -> "saving"
+                    BudgetSectionType.INVESTMENTS -> "investment"
+                    else -> "cash or checking"
+                }
                 Text(
                     "No $kind accounts yet — create one from the Accounts tab, or skip this section.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -234,7 +242,8 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
             }
             Button(
                 onClick = { showAddDialog = true },
-                enabled = !isAccountLinked || linkedAccounts.isNotEmpty(),
+                enabled = (!isAccountLinked || linkedAccounts.isNotEmpty()) &&
+                    (!requiresCashAccount || cashAccounts.isNotEmpty()),
                 modifier = Modifier.padding(top = 8.dp)
             ) { Text("Add item") }
         }
@@ -277,17 +286,21 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
             )
         } else {
             AddBudgetItemDialog(
+                currency = baseCurrency,
                 initial = initial,
+                accounts = cashAccounts,
+                requireAccount = requiresCashAccount,
                 onDismiss = {
                     showAddDialog = false
                     editingDraft = null
                 },
-                onConfirm = { name, amount, day, lastOfMonth ->
+                onConfirm = { name, amount, day, lastOfMonth, accountId ->
                     val draft = WizardItemDraft(
                         localId = initial?.localId ?: System.nanoTime(),
                         name = name,
                         amount = amount,
-                        currency = Currency.PLN,
+                        currency = baseCurrency,
+                        accountId = accountId,
                         paymentDay = day,
                         paymentDayIsLastOfMonth = lastOfMonth
                     )
@@ -336,10 +349,10 @@ private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick:
 @Composable
 private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSectionType) {
     // Collected (not just read via .value) so this composable recomposes once rates load.
-    viewModel.plnRates.collectAsStateWithLifecycle()
-    val disposable = viewModel.disposableIncomePln
-    val sectionTotal = viewModel.sectionTotalPln(section)
-    val unallocated = viewModel.unallocatedPln()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val disposable = viewModel.disposableIncome
+    val sectionTotal = viewModel.sectionTotal(section)
+    val unallocated = viewModel.unallocatedAmount()
 
     Column(
         modifier = Modifier
@@ -361,7 +374,7 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
                     sectionTotal.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 }
                 Text(
-                    "Unallocated: ${formatMoney(unallocated, Currency.PLN)}",
+                    "Unallocated: ${formatMoney(unallocated, baseCurrency)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -377,13 +390,13 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
 @Composable
 private fun SummaryStep(viewModel: BudgetWizardViewModel) {
     // Collected (not just read via .value) so this composable recomposes once rates load.
-    viewModel.plnRates.collectAsStateWithLifecycle()
-    val fixed = viewModel.sectionTotalPln(BudgetSectionType.FIXED_COSTS)
-    val other = viewModel.sectionTotalPln(BudgetSectionType.OTHER_COSTS)
-    val savings = viewModel.sectionTotalPln(BudgetSectionType.SAVINGS)
-    val investments = viewModel.sectionTotalPln(BudgetSectionType.INVESTMENTS)
-    val unallocated = viewModel.unallocatedPln()
-    val disposable = viewModel.disposableIncomePln
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val fixed = viewModel.sectionTotal(BudgetSectionType.FIXED_COSTS)
+    val other = viewModel.sectionTotal(BudgetSectionType.OTHER_COSTS)
+    val savings = viewModel.sectionTotal(BudgetSectionType.SAVINGS)
+    val investments = viewModel.sectionTotal(BudgetSectionType.INVESTMENTS)
+    val unallocated = viewModel.unallocatedAmount()
+    val disposable = viewModel.disposableIncome
 
     Column(
         modifier = Modifier
@@ -396,16 +409,16 @@ private fun SummaryStep(viewModel: BudgetWizardViewModel) {
             Budget(year = viewModel.year, month = viewModel.month).displayName,
             style = MaterialTheme.typography.titleLarge
         )
-        SummaryRow("Income", viewModel.totalIncomePln)
-        SummaryRow("Income-related expenses", viewModel.totalIncomeExpensesPln)
+        SummaryRow("Income", viewModel.totalIncome, baseCurrency)
+        SummaryRow("Income-related expenses", viewModel.totalIncomeExpenses, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Disposable income", disposable)
-        SummaryRow("Fixed costs", fixed)
-        SummaryRow("Other costs", other)
-        SummaryRow("Savings", savings)
-        SummaryRow("Investments", investments)
+        SummaryRow("Disposable income", disposable, baseCurrency)
+        SummaryRow("Fixed costs", fixed, baseCurrency)
+        SummaryRow("Other costs", other, baseCurrency)
+        SummaryRow("Savings", savings, baseCurrency)
+        SummaryRow("Investments", investments, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Unallocated", unallocated)
+        SummaryRow("Unallocated", unallocated, baseCurrency)
 
         if (disposable.signum() > 0 && fixed != null && other != null && savings != null && investments != null) {
             val labels = listOf("Fixed costs", "Other costs", "Savings", "Investments")
@@ -416,7 +429,7 @@ private fun SummaryStep(viewModel: BudgetWizardViewModel) {
                 val percent = amount.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 PieSlice(
                     label = "${labels[index]} · ${percent.setScale(1, RoundingMode.HALF_UP)}% · " +
-                        formatMoney(amount, Currency.PLN),
+                        formatMoney(amount, baseCurrency),
                     percent = percent.toFloat(),
                     color = PieChartColors[index % PieChartColors.size]
                 )
@@ -429,14 +442,14 @@ private fun SummaryStep(viewModel: BudgetWizardViewModel) {
 }
 
 @Composable
-private fun SummaryRow(label: String, amount: BigDecimal?) {
+private fun SummaryRow(label: String, amount: BigDecimal?, currency: Currency) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.bodyLarge)
         Text(
-            amount?.let { formatMoney(it, Currency.PLN) } ?: "—",
+            amount?.let { formatMoney(it, currency) } ?: "—",
             style = MaterialTheme.typography.bodyLarge
         )
     }

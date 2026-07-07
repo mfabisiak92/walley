@@ -9,7 +9,12 @@ data class BudgetItem(
     val name: String,
     val amount: BigDecimal,
     val currency: Currency,
-    /** Only set for [BudgetSectionType.SAVINGS] / [BudgetSectionType.INVESTMENTS] items. */
+    /**
+     * Set for [BudgetSectionType.SAVINGS] / [BudgetSectionType.INVESTMENTS] items (the account the
+     * contribution lands in), and mandatory (a Checking/Cash account) for new
+     * [BudgetSectionType.INCOME] / [BudgetSectionType.INCOME_RELATED_EXPENSES] items. May be null on
+     * older Income/Income-related-expenses items created before that requirement existed.
+     */
     val accountId: Long? = null,
     val paymentDay: Int? = null,
     val paymentDayIsLastOfMonth: Boolean = false,

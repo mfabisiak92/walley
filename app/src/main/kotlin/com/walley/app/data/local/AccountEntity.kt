@@ -14,5 +14,6 @@ data class AccountEntity(
     val currency: Currency,
     val balanceMinorUnits: Long,
     val taxRate: AccountTaxRate = AccountTaxRate.STANDARD_19,
-    val targetAmountMinorUnits: Long? = null
+    val targetAmountMinorUnits: Long? = null,
+    val isDefault: Boolean = false
 )
