@@ -59,7 +59,7 @@ Monthly budgeting with a guided creation flow and payment tracking.
 - **One budget per calendar month** (e.g. "July 2026"); the list is sorted newest-first. Each row shows disposable income, unallocated amount, and an overall spent-vs-planned progress bar with percentage (spent/planned cover Fixed costs, Other costs, Savings, and Investments — not Income) — all shown in your Settings **base currency**.
 - **Creation wizard**, in order: Income → Income-related expenses → Fixed costs → Other costs → Savings → Investments → Summary. You can move back and forth freely until you hit Create.
   - Income, Income-related expenses, Fixed costs, and Other costs are free-text name + amount, entered in your Settings **base currency**.
-  - Income and Income-related-expenses items also require picking one of your **Checking/Cash accounts** (mandatory dropdown, pre-selected with your default account) — that's the account money is considered to land in/leave from.
+  - Income and Income-related-expenses items also require picking one of your **Checking/Cash/Investment accounts** (mandatory dropdown, pre-selected with your default account) — that's the account money is considered to land in/leave from. Income items also require a **category** (Salary, Dividends, Interest, or Other), used to break income down by source in your history.
   - Savings and Investments are picked from your existing accounts and shows that account's current balance (and target, for Savings) — the amount is entered in **that account's own currency**, then converted behind the scenes for the running totals.
   - Every section except Income and Income-related expenses shows a running **unallocated amount** and **% of disposable income** (disposable income = total income − income-related expenses).
   - Any item can optionally have a **payment day** (a specific day of the month, or the last day of the month).
@@ -75,12 +75,20 @@ Monthly budgeting with a guided creation flow and payment tracking.
 
 ## Analytics
 
-Reachable via an icon on Home's top bar. Charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen:
+Reachable via an icon on Home's top bar, split into two tabs. Charts are a hand-rolled, horizontally-scrollable bar chart component (no charting library dependency, consistent with Home's pie chart); months with a missing exchange rate show as a gap rather than a wrong value.
+
+**Budget tab** — charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen:
 - **Income vs Expenses vs Savings**: grouped bar chart per budget month.
 - **Savings rate**: (Savings + Investments) ÷ disposable income, per month.
 - **Budget adherence**: overall spent vs planned percentage per month (Fixed + Other + Savings + Investments), the same metric shown on each budget's Summary tab.
 
-Charts are a hand-rolled, horizontally-scrollable bar chart component (no charting library dependency, consistent with Home's pie chart); months with a missing exchange rate show as a gap rather than a wrong value.
+**History tab** — charts a **financial snapshot**, captured automatically every time a budget is marked completed (mirrors a monthly "close the books" habit). Each snapshot records, in that month's Settings base currency:
+- Cash + Checking total, Savings total, Investments total, Assets total, Liabilities total, and net worth
+- Income, Income-related expenses, disposable income
+- Income broken down by category: Salary, Dividends, Interest, Other
+- **Investment growth**: this month's investment total minus last month's minus this month's Investments-section contributions — i.e. market movement alone, isolated from money you added. The very first snapshot has no prior month to diff against, so growth is blank for it.
+
+If exchange rates are unavailable at the exact moment a budget is completed, the snapshot is still recorded (budget completion always succeeds); any unconvertible figure falls back to zero rather than blocking the action.
 
 ## Settings
 

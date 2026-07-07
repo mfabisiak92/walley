@@ -222,7 +222,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                 val kind = when (section) {
                     BudgetSectionType.SAVINGS -> "saving"
                     BudgetSectionType.INVESTMENTS -> "investment"
-                    else -> "cash or checking"
+                    else -> "cash, checking, or investment"
                 }
                 Text(
                     "No $kind accounts yet — create one from the Accounts tab, or skip this section.",
@@ -290,11 +290,12 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                 initial = initial,
                 accounts = cashAccounts,
                 requireAccount = requiresCashAccount,
+                showCategoryPicker = section == BudgetSectionType.INCOME,
                 onDismiss = {
                     showAddDialog = false
                     editingDraft = null
                 },
-                onConfirm = { name, amount, day, lastOfMonth, accountId ->
+                onConfirm = { name, amount, day, lastOfMonth, accountId, incomeCategory ->
                     val draft = WizardItemDraft(
                         localId = initial?.localId ?: System.nanoTime(),
                         name = name,
@@ -302,7 +303,8 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                         currency = baseCurrency,
                         accountId = accountId,
                         paymentDay = day,
-                        paymentDayIsLastOfMonth = lastOfMonth
+                        paymentDayIsLastOfMonth = lastOfMonth,
+                        incomeCategory = incomeCategory
                     )
                     if (initial != null) {
                         viewModel.updateItem(section, initial.localId, draft)

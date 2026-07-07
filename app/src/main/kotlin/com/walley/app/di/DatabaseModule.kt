@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AssetDao
 import com.walley.app.data.local.BudgetDao
+import com.walley.app.data.local.FinancialSnapshotDao
 import com.walley.app.data.local.InvestmentDao
 import com.walley.app.data.local.LiabilityDao
 import com.walley.app.data.local.MIGRATION_1_2
@@ -17,6 +18,8 @@ import com.walley.app.data.local.MIGRATION_7_8
 import com.walley.app.data.local.MIGRATION_8_9
 import com.walley.app.data.local.MIGRATION_9_10
 import com.walley.app.data.local.MIGRATION_10_11
+import com.walley.app.data.local.MIGRATION_11_12
+import com.walley.app.data.local.MIGRATION_12_13
 import com.walley.app.data.local.WalleyDatabase
 import dagger.Module
 import dagger.Provides
@@ -43,7 +46,9 @@ object DatabaseModule {
                 MIGRATION_7_8,
                 MIGRATION_8_9,
                 MIGRATION_9_10,
-                MIGRATION_10_11
+                MIGRATION_10_11,
+                MIGRATION_11_12,
+                MIGRATION_12_13
             )
             .build()
 
@@ -61,4 +66,7 @@ object DatabaseModule {
 
     @Provides
     fun provideLiabilityDao(database: WalleyDatabase): LiabilityDao = database.liabilityDao()
+
+    @Provides
+    fun provideFinancialSnapshotDao(database: WalleyDatabase): FinancialSnapshotDao = database.financialSnapshotDao()
 }

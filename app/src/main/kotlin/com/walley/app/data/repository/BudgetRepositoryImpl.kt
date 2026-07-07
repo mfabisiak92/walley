@@ -5,11 +5,17 @@ import com.walley.app.data.local.BudgetItemEntity
 import com.walley.app.data.local.BudgetEntity
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.FinancialSnapshot
+import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import java.time.YearMonth
 import javax.inject.Inject
@@ -20,7 +26,12 @@ import kotlinx.coroutines.flow.map
 
 class BudgetRepositoryImpl @Inject constructor(
     private val budgetDao: BudgetDao,
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val assetRepository: AssetRepository,
+    private val liabilityRepository: LiabilityRepository,
+    private val settingsRepository: SettingsRepository,
+    private val exchangeRateRepository: ExchangeRateRepository,
+    private val snapshotRepository: SnapshotRepository
 ) : BudgetRepository {
 
     override fun observeBudgetsWithItems(): Flow<List<BudgetWithItems>> =
@@ -57,7 +68,8 @@ class BudgetRepositoryImpl @Inject constructor(
                     accountId = item.accountId,
                     paymentDay = item.paymentDay,
                     paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
-                    paidAmountMinorUnits = 0
+                    paidAmountMinorUnits = 0,
+                    incomeCategory = item.incomeCategory
                 )
             }
         )
@@ -104,13 +116,15 @@ class BudgetRepositoryImpl @Inject constructor(
                 accountId = item.accountId,
                 paymentDay = item.paymentDay,
                 paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
-                paidAmountMinorUnits = item.paidAmount.toMinorUnits()
+                paidAmountMinorUnits = item.paidAmount.toMinorUnits(),
+                incomeCategory = item.incomeCategory
             )
         )
     }
 
     override suspend fun markBudgetCompleted(budgetId: Long) {
         budgetDao.updateStatus(budgetId, BudgetStatus.COMPLETED)
+        captureSnapshot(budgetId)
     }
 
     override suspend fun checkAndAutoCompleteDueItems() {
@@ -151,5 +165,84 @@ class BudgetRepositoryImpl @Inject constructor(
                 accountRepository.addToBalance(accountId, delta.negate())
             else -> Unit
         }
+    }
+
+    /**
+     * Converts [amount] into [target]; falls back to zero (rather than failing budget completion,
+     * which must always succeed) if a needed exchange rate isn't available.
+     */
+    private fun convert(amount: BigDecimal, currency: Currency, target: Currency, rates: ExchangeRates?): BigDecimal {
+        if (currency == target) return amount
+        val rate = rates?.rates?.get(currency) ?: return BigDecimal.ZERO
+        return amount.divide(rate, 6, RoundingMode.HALF_UP)
+    }
+
+    private suspend fun captureSnapshot(budgetId: Long) {
+        val budgetEntity = budgetDao.observeBudgetById(budgetId).first() ?: return
+        val items = budgetDao.observeItemsForBudget(budgetId).first().map { it.toDomain() }
+        val base = settingsRepository.observeBaseCurrency().first()
+        val rates = exchangeRateRepository.observeRates(base).first()
+        val accounts = accountRepository.observeAccounts().first()
+        val assets = assetRepository.observeAssets().first()
+        val liabilities = liabilityRepository.observeLiabilities().first()
+
+        fun accountsTotal(type: AccountType) = accounts
+            .filter { it.type == type }
+            .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.balance, account.currency, base, rates) }
+
+        val cashAndChecking = accountsTotal(AccountType.CHECKING) + accountsTotal(AccountType.CASH)
+        val savings = accountsTotal(AccountType.SAVING)
+        val investments = accountsTotal(AccountType.INVESTMENT)
+        val assetsTotal = assets.fold(BigDecimal.ZERO) { acc, asset -> acc + convert(asset.currentValue, asset.currency, base, rates) }
+        val liabilitiesTotal = liabilities.fold(BigDecimal.ZERO) { acc, liability ->
+            acc + convert(liability.currentBalance, liability.currency, base, rates)
+        }
+        val netWorth = cashAndChecking + savings + investments + assetsTotal - liabilitiesTotal
+
+        fun sectionTotal(section: BudgetSectionType) = items
+            .filter { it.section == section }
+            .fold(BigDecimal.ZERO) { acc, item -> acc + convert(item.amount, item.currency, base, rates) }
+
+        val income = sectionTotal(BudgetSectionType.INCOME)
+        val incomeRelatedExpenses = sectionTotal(BudgetSectionType.INCOME_RELATED_EXPENSES)
+        val disposableIncome = income - incomeRelatedExpenses
+
+        val incomeItems = items.filter { it.section == BudgetSectionType.INCOME }
+        fun categoryTotal(category: IncomeCategory) = incomeItems
+            .filter { it.incomeCategory == category }
+            .fold(BigDecimal.ZERO) { acc, item -> acc + convert(item.amount, item.currency, base, rates) }
+
+        val salaryIncome = categoryTotal(IncomeCategory.SALARY)
+        val dividendsIncome = categoryTotal(IncomeCategory.DIVIDENDS)
+        val interestIncome = categoryTotal(IncomeCategory.INTEREST)
+        // Covers items explicitly tagged OTHER, plus any legacy items with no category at all.
+        val otherIncome = income - salaryIncome - dividendsIncome - interestIncome
+
+        val investmentContributions = sectionTotal(BudgetSectionType.INVESTMENTS)
+        val previous = snapshotRepository.previousSnapshot(budgetEntity.year, budgetEntity.month)
+        val investmentGrowth = previous?.let { investments - it.investments - investmentContributions }
+
+        snapshotRepository.addSnapshot(
+            FinancialSnapshot(
+                budgetId = budgetId,
+                year = budgetEntity.year,
+                month = budgetEntity.month,
+                baseCurrency = base,
+                cashAndChecking = cashAndChecking.setScale(2, RoundingMode.HALF_UP),
+                savings = savings.setScale(2, RoundingMode.HALF_UP),
+                investments = investments.setScale(2, RoundingMode.HALF_UP),
+                assets = assetsTotal.setScale(2, RoundingMode.HALF_UP),
+                liabilities = liabilitiesTotal.setScale(2, RoundingMode.HALF_UP),
+                netWorth = netWorth.setScale(2, RoundingMode.HALF_UP),
+                income = income.setScale(2, RoundingMode.HALF_UP),
+                incomeRelatedExpenses = incomeRelatedExpenses.setScale(2, RoundingMode.HALF_UP),
+                disposableIncome = disposableIncome.setScale(2, RoundingMode.HALF_UP),
+                salaryIncome = salaryIncome.setScale(2, RoundingMode.HALF_UP),
+                dividendsIncome = dividendsIncome.setScale(2, RoundingMode.HALF_UP),
+                interestIncome = interestIncome.setScale(2, RoundingMode.HALF_UP),
+                otherIncome = otherIncome.setScale(2, RoundingMode.HALF_UP),
+                investmentGrowth = investmentGrowth?.setScale(2, RoundingMode.HALF_UP)
+            )
+        )
     }
 }

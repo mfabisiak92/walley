@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,8 +34,16 @@ fun AddBudgetItemDialog(
     initial: WizardItemDraft? = null,
     accounts: List<Account> = emptyList(),
     requireAccount: Boolean = false,
+    showCategoryPicker: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, amount: BigDecimal, paymentDay: Int?, isLastOfMonth: Boolean, accountId: Long?) -> Unit
+    onConfirm: (
+        name: String,
+        amount: BigDecimal,
+        paymentDay: Int?,
+        isLastOfMonth: Boolean,
+        accountId: Long?,
+        incomeCategory: IncomeCategory?
+    ) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
@@ -44,6 +53,8 @@ fun AddBudgetItemDialog(
         mutableStateOf(initial?.accountId ?: accounts.find { it.isDefault }?.id ?: accounts.firstOrNull()?.id)
     }
     var accountMenuExpanded by remember { mutableStateOf(false) }
+    var category by remember { mutableStateOf(initial?.incomeCategory ?: IncomeCategory.SALARY) }
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
 
     val selectedAccount = accounts.find { it.id == accountId }
     val parsedAmount = amountText.toBigDecimalOrNull()
@@ -94,6 +105,35 @@ fun AddBudgetItemDialog(
                         }
                     }
                 }
+                if (showCategoryPicker) {
+                    ExposedDropdownMenuBox(
+                        expanded = categoryMenuExpanded,
+                        onExpandedChange = { categoryMenuExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = category.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Category") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryMenuExpanded,
+                            onDismissRequest = { categoryMenuExpanded = false }
+                        ) {
+                            IncomeCategory.entries.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        category = option
+                                        categoryMenuExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
@@ -114,7 +154,16 @@ fun AddBudgetItemDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), parsedAmount!!, paymentDay, isLastOfMonth, selectedAccount?.id) },
+                onClick = {
+                    onConfirm(
+                        name.trim(),
+                        parsedAmount!!,
+                        paymentDay,
+                        isLastOfMonth,
+                        selectedAccount?.id,
+                        if (showCategoryPicker) category else null
+                    )
+                },
                 enabled = isValid
             ) { Text(if (initial != null) "Save" else "Add") }
         },

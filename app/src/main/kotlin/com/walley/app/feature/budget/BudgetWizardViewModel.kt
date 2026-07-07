@@ -68,15 +68,18 @@ class BudgetWizardViewModel @Inject constructor(
         BudgetSectionType.entries.forEach { put(it, emptyList()) }
     }
 
+    // Eagerly collected (rather than WhileSubscribed) so the data is already loaded by the time the
+    // user reaches the first section step — that step is the first-ever subscriber, and reading
+    // .value before its async query resolves would otherwise show a false "no accounts yet" state.
     val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val baseCurrency: StateFlow<Currency> = settingsRepository.observeBaseCurrency()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, Currency.PLN)
 
     private val rates: StateFlow<ExchangeRates?> = settingsRepository.observeBaseCurrency()
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     init {
         cloneFromBudgetId?.let { sourceBudgetId ->
@@ -93,7 +96,8 @@ class BudgetWizardViewModel @Inject constructor(
                         currency = item.currency,
                         accountId = item.accountId,
                         paymentDay = item.paymentDay,
-                        paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth
+                        paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
+                        incomeCategory = item.incomeCategory
                     )
                 }
             }
@@ -104,7 +108,9 @@ class BudgetWizardViewModel @Inject constructor(
         BudgetSectionType.SAVINGS -> accounts.value.filter { it.type == AccountType.SAVING }
         BudgetSectionType.INVESTMENTS -> accounts.value.filter { it.type == AccountType.INVESTMENT }
         BudgetSectionType.INCOME, BudgetSectionType.INCOME_RELATED_EXPENSES ->
-            accounts.value.filter { it.type == AccountType.CHECKING || it.type == AccountType.CASH }
+            accounts.value.filter {
+                it.type == AccountType.CHECKING || it.type == AccountType.CASH || it.type == AccountType.INVESTMENT
+            }
         else -> emptyList()
     }
 
@@ -186,7 +192,8 @@ class BudgetWizardViewModel @Inject constructor(
                     currency = draft.currency,
                     accountId = draft.accountId,
                     paymentDay = draft.paymentDay,
-                    paymentDayIsLastOfMonth = draft.paymentDayIsLastOfMonth
+                    paymentDayIsLastOfMonth = draft.paymentDayIsLastOfMonth,
+                    incomeCategory = draft.incomeCategory
                 )
             }
         }

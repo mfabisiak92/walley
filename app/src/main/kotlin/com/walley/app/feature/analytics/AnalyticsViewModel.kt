@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
+import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
@@ -17,6 +19,7 @@ import com.walley.app.feature.budget.sectionTotal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
@@ -37,10 +40,24 @@ data class BudgetHistoryPoint(
     val progress: BudgetProgress?
 )
 
+data class SnapshotPoint(
+    val label: String,
+    val cashAndChecking: BigDecimal,
+    val savings: BigDecimal,
+    val investments: BigDecimal,
+    val netWorth: BigDecimal,
+    val salaryIncome: BigDecimal,
+    val dividendsIncome: BigDecimal,
+    val interestIncome: BigDecimal,
+    val otherIncome: BigDecimal,
+    val investmentGrowth: BigDecimal?
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
     budgetRepository: BudgetRepository,
+    snapshotRepository: SnapshotRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -60,6 +77,15 @@ class AnalyticsViewModel @Inject constructor(
             .map { toHistoryPoint(it, base, rates) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Currency snapshot amounts are shown in — the most recently recorded snapshot's base currency. */
+    val snapshotCurrency: StateFlow<Currency> = snapshotRepository.observeSnapshots()
+        .map { it.lastOrNull()?.baseCurrency ?: Currency.PLN }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
+
+    val snapshotHistory: StateFlow<List<SnapshotPoint>> = snapshotRepository.observeSnapshots()
+        .map { snapshots -> snapshots.map(::toSnapshotPoint) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     private fun toHistoryPoint(budgetWithItems: BudgetWithItems, base: Currency, rates: ExchangeRates?): BudgetHistoryPoint {
         val items = budgetWithItems.items
         val fixed = sectionTotal(items, BudgetSectionType.FIXED_COSTS, base, rates)
@@ -76,7 +102,7 @@ class AnalyticsViewModel @Inject constructor(
         }
 
         return BudgetHistoryPoint(
-            label = shortLabel(budgetWithItems),
+            label = shortLabel(budgetWithItems.budget.yearMonth),
             income = sectionTotal(items, BudgetSectionType.INCOME, base, rates),
             expenses = expensesTotal,
             savings = savingsTotal,
@@ -85,8 +111,20 @@ class AnalyticsViewModel @Inject constructor(
         )
     }
 
-    private fun shortLabel(budgetWithItems: BudgetWithItems): String {
-        val yearMonth = budgetWithItems.budget.yearMonth
+    private fun toSnapshotPoint(snapshot: FinancialSnapshot): SnapshotPoint = SnapshotPoint(
+        label = shortLabel(snapshot.yearMonth),
+        cashAndChecking = snapshot.cashAndChecking,
+        savings = snapshot.savings,
+        investments = snapshot.investments,
+        netWorth = snapshot.netWorth,
+        salaryIncome = snapshot.salaryIncome,
+        dividendsIncome = snapshot.dividendsIncome,
+        interestIncome = snapshot.interestIncome,
+        otherIncome = snapshot.otherIncome,
+        investmentGrowth = snapshot.investmentGrowth
+    )
+
+    private fun shortLabel(yearMonth: YearMonth): String {
         val monthLabel = yearMonth.month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)
         val shortYear = (yearMonth.year % 100).toString().padStart(2, '0')
         return "$monthLabel '$shortYear"

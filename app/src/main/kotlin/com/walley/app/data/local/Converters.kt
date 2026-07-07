@@ -6,6 +6,7 @@ import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -51,4 +52,10 @@ class Converters {
 
     @TypeConverter
     fun toBudgetStatus(value: String): BudgetStatus = BudgetStatus.valueOf(value)
+
+    @TypeConverter
+    fun fromIncomeCategory(category: IncomeCategory?): String? = category?.name
+
+    @TypeConverter
+    fun toIncomeCategory(value: String?): IncomeCategory? = value?.let { IncomeCategory.valueOf(it) }
 }

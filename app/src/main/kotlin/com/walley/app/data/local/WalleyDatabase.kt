@@ -13,9 +13,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         AssetEntity::class,
         BudgetEntity::class,
         BudgetItemEntity::class,
-        LiabilityEntity::class
+        LiabilityEntity::class,
+        FinancialSnapshotEntity::class
     ],
-    version = 11,
+    version = 13,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -25,6 +26,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun assetDao(): AssetDao
     abstract fun budgetDao(): BudgetDao
     abstract fun liabilityDao(): LiabilityDao
+    abstract fun financialSnapshotDao(): FinancialSnapshotDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -146,5 +148,41 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         db.execSQL("ALTER TABLE accounts ADD COLUMN isDefault INTEGER NOT NULL DEFAULT 0")
         // Backfill: the earliest-created existing account becomes the default one.
         db.execSQL("UPDATE accounts SET isDefault = 1 WHERE id = (SELECT MIN(id) FROM accounts)")
+    }
+}
+
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE budget_items ADD COLUMN incomeCategory TEXT")
+    }
+}
+
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `financial_snapshots` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `budgetId` INTEGER NOT NULL,
+                `year` INTEGER NOT NULL,
+                `month` INTEGER NOT NULL,
+                `baseCurrency` TEXT NOT NULL,
+                `cashAndCheckingMinorUnits` INTEGER NOT NULL,
+                `savingsMinorUnits` INTEGER NOT NULL,
+                `investmentsMinorUnits` INTEGER NOT NULL,
+                `assetsMinorUnits` INTEGER NOT NULL,
+                `liabilitiesMinorUnits` INTEGER NOT NULL,
+                `netWorthMinorUnits` INTEGER NOT NULL,
+                `incomeMinorUnits` INTEGER NOT NULL,
+                `incomeRelatedExpensesMinorUnits` INTEGER NOT NULL,
+                `disposableIncomeMinorUnits` INTEGER NOT NULL,
+                `salaryIncomeMinorUnits` INTEGER NOT NULL,
+                `dividendsIncomeMinorUnits` INTEGER NOT NULL,
+                `interestIncomeMinorUnits` INTEGER NOT NULL,
+                `otherIncomeMinorUnits` INTEGER NOT NULL,
+                `investmentGrowthMinorUnits` INTEGER
+            )
+            """.trimIndent()
+        )
     }
 }

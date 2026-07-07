@@ -16,5 +16,6 @@ fun BudgetItemEntity.toDomain(): BudgetItem = BudgetItem(
     accountId = accountId,
     paymentDay = paymentDay,
     paymentDayIsLastOfMonth = paymentDayIsLastOfMonth,
-    paidAmount = BigDecimal(paidAmountMinorUnits).movePointLeft(2)
+    paidAmount = BigDecimal(paidAmountMinorUnits).movePointLeft(2),
+    incomeCategory = incomeCategory
 )

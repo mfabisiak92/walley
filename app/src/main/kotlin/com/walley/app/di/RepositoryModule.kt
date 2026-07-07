@@ -16,6 +16,8 @@ import com.walley.app.data.repository.SecurityRepository
 import com.walley.app.data.repository.SecurityRepositoryImpl
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SettingsRepositoryImpl
+import com.walley.app.data.repository.SnapshotRepository
+import com.walley.app.data.repository.SnapshotRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -48,4 +50,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindLiabilityRepository(impl: LiabilityRepositoryImpl): LiabilityRepository
+
+    @Binds
+    abstract fun bindSnapshotRepository(impl: SnapshotRepositoryImpl): SnapshotRepository
 }
