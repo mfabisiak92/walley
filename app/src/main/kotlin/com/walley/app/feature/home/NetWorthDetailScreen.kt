@@ -100,7 +100,15 @@ private fun NetWorthElementRow(element: NetWorthElement, baseCurrency: Currency)
         ) {
             Text(element.name, style = MaterialTheme.typography.bodyLarge)
             Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
-                Text(formatMoney(element.amountInBaseCurrency, baseCurrency), style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    formatMoney(element.amountInBaseCurrency, baseCurrency),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (element.amountInBaseCurrency.signum() < 0) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
                 if (element.currency != baseCurrency) {
                     Text(
                         formatMoney(element.originalAmount, element.currency),

@@ -6,6 +6,7 @@ import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AssetDao
 import com.walley.app.data.local.BudgetDao
 import com.walley.app.data.local.InvestmentDao
+import com.walley.app.data.local.LiabilityDao
 import com.walley.app.data.local.MIGRATION_1_2
 import com.walley.app.data.local.MIGRATION_2_3
 import com.walley.app.data.local.MIGRATION_3_4
@@ -14,6 +15,7 @@ import com.walley.app.data.local.MIGRATION_5_6
 import com.walley.app.data.local.MIGRATION_6_7
 import com.walley.app.data.local.MIGRATION_7_8
 import com.walley.app.data.local.MIGRATION_8_9
+import com.walley.app.data.local.MIGRATION_9_10
 import com.walley.app.data.local.WalleyDatabase
 import dagger.Module
 import dagger.Provides
@@ -38,7 +40,8 @@ object DatabaseModule {
                 MIGRATION_5_6,
                 MIGRATION_6_7,
                 MIGRATION_7_8,
-                MIGRATION_8_9
+                MIGRATION_8_9,
+                MIGRATION_9_10
             )
             .build()
 
@@ -53,4 +56,7 @@ object DatabaseModule {
 
     @Provides
     fun provideBudgetDao(database: WalleyDatabase): BudgetDao = database.budgetDao()
+
+    @Provides
+    fun provideLiabilityDao(database: WalleyDatabase): LiabilityDao = database.liabilityDao()
 }

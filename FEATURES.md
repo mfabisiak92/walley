@@ -8,7 +8,7 @@ Five bottom tabs, swipeable via a `HorizontalPager`: **Home**, **Accounts**, **B
 
 ## Home
 
-- **Net worth**: total value across all accounts *and* assets, converted to your chosen base currency using live FX rates, shown with the rate date used. Tapping the Net worth tile opens a breakdown screen listing every contributing account/asset with its amount in the base currency, followed by the amount in its original currency when that differs from the base currency.
+- **Net worth**: total value across all accounts and assets *minus* liabilities, converted to your chosen base currency using live FX rates, shown with the rate date used. Tapping the Net worth tile opens a breakdown screen listing every contributing account/asset/liability with its amount in the base currency (liabilities shown as negative, in red), followed by the amount in its original currency when that differs from the base currency.
 - **Currency breakdown**: total balance and total savings broken out per currency.
 - **Pie chart**: share of net worth held in each currency.
 
@@ -34,13 +34,21 @@ Accounts can be deleted by swiping a row left and tapping the red trash icon (or
 - An account's displayed balance automatically includes the combined current value of everything linked to it, on top of its uninvested cash.
 - Investments can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
 
-## Assets
+## Assets & Liabilities
 
-For non-liquid assets (property, vehicles, etc.) that aren't bank accounts or investments:
+One bottom tab, split into two sub-tabs so each keeps its own simple list/add/edit flow without needing a second bottom-nav slot.
+
+**Assets** — for non-liquid assets (property, vehicles, etc.) that aren't bank accounts or investments:
 - Name, currency, purchase value, purchase date, and current value (manually updated over time).
 - Shows gain/loss versus purchase value, same as Investments.
-- Included in Home's net worth calculation and breakdown.
-- Assets can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
+- Included in Home's net worth calculation and breakdown (adds to net worth).
+
+**Liabilities** — for debts (loans, credit cards, mortgages):
+- Name, currency, original amount, current balance, and start date (manually updated over time, mirroring Assets).
+- Shows a payoff progress bar/percentage (how much of the original amount has been paid down).
+- Included in Home's net worth calculation and breakdown (subtracts from net worth).
+
+Both support swiping a row left and tapping the red trash icon (or the edit dialog) to delete, after confirming in a dialog.
 
 ## Budget
 

@@ -12,9 +12,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         InvestmentEntity::class,
         AssetEntity::class,
         BudgetEntity::class,
-        BudgetItemEntity::class
+        BudgetItemEntity::class,
+        LiabilityEntity::class
     ],
-    version = 9,
+    version = 10,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -23,6 +24,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun investmentDao(): InvestmentDao
     abstract fun assetDao(): AssetDao
     abstract fun budgetDao(): BudgetDao
+    abstract fun liabilityDao(): LiabilityDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -119,5 +121,22 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
 val MIGRATION_8_9 = object : Migration(8, 9) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE budgets ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'")
+    }
+}
+
+val MIGRATION_9_10 = object : Migration(9, 10) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `liabilities` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `currency` TEXT NOT NULL,
+                `originalAmountMinorUnits` INTEGER NOT NULL,
+                `currentBalanceMinorUnits` INTEGER NOT NULL,
+                `startDate` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 }

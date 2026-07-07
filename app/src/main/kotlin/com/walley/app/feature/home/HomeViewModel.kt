@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
@@ -12,6 +13,7 @@ import com.walley.app.domain.model.Asset
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.Liability
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -60,6 +62,7 @@ data class NetWorthState(
 class HomeViewModel @Inject constructor(
     accountRepository: AccountRepository,
     assetRepository: AssetRepository,
+    liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -81,14 +84,20 @@ class HomeViewModel @Inject constructor(
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
         assetRepository.observeAssets(),
+        liabilityRepository.observeLiabilities(),
         baseCurrencyRates
-    ) { accounts, assets, (base, rates) ->
-        if (accounts.isEmpty() && assets.isEmpty()) null else computeNetWorth(accounts, assets, base, rates)
+    ) { accounts, assets, liabilities, (base, rates) ->
+        if (accounts.isEmpty() && assets.isEmpty() && liabilities.isEmpty()) {
+            null
+        } else {
+            computeNetWorth(accounts, assets, liabilities, base, rates)
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private fun computeNetWorth(
         accounts: List<Account>,
         assets: List<Asset>,
+        liabilities: List<Liability>,
         base: Currency,
         rates: ExchangeRates?
     ): NetWorthState {
@@ -124,6 +133,17 @@ class HomeViewModel @Inject constructor(
                 currency = asset.currency,
                 originalAmount = asset.currentValue,
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
+            )
+        }
+        for (liability in liabilities) {
+            val amountInBase = convertToBase(liability.currentBalance, liability.currency)
+                ?: return NetWorthState(currency = base, amount = null, rateDate = null)
+            byCurrency[liability.currency] = (byCurrency[liability.currency] ?: BigDecimal.ZERO) - amountInBase
+            elements += NetWorthElement(
+                name = liability.name,
+                currency = liability.currency,
+                originalAmount = -liability.currentBalance,
+                amountInBaseCurrency = amountInBase.negate().setScale(2, RoundingMode.HALF_UP)
             )
         }
 
