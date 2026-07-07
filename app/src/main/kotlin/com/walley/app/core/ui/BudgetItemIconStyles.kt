@@ -2,9 +2,12 @@ package com.walley.app.core.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Checkroom
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Devices
@@ -13,6 +16,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Percent
 import androidx.compose.material.icons.filled.ReceiptLong
@@ -21,9 +25,11 @@ import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.walley.app.domain.model.BudgetItemIcon
@@ -54,5 +60,12 @@ val BudgetItemIconStyles: Map<BudgetItemIcon, BudgetItemIconStyle> = mapOf(
     BudgetItemIcon.ELECTRONICS to BudgetItemIconStyle(Icons.Filled.Devices, Color(0xFF5E35B1)),
     BudgetItemIcon.PHONE to BudgetItemIconStyle(Icons.Filled.Smartphone, Color(0xFF00838F)),
     BudgetItemIcon.BILLS to BudgetItemIconStyle(Icons.Filled.Description, Color(0xFF6D4C41)),
-    BudgetItemIcon.RENT to BudgetItemIconStyle(Icons.Filled.Home, Color(0xFF3949AB))
+    BudgetItemIcon.RENT to BudgetItemIconStyle(Icons.Filled.Home, Color(0xFF3949AB)),
+    BudgetItemIcon.PIGGY_BANK to BudgetItemIconStyle(Icons.Filled.Savings, Color(0xFFD81B60)),
+    BudgetItemIcon.ELECTRICITY to BudgetItemIconStyle(Icons.Filled.Bolt, Color(0xFFF9A825)),
+    BudgetItemIcon.INTERNET to BudgetItemIconStyle(Icons.Filled.AlternateEmail, Color(0xFF0277BD)),
+    BudgetItemIcon.TV to BudgetItemIconStyle(Icons.Filled.Tv, Color(0xFF546E7A)),
+    BudgetItemIcon.MUSIC to BudgetItemIconStyle(Icons.Filled.MusicNote, Color(0xFF8E24AA)),
+    BudgetItemIcon.BARBER to BudgetItemIconStyle(Icons.Filled.ContentCut, Color(0xFF8D6E63)),
+    BudgetItemIcon.GAMES to BudgetItemIconStyle(Icons.Filled.SportsEsports, Color(0xFF7C4DFF))
 )

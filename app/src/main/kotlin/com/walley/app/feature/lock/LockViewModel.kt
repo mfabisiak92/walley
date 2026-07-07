@@ -1,5 +1,6 @@
 package com.walley.app.feature.lock
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.SecurityRepository
@@ -11,6 +12,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** How long the app can sit in the background before it re-locks itself. */
+private const val LOCK_GRACE_PERIOD_MS = 30_000L
 
 @HiltViewModel
 class LockViewModel @Inject constructor(
@@ -30,8 +34,22 @@ class LockViewModel @Inject constructor(
     private val _pinError = MutableStateFlow(false)
     val pinError: StateFlow<Boolean> = _pinError.asStateFlow()
 
-    fun lock() {
-        _unlocked.value = false
+    // Set when the app leaves the foreground; cleared once checked on the way back in.
+    private var backgroundedAtElapsedMillis: Long? = null
+
+    /** Call when the app leaves the foreground — starts the grace-period clock, doesn't lock yet. */
+    fun onAppBackgrounded() {
+        backgroundedAtElapsedMillis = SystemClock.elapsedRealtime()
+    }
+
+    /** Call when the app returns to the foreground — locks only if the grace period has elapsed. */
+    fun onAppForegrounded() {
+        val backgroundedAt = backgroundedAtElapsedMillis ?: return
+        backgroundedAtElapsedMillis = null
+        val elapsed = SystemClock.elapsedRealtime() - backgroundedAt
+        if (elapsed >= LOCK_GRACE_PERIOD_MS) {
+            _unlocked.value = false
+        }
     }
 
     fun setPin(pin: String) {

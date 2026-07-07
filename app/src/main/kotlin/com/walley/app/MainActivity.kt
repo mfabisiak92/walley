@@ -1,6 +1,7 @@
 package com.walley.app
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -24,6 +25,9 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Financial data must never leak into the recent-apps screenshot, since the app can now
+        // stay unlocked for a short grace period after being backgrounded (see onStop/onStart).
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         setContent {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
             val darkModeOverride by settingsViewModel.darkModeOverride.collectAsStateWithLifecycle()
@@ -37,12 +41,18 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        lockViewModel.onAppForegrounded()
+    }
+
     override fun onStop() {
         super.onStop()
-        // Require authentication again after the app leaves the foreground,
-        // but not for configuration changes like rotation.
+        // Start the grace-period clock when the app leaves the foreground, but not for
+        // configuration changes like rotation — a brief return (e.g. switching apps) won't
+        // require unlocking again; only leaving it in the background past the grace period will.
         if (!isChangingConfigurations) {
-            lockViewModel.lock()
+            lockViewModel.onAppBackgrounded()
         }
     }
 }
