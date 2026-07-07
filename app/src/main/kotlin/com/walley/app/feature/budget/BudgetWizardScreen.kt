@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,6 +71,10 @@ fun BudgetWizardScreen(
     val scope = rememberCoroutineScope()
     val step = viewModel.currentStep
     val section = viewModel.sectionForStep(step)
+
+    BackHandler {
+        if (step == WIZARD_STEP_MONTH) onCancel() else viewModel.goBack()
+    }
 
     Scaffold(
         topBar = {

@@ -3,6 +3,7 @@ package com.walley.app.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
@@ -25,8 +26,11 @@ interface BudgetDao {
     @Query("SELECT * FROM budget_items WHERE id = :itemId")
     suspend fun getItem(itemId: Long): BudgetItemEntity
 
-    @Query("SELECT COUNT(*) FROM budgets WHERE year = :year AND month = :month")
-    suspend fun countForMonth(year: Int, month: Int): Int
+    @Query(
+        "SELECT COUNT(*) FROM budgets WHERE year = :year AND month = :month " +
+            "AND (:excludeBudgetId IS NULL OR id != :excludeBudgetId)"
+    )
+    suspend fun countForMonth(year: Int, month: Int, excludeBudgetId: Long?): Int
 
     @Insert
     suspend fun insertBudget(budget: BudgetEntity): Long
@@ -63,4 +67,13 @@ interface BudgetDao {
 
     @Query("UPDATE budgets SET status = :status WHERE id = :budgetId")
     suspend fun updateStatus(budgetId: Long, status: BudgetStatus)
+
+    @Query("UPDATE budgets SET year = :year, month = :month, status = :status WHERE id = :budgetId")
+    suspend fun updateYearMonthAndStatus(budgetId: Long, year: Int, month: Int, status: BudgetStatus)
+
+    @Transaction
+    suspend fun replaceItems(budgetId: Long, items: List<BudgetItemEntity>) {
+        deleteItemsForBudget(budgetId)
+        insertItems(items)
+    }
 }

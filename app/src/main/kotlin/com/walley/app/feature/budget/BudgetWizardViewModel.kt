@@ -56,6 +56,10 @@ class BudgetWizardViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val cloneFromBudgetId: Long? = savedStateHandle.get<Long>("cloneFromBudgetId")?.takeIf { it > 0 }
+    private val resumeBudgetId: Long? = savedStateHandle.get<Long>("resumeBudgetId")?.takeIf { it > 0 }
+
+    /** The budget row this session is persisting to as a Draft; null until the first autosave. */
+    private var draftBudgetId: Long? = resumeBudgetId
 
     var year by mutableIntStateOf(LocalDate.now().year)
         private set
@@ -104,20 +108,34 @@ class BudgetWizardViewModel @Inject constructor(
                 val nextMonth = source.budget.yearMonth.plusMonths(1)
                 year = nextMonth.year
                 month = nextMonth.monthValue
-                source.items.forEachIndexed { index, item ->
-                    itemsBySection[item.section] = itemsFor(item.section) + WizardItemDraft(
-                        localId = System.nanoTime() + index,
-                        name = item.name,
-                        amount = item.amount,
-                        currency = item.currency,
-                        accountId = item.accountId,
-                        paymentDay = item.paymentDay,
-                        paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
-                        incomeCategory = item.incomeCategory,
-                        icon = item.icon
-                    )
-                }
+                loadDraftItems(source.items)
             }
+        }
+        resumeBudgetId?.let { budgetId ->
+            viewModelScope.launch {
+                val source = budgetRepository.observeBudget(budgetId).first() ?: return@launch
+                year = source.budget.year
+                month = source.budget.month
+                loadDraftItems(source.items)
+                // Month is already settled for a resumed draft — land straight on the first section.
+                currentStep = 1
+            }
+        }
+    }
+
+    private fun loadDraftItems(items: List<BudgetItem>) {
+        items.forEachIndexed { index, item ->
+            itemsBySection[item.section] = itemsFor(item.section) + WizardItemDraft(
+                localId = System.nanoTime() + index,
+                name = item.name,
+                amount = item.amount,
+                currency = item.currency,
+                accountId = item.accountId,
+                paymentDay = item.paymentDay,
+                paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
+                incomeCategory = item.incomeCategory,
+                icon = item.icon
+            )
         }
     }
 
@@ -134,7 +152,7 @@ class BudgetWizardViewModel @Inject constructor(
     }
 
     suspend fun refreshMonthTaken() {
-        monthTaken = if (budgetRepository.monthHasBudget(year, month)) 1 else -1
+        monthTaken = if (budgetRepository.monthHasBudget(year, month, excludeBudgetId = draftBudgetId)) 1 else -1
     }
 
     fun clearMonthTaken() {
@@ -142,25 +160,35 @@ class BudgetWizardViewModel @Inject constructor(
     }
 
     fun goNext() {
-        if (currentStep < WIZARD_STEP_SUMMARY) currentStep++
+        if (currentStep < WIZARD_STEP_SUMMARY) {
+            currentStep++
+            autosaveDraft()
+        }
     }
 
     fun goBack() {
-        if (currentStep > WIZARD_STEP_MONTH) currentStep--
+        if (currentStep > WIZARD_STEP_MONTH) {
+            // Save while still on the step being left, so its edits aren't lost once we step back.
+            autosaveDraft()
+            currentStep--
+        }
     }
 
     fun sectionForStep(step: Int): BudgetSectionType? = SECTION_STEPS[step]
 
     fun addItem(section: BudgetSectionType, draft: WizardItemDraft) {
         itemsBySection[section] = itemsFor(section) + draft
+        autosaveDraft()
     }
 
     fun removeItem(section: BudgetSectionType, localId: Long) {
         itemsBySection[section] = itemsFor(section).filterNot { it.localId == localId }
+        autosaveDraft()
     }
 
     fun updateItem(section: BudgetSectionType, localId: Long, draft: WizardItemDraft) {
         itemsBySection[section] = itemsFor(section).map { if (it.localId == localId) draft else it }
+        autosaveDraft()
     }
 
     /** Converts an amount to the Settings base currency using cached rates; null if a needed rate is unavailable. */
@@ -193,7 +221,15 @@ class BudgetWizardViewModel @Inject constructor(
         return disposableIncome - fixed - other - savings - investments
     }
 
-    suspend fun createBudget(): Long {
+    /** Fire-and-forget persistence of current progress as a Draft; safe to call frequently. */
+    private fun autosaveDraft() {
+        if (currentStep <= WIZARD_STEP_MONTH) return
+        viewModelScope.launch {
+            draftBudgetId = budgetRepository.saveDraft(draftBudgetId, year, month, collectItems())
+        }
+    }
+
+    private fun collectItems(): List<BudgetItem> {
         val allItems = mutableListOf<BudgetItem>()
         BudgetSectionType.entries.forEach { section ->
             itemsFor(section).forEach { draft ->
@@ -215,6 +251,13 @@ class BudgetWizardViewModel @Inject constructor(
                 )
             }
         }
-        return budgetRepository.createBudget(year, month, allItems)
+        return allItems
+    }
+
+    /** Finalizes the wizard's budget as Active — a one-way transition out of Draft. */
+    suspend fun createBudget(): Long {
+        val id = budgetRepository.submitBudget(draftBudgetId, year, month, collectItems())
+        draftBudgetId = id
+        return id
     }
 }

@@ -7,6 +7,7 @@ import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
@@ -73,6 +74,8 @@ class AnalyticsViewModel @Inject constructor(
         baseCurrencyRates
     ) { budgetsWithItems, (base, rates) ->
         budgetsWithItems
+            // Drafts aren't real budgets yet, so they'd only skew the trend with incomplete data.
+            .filter { it.budget.status != BudgetStatus.DRAFT }
             .sortedWith(compareBy({ it.budget.year }, { it.budget.month }))
             .map { toHistoryPoint(it, base, rates) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

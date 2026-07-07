@@ -15,14 +15,19 @@ import com.walley.app.feature.settings.SettingsScreen
 private object WalleyDestinations {
     const val MAIN = "main"
     const val SETTINGS = "settings"
-    const val BUDGET_WIZARD = "budget_wizard?cloneFrom={cloneFromBudgetId}"
+    const val BUDGET_WIZARD = "budget_wizard?cloneFrom={cloneFromBudgetId}&resume={resumeBudgetId}"
     const val BUDGET_DETAIL = "budget_detail/{budgetId}"
     const val NET_WORTH_DETAIL = "net_worth_detail"
     const val ANALYTICS = "analytics"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
-    fun budgetWizard(cloneFromBudgetId: Long? = null) =
-        if (cloneFromBudgetId != null) "budget_wizard?cloneFrom=$cloneFromBudgetId" else "budget_wizard"
+    fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
+        val params = listOfNotNull(
+            cloneFromBudgetId?.let { "cloneFrom=$it" },
+            resumeBudgetId?.let { "resume=$it" }
+        )
+        return if (params.isEmpty()) "budget_wizard" else "budget_wizard?" + params.joinToString("&")
+    }
 }
 
 @Composable
@@ -36,6 +41,9 @@ fun WalleyNavHost() {
                 onNavigateToBudgetWizard = { navController.navigate(WalleyDestinations.budgetWizard()) },
                 onNavigateToBudgetDetail = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetDetail(budgetId))
+                },
+                onResumeBudgetDraft = { budgetId ->
+                    navController.navigate(WalleyDestinations.budgetWizard(resumeBudgetId = budgetId))
                 },
                 onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) },
                 onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) }
@@ -56,7 +64,10 @@ fun WalleyNavHost() {
         }
         composable(
             WalleyDestinations.BUDGET_WIZARD,
-            arguments = listOf(navArgument("cloneFromBudgetId") { type = NavType.LongType; defaultValue = -1L })
+            arguments = listOf(
+                navArgument("cloneFromBudgetId") { type = NavType.LongType; defaultValue = -1L },
+                navArgument("resumeBudgetId") { type = NavType.LongType; defaultValue = -1L }
+            )
         ) {
             BudgetWizardScreen(
                 onDone = { budgetId ->

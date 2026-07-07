@@ -9,12 +9,21 @@ import kotlinx.coroutines.flow.Flow
 interface BudgetRepository {
     fun observeBudgetsWithItems(): Flow<List<BudgetWithItems>>
     fun observeBudget(budgetId: Long): Flow<BudgetWithItems?>
-    /** The budget for the given calendar month, if one exists. */
+    /** The Active/Completed budget for the given calendar month, if one exists; Drafts don't count. */
     fun observeBudgetForMonth(year: Int, month: Int): Flow<BudgetWithItems?>
-    suspend fun monthHasBudget(year: Int, month: Int): Boolean
 
-    /** [items] should carry section/name/amount/currency/accountId/paymentDay; id and budgetId are ignored. */
-    suspend fun createBudget(year: Int, month: Int, items: List<BudgetItem>): Long
+    /** [excludeBudgetId] lets a budget being resumed/edited ignore its own row when checking. */
+    suspend fun monthHasBudget(year: Int, month: Int, excludeBudgetId: Long? = null): Boolean
+
+    /**
+     * Persists the wizard's current progress as a Draft (creating it if [budgetId] is null, replacing
+     * its items otherwise). Drafts aren't shown as Active and never auto-pay items. [items] should
+     * carry section/name/amount/currency/accountId/paymentDay; id and budgetId are ignored.
+     */
+    suspend fun saveDraft(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long
+
+    /** Finalizes a budget as Active (Draft -&gt; Active if [budgetId] is given, otherwise a brand-new Active budget). */
+    suspend fun submitBudget(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long
 
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
@@ -39,7 +48,7 @@ interface BudgetRepository {
     /** One-way transition marking a budget as completed; completed budgets can no longer be deleted. */
     suspend fun markBudgetCompleted(budgetId: Long)
 
-    /** Auto-marks items whose payment day has passed as paid; call when a budget screen opens. */
+    /** Auto-marks items whose payment day has passed as paid, for Active budgets only; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()
 }
 

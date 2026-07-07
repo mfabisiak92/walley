@@ -50,6 +50,7 @@ fun BudgetsScreen(
     onNavigateHome: () -> Unit,
     onCreateBudget: () -> Unit,
     onOpenBudget: (Long) -> Unit,
+    onResumeDraft: (Long) -> Unit,
     viewModel: BudgetsViewModel = hiltViewModel()
 ) {
     val budgets by viewModel.budgets.collectAsStateWithLifecycle()
@@ -95,10 +96,17 @@ fun BudgetsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(budgets, key = { it.budgetWithItems.budget.id }) { row ->
+                    val isDraft = row.budgetWithItems.budget.status == BudgetStatus.DRAFT
                     val budgetRow: @Composable () -> Unit = {
                         BudgetRow(
                             row = row,
-                            onClick = { onOpenBudget(row.budgetWithItems.budget.id) }
+                            onClick = {
+                                if (isDraft) {
+                                    onResumeDraft(row.budgetWithItems.budget.id)
+                                } else {
+                                    onOpenBudget(row.budgetWithItems.budget.id)
+                                }
+                            }
                         )
                     }
                     if (row.budgetWithItems.budget.status == BudgetStatus.COMPLETED) {
@@ -155,12 +163,15 @@ fun BudgetsScreen(
 
 @Composable
 private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
-    val isCompleted = row.budgetWithItems.budget.status == BudgetStatus.COMPLETED
+    val status = row.budgetWithItems.budget.status
+    val isCompleted = status == BudgetStatus.COMPLETED
+    val isDraft = status == BudgetStatus.DRAFT
+    val isMuted = isCompleted || isDraft
 
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
-        colors = if (isCompleted) {
+        colors = if (isMuted) {
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant,
                 contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -182,55 +193,69 @@ private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                } else if (isDraft) {
+                    Text(
+                        "Draft",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-            Text(
-                "Disposable income: " + (row.disposableIncome?.let { formatMoney(it, row.baseCurrency) } ?: "—"),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "Unallocated: " + (row.unallocated?.let { formatMoney(it, row.baseCurrency) }
-                    ?: "exchange rate unavailable"),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (row.progress == null) {
+            if (isDraft) {
                 Text(
-                    "Progress unavailable — exchange rate missing",
+                    "Tap to continue setting up this budget.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
+                Text(
+                    "Disposable income: " + (row.disposableIncome?.let { formatMoney(it, row.baseCurrency) } ?: "—"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Unallocated: " + (row.unallocated?.let { formatMoney(it, row.baseCurrency) }
+                        ?: "exchange rate unavailable"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (row.progress == null) {
                     Text(
-                        "${formatMoney(row.progress.spent, row.baseCurrency)} / " +
-                            formatMoney(row.progress.planned, row.baseCurrency),
+                        "Progress unavailable — exchange rate missing",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(
-                        "${row.progress.percent.setScale(0, RoundingMode.HALF_UP)}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "${formatMoney(row.progress.spent, row.baseCurrency)} / " +
+                                formatMoney(row.progress.planned, row.baseCurrency),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${row.progress.percent.setScale(0, RoundingMode.HALF_UP)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = {
+                            row.progress.percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP)
+                                .toFloat()
+                                .coerceIn(0f, 1f)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
                     )
                 }
-                LinearProgressIndicator(
-                    progress = {
-                        row.progress.percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP)
-                            .toFloat()
-                            .coerceIn(0f, 1f)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                )
             }
         }
     }

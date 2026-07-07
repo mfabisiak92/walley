@@ -48,6 +48,7 @@ fun MainTabsScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToBudgetWizard: () -> Unit,
     onNavigateToBudgetDetail: (Long) -> Unit,
+    onResumeBudgetDraft: (Long) -> Unit,
     onNavigateToNetWorthDetail: () -> Unit,
     onNavigateToAnalytics: () -> Unit
 ) {
@@ -91,7 +92,8 @@ fun MainTabsScreen(
                 2 -> BudgetsScreen(
                     onNavigateHome = goHome,
                     onCreateBudget = onNavigateToBudgetWizard,
-                    onOpenBudget = onNavigateToBudgetDetail
+                    onOpenBudget = onNavigateToBudgetDetail,
+                    onResumeDraft = onResumeBudgetDraft
                 )
                 3 -> InvestmentsScreen(onNavigateHome = goHome)
                 4 -> AssetsScreen(onNavigateHome = goHome)

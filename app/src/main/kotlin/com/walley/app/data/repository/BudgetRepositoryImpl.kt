@@ -48,7 +48,10 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override fun observeBudgetForMonth(year: Int, month: Int): Flow<BudgetWithItems?> =
         combine(budgetDao.observeBudgets(), budgetDao.observeAllItems()) { budgets, items ->
-            val budgetEntity = budgets.find { it.year == year && it.month == month } ?: return@combine null
+            // A Draft isn't a real budget yet, so it doesn't count as "the budget for this month" here.
+            val budgetEntity = budgets.find {
+                it.year == year && it.month == month && it.status != BudgetStatus.DRAFT
+            } ?: return@combine null
             BudgetWithItems(
                 budget = budgetEntity.toDomain(),
                 items = items.filter { it.budgetId == budgetEntity.id }.map { it.toDomain() }
@@ -63,15 +66,33 @@ class BudgetRepositoryImpl @Inject constructor(
             budgetEntity?.let { BudgetWithItems(it.toDomain(), items.map { item -> item.toDomain() }) }
         }
 
-    override suspend fun monthHasBudget(year: Int, month: Int): Boolean =
-        budgetDao.countForMonth(year, month) > 0
+    override suspend fun monthHasBudget(year: Int, month: Int, excludeBudgetId: Long?): Boolean =
+        budgetDao.countForMonth(year, month, excludeBudgetId) > 0
 
-    override suspend fun createBudget(year: Int, month: Int, items: List<BudgetItem>): Long {
-        val budgetId = budgetDao.insertBudget(BudgetEntity(year = year, month = month))
-        budgetDao.insertItems(
+    override suspend fun saveDraft(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long =
+        upsertBudget(budgetId, year, month, items, BudgetStatus.DRAFT)
+
+    override suspend fun submitBudget(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long =
+        upsertBudget(budgetId, year, month, items, BudgetStatus.ACTIVE)
+
+    private suspend fun upsertBudget(
+        budgetId: Long?,
+        year: Int,
+        month: Int,
+        items: List<BudgetItem>,
+        status: BudgetStatus
+    ): Long {
+        val id = if (budgetId != null) {
+            budgetDao.updateYearMonthAndStatus(budgetId, year, month, status)
+            budgetId
+        } else {
+            budgetDao.insertBudget(BudgetEntity(year = year, month = month, status = status))
+        }
+        budgetDao.replaceItems(
+            id,
             items.map { item ->
                 BudgetItemEntity(
-                    budgetId = budgetId,
+                    budgetId = id,
                     section = item.section,
                     name = item.name,
                     amountMinorUnits = item.amount.toMinorUnits(),
@@ -85,7 +106,7 @@ class BudgetRepositoryImpl @Inject constructor(
                 )
             }
         )
-        return budgetId
+        return id
     }
 
     override suspend fun markItemPaid(itemId: Long) {
@@ -182,6 +203,7 @@ class BudgetRepositoryImpl @Inject constructor(
         val allItems = budgetDao.observeAllItems().first()
 
         for (budgetEntity in budgets) {
+            if (budgetEntity.status != BudgetStatus.ACTIVE) continue
             val yearMonth = YearMonth.of(budgetEntity.year, budgetEntity.month)
             for (itemEntity in allItems) {
                 if (itemEntity.budgetId != budgetEntity.id) continue
