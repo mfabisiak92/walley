@@ -9,8 +9,10 @@ import com.walley.app.domain.model.Currency
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -58,5 +60,28 @@ class SettingsViewModel @Inject constructor(
 
     fun setCategoryTarget(section: BudgetSectionType, percent: BigDecimal?) {
         viewModelScope.launch { repository.setCategoryTarget(section, percent) }
+    }
+
+    private val _changePinError = MutableStateFlow<String?>(null)
+    val changePinError: StateFlow<String?> = _changePinError.asStateFlow()
+
+    private val _changePinSuccess = MutableStateFlow(false)
+    val changePinSuccess: StateFlow<Boolean> = _changePinSuccess.asStateFlow()
+
+    fun changePin(currentPin: String, newPin: String) {
+        viewModelScope.launch {
+            if (!securityRepository.verifyPin(currentPin)) {
+                _changePinError.value = "Current PIN is incorrect"
+                return@launch
+            }
+            securityRepository.setPin(newPin)
+            _changePinError.value = null
+            _changePinSuccess.value = true
+        }
+    }
+
+    fun dismissChangePinResult() {
+        _changePinError.value = null
+        _changePinSuccess.value = false
     }
 }

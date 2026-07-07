@@ -20,11 +20,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,10 +59,12 @@ fun SettingsScreen(
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -79,7 +85,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> GeneralSettingsPage(viewModel)
+                    0 -> GeneralSettingsPage(viewModel, snackbarHostState)
                     else -> BudgetSettingsPage(viewModel)
                 }
             }
@@ -89,17 +95,29 @@ fun SettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GeneralSettingsPage(viewModel: SettingsViewModel) {
+private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState: SnackbarHostState) {
     val darkModeOverride by viewModel.darkModeOverride.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val fingerprintUnlock by viewModel.fingerprintUnlock.collectAsStateWithLifecycle()
+    val changePinError by viewModel.changePinError.collectAsStateWithLifecycle()
+    val changePinSuccess by viewModel.changePinSuccess.collectAsStateWithLifecycle()
     val isDarkMode = darkModeOverride ?: isSystemInDarkTheme()
     var currencyMenuExpanded by remember { mutableStateOf(false) }
+    var showChangePinDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
     val biometricsAvailable = remember {
         BiometricManager.from(context)
             .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+
+    LaunchedEffect(changePinSuccess) {
+        if (changePinSuccess) {
+            showChangePinDialog = false
+            scope.launch { snackbarHostState.showSnackbar("PIN changed") }
+            viewModel.dismissChangePinResult()
+        }
     }
 
     Column(
@@ -175,6 +193,29 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel) {
                 }
             }
         }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("PIN", style = MaterialTheme.typography.bodyLarge)
+            TextButton(onClick = { showChangePinDialog = true }) {
+                Text("Change PIN")
+            }
+        }
+    }
+
+    if (showChangePinDialog) {
+        ChangePinDialog(
+            errorMessage = changePinError,
+            onCurrentPinChanged = viewModel::dismissChangePinResult,
+            onDismiss = {
+                showChangePinDialog = false
+                viewModel.dismissChangePinResult()
+            },
+            onConfirm = { currentPin, newPin -> viewModel.changePin(currentPin, newPin) }
+        )
     }
 }
 
