@@ -32,14 +32,9 @@ import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.EXPENSE_ICONS
 import com.walley.app.domain.model.INCOME_ICONS
 import com.walley.app.domain.model.allowedAccountTypes
+import com.walley.app.domain.model.isAccountWithdrawal
+import com.walley.app.domain.model.requiresAccount
 import java.math.BigDecimal
-
-/** Sections whose account link can be reassigned from this dialog. */
-private val ACCOUNT_EDITABLE_SECTIONS = setOf(
-    BudgetSectionType.INCOME,
-    BudgetSectionType.INCOME_RELATED_EXPENSES,
-    BudgetSectionType.OTHER_COSTS
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,19 +51,18 @@ fun EditItemAmountDialog(
     var accountMenuExpanded by remember { mutableStateOf(false) }
     val parsedAmount = amountText.toBigDecimalOrNull()
 
-    val accountEditable = item.section in ACCOUNT_EDITABLE_SECTIONS
-    val accountRequired = item.section == BudgetSectionType.INCOME ||
-        item.section == BudgetSectionType.INCOME_RELATED_EXPENSES
-    val accountOptions = if (accountEditable) {
-        item.section.allowedAccountTypes()?.let { types -> accounts.filter { it.type in types } } ?: emptyList()
-    } else {
-        emptyList()
-    }
+    val accountRequired = item.section.requiresAccount
+    val accountOptions = item.section.allowedAccountTypes()?.let { types -> accounts.filter { it.type in types } }
+        ?: emptyList()
     val selectedAccount = accounts.find { it.id == accountId }
+    // For Savings/Investments the account is the item's identity, so the amount tracks its currency.
+    val amountCurrency = selectedAccount?.currency?.takeIf {
+        item.section == BudgetSectionType.SAVINGS || item.section == BudgetSectionType.INVESTMENTS
+    } ?: item.currency
 
     // How much more would still need to be withdrawn beyond what's already been paid out of the account.
     val additionalWithdrawal = parsedAmount?.let { it - item.paidAmount }
-    val exceedsSavingsBalance = selectedAccount?.type == AccountType.SAVING &&
+    val exceedsSavingsBalance = item.section.isAccountWithdrawal && selectedAccount?.type == AccountType.SAVING &&
         additionalWithdrawal != null && additionalWithdrawal > selectedAccount.balance
     val isValid = parsedAmount != null && parsedAmount.signum() > 0 && !exceedsSavingsBalance &&
         (!accountRequired || selectedAccount != null)
@@ -86,7 +80,7 @@ fun EditItemAmountDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Planned amount (${item.currency.symbol})") },
+                    label = { Text("Planned amount (${amountCurrency.symbol})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && (parsedAmount == null || exceedsSavingsBalance)
@@ -98,7 +92,7 @@ fun EditItemAmountDialog(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-                if (accountEditable && accountOptions.isNotEmpty()) {
+                if (accountOptions.isNotEmpty()) {
                     ExposedDropdownMenuBox(
                         expanded = accountMenuExpanded,
                         onExpandedChange = { accountMenuExpanded = it }
@@ -137,11 +131,13 @@ fun EditItemAmountDialog(
                         }
                     }
                     selectedAccount?.let { account ->
-                        Text(
-                            "Currently: ${formatMoney(account.balance, account.currency)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        val info = if (account.type == AccountType.SAVING) {
+                            "Currently: ${formatMoney(account.balance, account.currency)} · Target: " +
+                                (account.targetAmount?.let { formatMoney(it, account.currency) } ?: "not set")
+                        } else {
+                            "Currently: ${formatMoney(account.balance, account.currency)}"
+                        }
+                        Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 if (iconOptions != null) {

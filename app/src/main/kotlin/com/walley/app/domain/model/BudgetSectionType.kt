@@ -31,8 +31,18 @@ fun BudgetSectionType.allowedAccountTypes(): Set<AccountType>? = when (this) {
         setOf(AccountType.CHECKING, AccountType.CASH, AccountType.INVESTMENT)
     // Deliberately excludes Investment accounts — pulling an expense straight out of an investment
     // position isn't supported, only Cash/Checking/Saving.
-    BudgetSectionType.OTHER_COSTS -> setOf(AccountType.CHECKING, AccountType.CASH, AccountType.SAVING)
+    BudgetSectionType.FIXED_COSTS, BudgetSectionType.OTHER_COSTS ->
+        setOf(AccountType.CHECKING, AccountType.CASH, AccountType.SAVING)
     BudgetSectionType.SAVINGS -> setOf(AccountType.SAVING)
     BudgetSectionType.INVESTMENTS -> setOf(AccountType.INVESTMENT)
-    BudgetSectionType.FIXED_COSTS -> null
 }
+
+/** Whether an item requires an account to be linked (rather than it being optional). */
+val BudgetSectionType.requiresAccount: Boolean
+    get() = this == BudgetSectionType.INCOME || this == BudgetSectionType.INCOME_RELATED_EXPENSES ||
+        this == BudgetSectionType.SAVINGS || this == BudgetSectionType.INVESTMENTS
+
+/** Paying an item in this section decreases its linked account's balance (a withdrawal), rather than increasing it. */
+val BudgetSectionType.isAccountWithdrawal: Boolean
+    get() = this == BudgetSectionType.INCOME_RELATED_EXPENSES || this == BudgetSectionType.FIXED_COSTS ||
+        this == BudgetSectionType.OTHER_COSTS

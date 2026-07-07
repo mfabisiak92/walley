@@ -210,7 +210,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
     val isAccountLinked = section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS
     val requiresCashAccount = section == BudgetSectionType.INCOME ||
         section == BudgetSectionType.INCOME_RELATED_EXPENSES
-    val allowsOptionalAccount = section == BudgetSectionType.OTHER_COSTS
+    val allowsOptionalAccount = section == BudgetSectionType.OTHER_COSTS || section == BudgetSectionType.FIXED_COSTS
     val showFooter = section != BudgetSectionType.INCOME && section != BudgetSectionType.INCOME_RELATED_EXPENSES
     val linkedAccounts = if (isAccountLinked) viewModel.accountsFor(section) else emptyList()
     val cashAccounts = if (requiresCashAccount || allowsOptionalAccount) viewModel.accountsFor(section) else emptyList()

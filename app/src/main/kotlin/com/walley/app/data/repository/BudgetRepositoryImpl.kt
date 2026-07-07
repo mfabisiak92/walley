@@ -15,6 +15,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.isAccountWithdrawal
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -127,7 +128,15 @@ class BudgetRepositoryImpl @Inject constructor(
                 applyAccountDeltaForAccount(item.section, newAccountId, item.paidAmount)
             }
         }
-        budgetDao.updateItemAccount(itemId, accountId)
+        // Savings/Investments items are defined by their account — its name and currency come along with it.
+        val isAccountLinkedSection = item.section == BudgetSectionType.SAVINGS ||
+            item.section == BudgetSectionType.INVESTMENTS
+        val newAccount = accountId?.let { id -> accountRepository.observeAccounts().first().find { it.id == id } }
+        if (isAccountLinkedSection && newAccount != null) {
+            budgetDao.updateItemAccountNameAndCurrency(itemId, newAccount.id, newAccount.name, newAccount.currency)
+        } else {
+            budgetDao.updateItemAccount(itemId, accountId)
+        }
     }
 
     override suspend fun deleteBudget(budgetId: Long) {
@@ -203,11 +212,10 @@ class BudgetRepositoryImpl @Inject constructor(
 
     private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal) {
         if (delta.signum() == 0) return
-        when (section) {
-            BudgetSectionType.SAVINGS, BudgetSectionType.INVESTMENTS, BudgetSectionType.INCOME ->
-                accountRepository.addToBalance(accountId, delta)
-            BudgetSectionType.INCOME_RELATED_EXPENSES, BudgetSectionType.OTHER_COSTS ->
-                accountRepository.addToBalance(accountId, delta.negate())
+        when {
+            section.isAccountWithdrawal -> accountRepository.addToBalance(accountId, delta.negate())
+            section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS ||
+                section == BudgetSectionType.INCOME -> accountRepository.addToBalance(accountId, delta)
             else -> Unit
         }
     }
