@@ -352,6 +352,7 @@ private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick:
 private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSectionType) {
     // Collected (not just read via .value) so this composable recomposes once rates load.
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val categoryTargets by viewModel.categoryTargets.collectAsStateWithLifecycle()
     val disposable = viewModel.disposableIncome
     val sectionTotal = viewModel.sectionTotal(section)
     val unallocated = viewModel.unallocatedAmount()
@@ -383,6 +384,12 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
                     "${percent.setScale(1, RoundingMode.HALF_UP)}% of disposable income allocated to ${section.label}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                CategoryTargetIndicator(
+                    section = section,
+                    actualPercent = percent,
+                    targetPercent = categoryTargets[section],
+                    modifier = Modifier.padding(top = 8.dp)
                 )
             }
         }

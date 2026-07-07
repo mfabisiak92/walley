@@ -79,6 +79,7 @@ fun BudgetDetailScreen(
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val (baseCurrency, rates) = viewModel.baseCurrencyRates.collectAsStateWithLifecycle().value
+    val categoryTargets by viewModel.categoryTargets.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -156,11 +157,12 @@ fun BudgetDetailScreen(
                             rates = rates
                         )
                         else -> SectionTabContent(
-                            items = budget.items.filter { it.section in tab.sections },
+                            allItems = budget.items,
                             tab = tab,
                             baseCurrency = baseCurrency,
                             rates = rates,
                             accounts = accounts,
+                            categoryTargets = categoryTargets,
                             isEditable = isEditable,
                             onItemClick = { itemForPaidDialog = it },
                             onDeleteItem = { item ->
@@ -262,22 +264,25 @@ fun BudgetDetailScreen(
 
 @Composable
 private fun SectionTabContent(
-    items: List<BudgetItem>,
+    allItems: List<BudgetItem>,
     tab: BudgetDetailTab,
     baseCurrency: Currency,
     rates: ExchangeRates?,
     accounts: List<Account>,
+    categoryTargets: Map<BudgetSectionType, BigDecimal?>,
     isEditable: Boolean,
     onItemClick: (BudgetItem) -> Unit,
     onDeleteItem: (BudgetItem) -> Unit
 ) {
+    val items = allItems.filter { it.section in tab.sections }
     val progress = budgetProgress(items, tab.sections, baseCurrency, rates)
+    val targetSection = tab.sections.singleOrNull()
 
     Column(modifier = Modifier.fillMaxSize()) {
         ProgressSummaryHeader(progress = progress, currency = baseCurrency, modifier = Modifier.padding(16.dp))
         HorizontalDivider()
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -308,6 +313,25 @@ private fun SectionTabContent(
                         }
                     }
                 }
+            }
+        }
+        if (targetSection != null) {
+            val target = categoryTargets[targetSection]
+            if (target != null) {
+                val disposable = disposableIncome(allItems, baseCurrency, rates)
+                val sectionAmount = sectionTotal(allItems, targetSection, baseCurrency, rates)
+                val actualPercent = if (disposable != null && sectionAmount != null && disposable.signum() != 0) {
+                    (sectionAmount.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100))
+                } else {
+                    null
+                }
+                HorizontalDivider()
+                CategoryTargetIndicator(
+                    section = targetSection,
+                    actualPercent = actualPercent,
+                    targetPercent = target,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }

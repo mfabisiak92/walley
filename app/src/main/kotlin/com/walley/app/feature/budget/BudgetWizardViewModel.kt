@@ -25,6 +25,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -80,6 +81,20 @@ class BudgetWizardViewModel @Inject constructor(
     private val rates: StateFlow<ExchangeRates?> = settingsRepository.observeBaseCurrency()
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val categoryTargets: StateFlow<Map<BudgetSectionType, BigDecimal?>> = combine(
+        settingsRepository.observeCategoryTarget(BudgetSectionType.FIXED_COSTS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.OTHER_COSTS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.SAVINGS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.INVESTMENTS)
+    ) { fixed, other, savings, investments ->
+        mapOf(
+            BudgetSectionType.FIXED_COSTS to fixed,
+            BudgetSectionType.OTHER_COSTS to other,
+            BudgetSectionType.SAVINGS to savings,
+            BudgetSectionType.INVESTMENTS to investments
+        )
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyMap())
 
     init {
         cloneFromBudgetId?.let { sourceBudgetId ->

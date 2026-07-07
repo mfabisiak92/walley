@@ -92,9 +92,11 @@ If exchange rates are unavailable at the exact moment a budget is completed, the
 
 ## Settings
 
-- Dark mode toggle (defaults to system setting).
-- Fingerprint (biometric) unlock toggle — disabled if no fingerprint is enrolled on the device.
-- Base currency picker, used for net worth conversion on Home.
+Split into two tabs.
+
+**General** — Dark mode toggle (defaults to system setting); Fingerprint (biometric) unlock toggle (disabled if no fingerprint is enrolled); Base currency picker, used for net worth conversion on Home.
+
+**Budget** — optional target % of disposable income for Fixed costs, Other costs, Savings, and Investments. Fixed costs/Other costs are spending ceilings (a target you don't want to exceed); Savings/Investments are goals (a target you want to reach or exceed). Once set, each target appears at the bottom of the matching tab — both during budget creation (the wizard's per-section footer) and on an existing budget's detail screen — showing the target itself plus how far the section's actual % of disposable income sits from it: e.g. "10% over target allocation" with a warning for Fixed/Other costs that ran over, or "5% below target allocation" with a warning for Savings/Investments that fell short; a green checkmark shows instead once Fixed/Other costs are at or under target, or Savings/Investments are at or over target.
 
 ## App lock
 

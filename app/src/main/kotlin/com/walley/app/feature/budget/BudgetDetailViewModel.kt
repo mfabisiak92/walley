@@ -10,6 +10,7 @@ import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -48,6 +50,20 @@ class BudgetDetailViewModel @Inject constructor(
     val baseCurrencyRates: StateFlow<Pair<Currency, ExchangeRates?>> = settingsRepository.observeBaseCurrency()
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base).map { rates -> base to rates } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN to null)
+
+    val categoryTargets: StateFlow<Map<BudgetSectionType, BigDecimal?>> = combine(
+        settingsRepository.observeCategoryTarget(BudgetSectionType.FIXED_COSTS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.OTHER_COSTS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.SAVINGS),
+        settingsRepository.observeCategoryTarget(BudgetSectionType.INVESTMENTS)
+    ) { fixed, other, savings, investments ->
+        mapOf(
+            BudgetSectionType.FIXED_COSTS to fixed,
+            BudgetSectionType.OTHER_COSTS to other,
+            BudgetSectionType.SAVINGS to savings,
+            BudgetSectionType.INVESTMENTS to investments
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     init {
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }
