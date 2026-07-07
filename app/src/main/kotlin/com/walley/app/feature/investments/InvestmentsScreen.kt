@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.List
@@ -21,12 +23,15 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,13 +44,52 @@ import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
 import java.math.RoundingMode
+import kotlinx.coroutines.launch
+
+private val TABS = listOf("Portfolio", "Strategies")
 
 @Composable
 fun InvestmentsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
-    viewModel: InvestmentsViewModel = hiltViewModel()
+    onOpenEquity: (Long) -> Unit
 ) {
+    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        modifier = modifier,
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            TabRow(selectedTabIndex = pagerState.currentPage) {
+                TABS.forEachIndexed { index, label ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = { Text(label) }
+                    )
+                }
+            }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> PortfolioListPage()
+                    else -> StrategiesListPage(onOpenEquity = onOpenEquity)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel()) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -53,8 +97,6 @@ fun InvestmentsScreen(
     var pendingDeleteInvestment by remember { mutableStateOf<Investment?>(null) }
 
     Scaffold(
-        modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add investment")

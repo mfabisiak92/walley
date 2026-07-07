@@ -10,6 +10,7 @@ import com.walley.app.feature.analytics.AnalyticsScreen
 import com.walley.app.feature.budget.BudgetDetailScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
+import com.walley.app.feature.investments.EquityDetailScreen
 import com.walley.app.feature.settings.SettingsScreen
 
 private object WalleyDestinations {
@@ -19,6 +20,7 @@ private object WalleyDestinations {
     const val BUDGET_DETAIL = "budget_detail/{budgetId}"
     const val NET_WORTH_DETAIL = "net_worth_detail"
     const val ANALYTICS = "analytics"
+    const val EQUITY_DETAIL = "equity_detail/{equityId}"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
@@ -28,6 +30,7 @@ private object WalleyDestinations {
         )
         return if (params.isEmpty()) "budget_wizard" else "budget_wizard?" + params.joinToString("&")
     }
+    fun equityDetail(equityId: Long) = "equity_detail/$equityId"
 }
 
 @Composable
@@ -46,7 +49,10 @@ fun WalleyNavHost() {
                     navController.navigate(WalleyDestinations.budgetWizard(resumeBudgetId = budgetId))
                 },
                 onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) },
-                onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) }
+                onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) },
+                onOpenEquity = { equityId ->
+                    navController.navigate(WalleyDestinations.equityDetail(equityId))
+                }
             )
         }
         composable(WalleyDestinations.NET_WORTH_DETAIL) {
@@ -88,6 +94,12 @@ fun WalleyNavHost() {
                     navController.navigate(WalleyDestinations.budgetWizard(budgetId))
                 }
             )
+        }
+        composable(
+            WalleyDestinations.EQUITY_DETAIL,
+            arguments = listOf(navArgument("equityId") { type = NavType.LongType })
+        ) {
+            EquityDetailScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

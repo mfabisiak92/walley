@@ -36,10 +36,20 @@ Accounts can be deleted by swiping a row left and tapping the red trash icon (or
 
 ## Investments
 
+Split into two tabs.
+
+**Portfolio** — your actual holdings:
 - Each investment (name, ticker, quantity, currency, purchase price, current price) can be linked to an Investment-type account.
 - Tracks **cost basis**, **current value**, and **gain/loss** (absolute and %).
 - An account's displayed balance automatically includes the combined current value of everything linked to it, on top of its uninvested cash.
 - Investments can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
+
+**Strategies** — a watchlist for equities you're actively monitoring but may not hold (or hold and are deciding what to do with):
+- Each tracked equity has a name and an optional ticker (stored uppercase).
+- Adding one requires its first **note**: a date (defaults to today, editable via a date picker), one of four statuses — **Sell, Hold, Wait, Buy** (shown as a bold, solid-colored pill for visibility) — and an optional free-text note.
+- The list shows each equity's name, ticker, note count, and its status: just the latest status if it's unchanged since the previous note, or a **transition badge** (e.g. "HOLD → BUY") when the two most recent notes disagree, so a status change is obvious at a glance.
+- Tapping an equity opens its full note history in **reverse-chronological order** (most recent first). A floating action button adds another dated note with a new status; tapping an existing note opens the same dialog pre-filled to edit its date, status, and text.
+- Both equities (with all their notes) and individual notes can be deleted by swiping left and confirming, or via the equity detail screen's delete icon for the equity itself.
 
 ## Assets & Liabilities
 

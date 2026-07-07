@@ -14,9 +14,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         BudgetEntity::class,
         BudgetItemEntity::class,
         LiabilityEntity::class,
-        FinancialSnapshotEntity::class
+        FinancialSnapshotEntity::class,
+        WatchedEquityEntity::class,
+        EquityNoteEntity::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -27,6 +29,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun budgetDao(): BudgetDao
     abstract fun liabilityDao(): LiabilityDao
     abstract fun financialSnapshotDao(): FinancialSnapshotDao
+    abstract fun watchedEquityDao(): WatchedEquityDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -229,5 +232,30 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
                 )
             }
         }
+    }
+}
+
+val MIGRATION_14_15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `watched_equities` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `ticker` TEXT
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `equity_notes` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `equityId` INTEGER NOT NULL,
+                `date` TEXT NOT NULL,
+                `status` TEXT NOT NULL,
+                `note` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 }

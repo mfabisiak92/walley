@@ -50,7 +50,8 @@ fun MainTabsScreen(
     onNavigateToBudgetDetail: (Long) -> Unit,
     onResumeBudgetDraft: (Long) -> Unit,
     onNavigateToNetWorthDetail: () -> Unit,
-    onNavigateToAnalytics: () -> Unit
+    onNavigateToAnalytics: () -> Unit,
+    onOpenEquity: (Long) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -95,7 +96,7 @@ fun MainTabsScreen(
                     onOpenBudget = onNavigateToBudgetDetail,
                     onResumeDraft = onResumeBudgetDraft
                 )
-                3 -> InvestmentsScreen(onNavigateHome = goHome)
+                3 -> InvestmentsScreen(onNavigateHome = goHome, onOpenEquity = onOpenEquity)
                 4 -> AssetsScreen(onNavigateHome = goHome)
             }
         }

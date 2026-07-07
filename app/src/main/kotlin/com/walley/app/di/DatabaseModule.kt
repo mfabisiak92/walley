@@ -21,7 +21,9 @@ import com.walley.app.data.local.MIGRATION_10_11
 import com.walley.app.data.local.MIGRATION_11_12
 import com.walley.app.data.local.MIGRATION_12_13
 import com.walley.app.data.local.MIGRATION_13_14
+import com.walley.app.data.local.MIGRATION_14_15
 import com.walley.app.data.local.WalleyDatabase
+import com.walley.app.data.local.WatchedEquityDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -50,7 +52,8 @@ object DatabaseModule {
                 MIGRATION_10_11,
                 MIGRATION_11_12,
                 MIGRATION_12_13,
-                MIGRATION_13_14
+                MIGRATION_13_14,
+                MIGRATION_14_15
             )
             .build()
 
@@ -71,4 +74,7 @@ object DatabaseModule {
 
     @Provides
     fun provideFinancialSnapshotDao(database: WalleyDatabase): FinancialSnapshotDao = database.financialSnapshotDao()
+
+    @Provides
+    fun provideWatchedEquityDao(database: WalleyDatabase): WatchedEquityDao = database.watchedEquityDao()
 }

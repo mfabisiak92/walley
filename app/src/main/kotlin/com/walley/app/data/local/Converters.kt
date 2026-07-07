@@ -7,6 +7,7 @@ import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.EquityStatus
 import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -65,4 +66,10 @@ class Converters {
 
     @TypeConverter
     fun toBudgetItemIcon(value: String?): BudgetItemIcon? = value?.let { BudgetItemIcon.valueOf(it) }
+
+    @TypeConverter
+    fun fromEquityStatus(status: EquityStatus): String = status.name
+
+    @TypeConverter
+    fun toEquityStatus(value: String): EquityStatus = EquityStatus.valueOf(value)
 }
