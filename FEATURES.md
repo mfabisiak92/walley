@@ -8,10 +8,14 @@ Five bottom tabs, swipeable via a `HorizontalPager`: **Home**, **Accounts**, **B
 
 ## Home
 
-- **Net worth**: total value across all accounts and assets *minus* liabilities, converted to your chosen base currency using live FX rates, shown with the rate date used. Tapping the Net worth tile opens a breakdown screen listing every contributing account/asset/liability with its amount in the base currency (liabilities shown as negative, in red), followed by the amount in its original currency when that differs from the base currency.
-- **Projected net worth**: if the current calendar month has a budget, the same tile also shows what net worth would be at month's end if that budget's still-unpaid items were all completed — current net worth plus remaining Income and Savings/Investments contributions, minus remaining Income-related-expenses, Fixed costs, and Other costs. Blank if there's no budget for the current month.
-- **Currency breakdown**: total balance and total savings broken out per currency.
-- **Pie chart**: share of net worth held in each currency.
+A single scrolling column, top to bottom:
+
+- **Net worth**: total value across all accounts and assets *minus* liabilities, converted to your chosen base currency using live FX rates. Tapping it opens a breakdown screen listing every contributing account/asset/liability with its amount in the base currency (liabilities shown as negative, in red) followed by the amount in its original currency when that differs from the base currency, plus the FX rate date used.
+- **Projected net worth**: shown on the same tile as "Projected · X end of month" if the current calendar month has a budget — current net worth plus remaining Income and Savings/Investments contributions, minus remaining Income-related-expenses, Fixed costs, and Other costs. Absent if there's no budget for the current month.
+- **This month's budget**: a compact card with a spent/planned progress bar, the percentage spent, days left in the month, and the unallocated amount — the same figures as the Budget tab's Summary, without navigating there. The progress bar shifts red → amber → green with % spent, the same color scale used on individual budget item rows. Absent if there's no budget for the current month.
+- **Due soon**: up to 3 unpaid items from this month's budget that have a payment day, soonest first — overdue items are called out in red ("Overdue"), otherwise "Due today"/"Due tomorrow"/"Due in N days", each with its amount. Shows the item's own icon if it has one, or a neutral gray badge if it doesn't, so every row has a badge. Absent if nothing's due.
+- **Total balance / Savings**: a compact two-column stat row (replaces the old full-width cards), each broken down per currency.
+- **By currency**: a slim stacked bar plus a color-keyed legend showing the % of net worth held in each currency (replaces the old pie chart).
 
 ## Accounts
 
@@ -74,15 +78,15 @@ Monthly budgeting with a guided creation flow and payment tracking.
 - **Item icons**: every item can have a small colored icon, picked from a curated set: Salary/Dividends/Interest for Income (matching its category), Saving/Investment (assigned automatically for Savings/Investments items, no picker needed), and 18 general expense icons — Tax, Car, Fuel, Subscription, Groceries, Clothes, Eating out, Entertainment, Transportation, Vacations, Trip, Gift, Insurance, Currency exchange, Electronics, Phone, Bills, Rent — offered for Income-related expenses, Fixed costs, and Other costs. Picked when adding/editing an item (both in the creation wizard and via an existing item's long-press edit dialog). Items created before this feature got an icon backfilled automatically where possible, based on their income category, section, or a keyword match against their name.
 - **Account side effects**: completing a Savings item adds its amount to that account's balance; completing an Investments item adds its amount to the linked account's **uninvested cash**; completing an Income item adds its amount to its linked Checking/Cash account; completing an Income-related-expense or an Other costs item (if linked to an account) subtracts its amount from its linked account. These updates are delta-based, so partial → full transitions (and un-paying) never double-count. Editing a Saving-linked Other costs item's planned amount later is capped the same way — it can't ask for more than what's still left in the account, accounting for however much of it has already been paid out.
 - **Deleting an item**: long-press it, then tap "Delete item" in the edit dialog (even in a created/locked budget, as long as it's still Active); a 5-second "Undo" snackbar follows. Deleting an item does **not** reverse any account balance change it already applied.
-- **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A **Completed** budget can't be deleted.
+- **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A **Completed** budget can't be deleted, and the swipe gesture/trash icon are hidden for it entirely rather than just blocked after the fact.
 - **Status: Active → Completed**: every budget starts Active. From its detail screen, a one-way "Mark as completed" action switches it to Completed (with a confirmation, since it becomes permanently read-only). Once Completed, nothing about the budget can change — items can no longer be paid, partially paid, or deleted, and the budget itself can't be deleted. Completed budgets show a "Completed" label and a muted card color in the Budget list to set them apart from Active ones.
 - **Cloning a budget**: from a budget's detail screen, the clone icon opens the creation wizard pre-filled with that budget's items (defaulting to the following month, paid/completed state reset). Every item can still be edited (tap it) or removed before creating, and a new month must be chosen if the default is already taken.
 
 ## Analytics
 
-Reachable via an icon on Home's top bar, split into two tabs. Charts are a hand-rolled, horizontally-scrollable bar chart component (no charting library dependency, consistent with Home's pie chart); months with a missing exchange rate show as a gap rather than a wrong value.
+Reachable via an icon on Home's top bar, split into two tabs. Charts are hand-rolled (no charting library dependency, consistent with Home's pie chart/currency bar); months with a missing exchange rate show as a gap rather than a wrong value.
 
-**Budget tab** — charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen:
+**Budget tab** — charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen, as horizontally-scrollable grouped bar charts:
 - **Income vs Expenses vs Savings**: grouped bar chart per budget month.
 - **Savings rate**: (Savings + Investments) ÷ disposable income, per month.
 - **Budget adherence**: overall spent vs planned percentage per month (Fixed + Other + Savings + Investments), the same metric shown on each budget's Summary tab.
@@ -92,6 +96,8 @@ Reachable via an icon on Home's top bar, split into two tabs. Charts are a hand-
 - Income, Income-related expenses, disposable income
 - Income broken down by category: Salary, Dividends, Interest, Other
 - **Investment growth**: this month's investment total minus last month's minus this month's Investments-section contributions — i.e. market movement alone, isolated from money you added. The very first snapshot has no prior month to diff against, so growth is blank for it.
+
+A **data horizon** selector at the top of this tab (6M / 1Y / 2Y / 5Y / ∞, defaulting to 1Y) limits every chart on the tab to that many trailing months (∞ shows everything ever recorded). Each of this tab's 4 charts (Account balances, Net worth, Income by source, Investment growth) is drawn as an **area chart by default**; swiping left or right anywhere on a chart toggles it to a **line chart** and back — independently per chart, so different charts can be in different modes at once.
 
 If exchange rates are unavailable at the exact moment a budget is completed, the snapshot is still recorded (budget completion always succeeds); any unconvertible figure falls back to zero rather than blocking the action.
 

@@ -12,15 +12,23 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Asset
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.Liability
+import com.walley.app.feature.budget.BudgetProgress
+import com.walley.app.feature.budget.SPENDING_SECTIONS
+import com.walley.app.feature.budget.budgetProgress
 import com.walley.app.feature.budget.projectedNetWorthDelta
+import com.walley.app.feature.budget.unallocatedAmount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
+import java.time.YearMonth
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -64,6 +72,24 @@ data class NetWorthState(
     val projectedAmount: BigDecimal? = null
 )
 
+/** Snapshot of the current calendar month's budget, for a compact at-a-glance card on Home. */
+data class MonthBudgetSummary(
+    val progress: BudgetProgress?,
+    val unallocated: BigDecimal?,
+    val currency: Currency,
+    val daysLeftInMonth: Int
+)
+
+/** An unpaid item with a payment day, for the "Due soon" list on Home. */
+data class UpcomingBudgetItem(
+    val name: String,
+    val amount: BigDecimal,
+    val currency: Currency,
+    val icon: BudgetItemIcon?,
+    // negative = overdue by that many days, 0 = due today, positive = due in that many days
+    val daysUntilDue: Int
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -89,9 +115,11 @@ class HomeViewModel @Inject constructor(
             exchangeRateRepository.observeRates(base).map { rates -> base to rates }
         }
 
-    private val currentMonthBudgetItems = LocalDate.now().let { today ->
+    private val currentMonthBudget = LocalDate.now().let { today ->
         budgetRepository.observeBudgetForMonth(today.year, today.monthValue)
-    }.map { it?.items ?: emptyList() }
+    }
+
+    private val currentMonthBudgetItems = currentMonthBudget.map { it?.items ?: emptyList() }
 
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
@@ -106,6 +134,50 @@ class HomeViewModel @Inject constructor(
             computeNetWorth(accounts, assets, liabilities, budgetItems, base, rates)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val monthBudgetSummary: StateFlow<MonthBudgetSummary?> = combine(
+        currentMonthBudgetItems,
+        baseCurrencyRates
+    ) { items, (base, rates) ->
+        if (items.isEmpty()) {
+            null
+        } else {
+            MonthBudgetSummary(
+                progress = budgetProgress(items, SPENDING_SECTIONS, base, rates),
+                unallocated = unallocatedAmount(items, base, rates),
+                currency = base,
+                daysLeftInMonth = (YearMonth.now().lengthOfMonth() - LocalDate.now().dayOfMonth).coerceAtLeast(0)
+            )
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val upcomingItems: StateFlow<List<UpcomingBudgetItem>> = currentMonthBudget
+        .map { budget -> upcomingBudgetItems(budget) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun upcomingBudgetItems(budgetWithItems: BudgetWithItems?): List<UpcomingBudgetItem> {
+        val budget = budgetWithItems ?: return emptyList()
+        val today = LocalDate.now()
+        val yearMonth = YearMonth.of(budget.budget.year, budget.budget.month)
+        return budget.items
+            .filter { !it.isCompleted && it.hasPaymentDay }
+            .map { item ->
+                val targetDay = if (item.paymentDayIsLastOfMonth) {
+                    yearMonth.lengthOfMonth()
+                } else {
+                    item.paymentDay!!.coerceAtMost(yearMonth.lengthOfMonth())
+                }
+                val targetDate = yearMonth.atDay(targetDay)
+                UpcomingBudgetItem(
+                    name = item.name,
+                    amount = item.amount,
+                    currency = item.currency,
+                    icon = item.icon,
+                    daysUntilDue = ChronoUnit.DAYS.between(today, targetDate).toInt()
+                )
+            }
+            .sortedBy { it.daysUntilDue }
+    }
 
     private fun computeNetWorth(
         accounts: List<Account>,

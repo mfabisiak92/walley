@@ -51,8 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -62,6 +60,7 @@ import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
 import com.walley.app.core.ui.SwipeToCompleteBox
+import com.walley.app.core.ui.paidProgressColor
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
@@ -146,8 +145,10 @@ fun BudgetDetailScreen(
                     IconButton(onClick = { budgetWithItems?.budget?.id?.let(onCloneBudget) }) {
                         Icon(Icons.Filled.ContentCopy, contentDescription = "Clone to another month")
                     }
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
+                    if (status != BudgetStatus.COMPLETED) {
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
+                        }
                     }
                 }
             )
@@ -570,16 +571,4 @@ private fun BudgetItemRow(
         modifier = cardModifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) { content() }
-}
-
-/** Red at 0% paid, through amber, to green at 100% paid. */
-private fun paidProgressColor(progress: Float): Color {
-    val red = PieChartColors[3]
-    val amber = PieChartColors[1]
-    val green = PieChartColors[5]
-    return when {
-        progress >= 1f -> green
-        progress <= 0.5f -> lerp(red, amber, progress / 0.5f)
-        else -> lerp(amber, green, (progress - 0.5f) / 0.5f)
-    }
 }

@@ -95,14 +95,21 @@ fun BudgetsScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(budgets, key = { it.budgetWithItems.budget.id }) { row ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteBudget = row },
-                        dismissOnDelete = false
-                    ) {
+                    val budgetRow: @Composable () -> Unit = {
                         BudgetRow(
                             row = row,
                             onClick = { onOpenBudget(row.budgetWithItems.budget.id) }
                         )
+                    }
+                    if (row.budgetWithItems.budget.status == BudgetStatus.COMPLETED) {
+                        budgetRow()
+                    } else {
+                        SwipeToDeleteBox(
+                            onDelete = { pendingDeleteBudget = row },
+                            dismissOnDelete = false
+                        ) {
+                            budgetRow()
+                        }
                     }
                 }
             }

@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -208,8 +209,8 @@ private fun AssetRow(asset: Asset, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(asset.name, style = MaterialTheme.typography.titleMedium)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(asset.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         text = asset.purchaseDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
                         style = MaterialTheme.typography.bodySmall,
@@ -218,7 +219,8 @@ private fun AssetRow(asset: Asset, onClick: () -> Unit) {
                 }
                 Text(
                     formatMoney(asset.currentValue, asset.currency),
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
             Row(
@@ -228,16 +230,19 @@ private fun AssetRow(asset: Asset, onClick: () -> Unit) {
                 Text(
                     text = "Purchased for ${formatMoney(asset.purchaseValue, asset.currency)}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
-                GainLossText(asset)
+                GainLossText(asset, modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun GainLossText(asset: Asset) {
+private fun GainLossText(asset: Asset, modifier: Modifier = Modifier) {
     val gain = asset.gain
     val isGain = gain.signum() >= 0
     val color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
@@ -248,7 +253,10 @@ private fun GainLossText(asset: Asset) {
         text = "$sign${formatMoney(gain, asset.currency)}" +
             (percent?.let { " ($sign${it.toPlainString()}%)" } ?: ""),
         style = MaterialTheme.typography.bodySmall,
-        color = color
+        color = color,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
     )
 }
 
@@ -365,8 +373,8 @@ private fun LiabilityRow(liability: Liability, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(liability.name, style = MaterialTheme.typography.titleMedium)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(liability.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         text = "Since ${liability.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}",
                         style = MaterialTheme.typography.bodySmall,
@@ -376,13 +384,16 @@ private fun LiabilityRow(liability: Liability, onClick: () -> Unit) {
                 Text(
                     formatMoney(liability.currentBalance, liability.currency),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.error
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
             Text(
                 text = "Original: ${formatMoney(liability.originalAmount, liability.currency)}",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             val payoffPercent = liability.paidOffPercent
             if (payoffPercent != null) {

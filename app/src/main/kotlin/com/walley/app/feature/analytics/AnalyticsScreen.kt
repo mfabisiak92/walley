@@ -1,8 +1,11 @@
 package com.walley.app.feature.analytics
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -12,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,7 +26,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -31,9 +38,20 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.ChartSeries
 import com.walley.app.core.ui.PieChartColors
+import com.walley.app.core.ui.SwipeableTrendChartCard
 import com.walley.app.core.ui.TrendChartCard
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
+
+private enum class HistoryHorizon(val label: String, val months: Int?) {
+    SIX_MONTHS("6M", 6),
+    ONE_YEAR("1Y", 12),
+    TWO_YEARS("2Y", 24),
+    FIVE_YEARS("5Y", 60),
+    ALL("∞", null)
+}
+
+private fun <T> HistoryHorizon.applyTo(items: List<T>): List<T> = months?.let { items.takeLast(it) } ?: items
 
 private val TABS = listOf("Budget", "History")
 
@@ -163,11 +181,14 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
 private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
     val snapshots by viewModel.snapshotHistory.collectAsStateWithLifecycle()
     val currency by viewModel.snapshotCurrency.collectAsStateWithLifecycle()
+    var horizon by remember { mutableStateOf(HistoryHorizon.ONE_YEAR) }
 
     if (snapshots.isEmpty()) {
         EmptyState("No history yet — mark a budget as completed to record your first snapshot.")
         return
     }
+
+    val visible = remember(snapshots, horizon) { horizon.applyTo(snapshots) }
 
     Column(
         modifier = Modifier
@@ -176,50 +197,70 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        val labels = snapshots.map { it.label }
+        HistoryHorizonSelector(selected = horizon, onSelect = { horizon = it })
+
+        val labels = visible.map { it.label }
         val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), currency) }
 
-        TrendChartCard(
+        SwipeableTrendChartCard(
             title = "Account balances",
             labels = labels,
             series = listOf(
-                ChartSeries("Cash & Checking", PieChartColors[0], snapshots.map { it.cashAndChecking.toFloat() }),
-                ChartSeries("Savings", PieChartColors[1], snapshots.map { it.savings.toFloat() }),
-                ChartSeries("Investments", PieChartColors[2], snapshots.map { it.investments.toFloat() })
+                ChartSeries("Cash & Checking", PieChartColors[0], visible.map { it.cashAndChecking.toFloat() }),
+                ChartSeries("Savings", PieChartColors[1], visible.map { it.savings.toFloat() }),
+                ChartSeries("Investments", PieChartColors[2], visible.map { it.investments.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
 
-        TrendChartCard(
+        SwipeableTrendChartCard(
             title = "Net worth",
             labels = labels,
             series = listOf(
-                ChartSeries("Net worth", PieChartColors[4], snapshots.map { it.netWorth.toFloat() })
+                ChartSeries("Net worth", PieChartColors[4], visible.map { it.netWorth.toFloat() })
             ),
             valueFormatter = moneyFormatter,
             showValueLabels = true
         )
 
-        TrendChartCard(
+        SwipeableTrendChartCard(
             title = "Income by source",
             labels = labels,
             series = listOf(
-                ChartSeries("Salary", PieChartColors[0], snapshots.map { it.salaryIncome.toFloat() }),
-                ChartSeries("Dividends", PieChartColors[1], snapshots.map { it.dividendsIncome.toFloat() }),
-                ChartSeries("Interest", PieChartColors[3], snapshots.map { it.interestIncome.toFloat() }),
-                ChartSeries("Other", PieChartColors[5], snapshots.map { it.otherIncome.toFloat() })
+                ChartSeries("Salary", PieChartColors[0], visible.map { it.salaryIncome.toFloat() }),
+                ChartSeries("Dividends", PieChartColors[1], visible.map { it.dividendsIncome.toFloat() }),
+                ChartSeries("Interest", PieChartColors[3], visible.map { it.interestIncome.toFloat() }),
+                ChartSeries("Other", PieChartColors[5], visible.map { it.otherIncome.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
 
-        TrendChartCard(
+        SwipeableTrendChartCard(
             title = "Investment growth (net of contributions)",
             labels = labels,
             series = listOf(
-                ChartSeries("Growth", PieChartColors[5], snapshots.map { it.investmentGrowth?.toFloat() })
+                ChartSeries("Growth", PieChartColors[5], visible.map { it.investmentGrowth?.toFloat() })
             ),
             valueFormatter = moneyFormatter,
             showValueLabels = true
         )
+    }
+}
+
+@Composable
+private fun HistoryHorizonSelector(selected: HistoryHorizon, onSelect: (HistoryHorizon) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        HistoryHorizon.entries.forEach { horizon ->
+            FilterChip(
+                selected = selected == horizon,
+                onClick = { onSelect(horizon) },
+                label = { Text(horizon.label) }
+            )
+        }
     }
 }

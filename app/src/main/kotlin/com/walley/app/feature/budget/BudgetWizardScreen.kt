@@ -7,13 +7,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
@@ -25,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -82,11 +86,11 @@ fun BudgetWizardScreen(
             )
         },
         bottomBar = {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.End
+                    .navigationBarsPadding()
+                    .padding(16.dp)
             ) {
                 Button(
                     onClick = {
@@ -95,7 +99,8 @@ fun BudgetWizardScreen(
                             else -> viewModel.goNext()
                         }
                     },
-                    enabled = step != WIZARD_STEP_MONTH || viewModel.monthTaken != 1
+                    enabled = step != WIZARD_STEP_MONTH || viewModel.monthTaken != 1,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (step == WIZARD_STEP_SUMMARY) "Create budget" else "Next")
                 }
@@ -233,7 +238,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            LazyColumn(modifier = Modifier.weight(1f, fill = false)) {
+            LazyColumn(modifier = Modifier.weight(1f)) {
                 items(items, key = { it.localId }) { draft ->
                     WizardItemRow(
                         draft = draft,
@@ -243,12 +248,17 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     )
                 }
             }
-            Button(
+            OutlinedButton(
                 onClick = { showAddDialog = true },
                 enabled = (!isAccountLinked || linkedAccounts.isNotEmpty()) &&
                     (!requiresCashAccount || cashAccounts.isNotEmpty()),
-                modifier = Modifier.padding(top = 8.dp)
-            ) { Text("Add item") }
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("Add item", modifier = Modifier.padding(start = 8.dp))
+            }
         }
         if (showFooter) {
             SectionFooter(viewModel, section)
