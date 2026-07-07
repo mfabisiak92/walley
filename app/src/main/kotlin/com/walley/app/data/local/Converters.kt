@@ -3,6 +3,7 @@ package com.walley.app.data.local
 import androidx.room.TypeConverter
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
@@ -58,4 +59,10 @@ class Converters {
 
     @TypeConverter
     fun toIncomeCategory(value: String?): IncomeCategory? = value?.let { IncomeCategory.valueOf(it) }
+
+    @TypeConverter
+    fun fromBudgetItemIcon(icon: BudgetItemIcon?): String? = icon?.name
+
+    @TypeConverter
+    fun toBudgetItemIcon(value: String?): BudgetItemIcon? = value?.let { BudgetItemIcon.valueOf(it) }
 }

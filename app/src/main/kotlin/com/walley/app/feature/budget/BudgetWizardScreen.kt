@@ -36,11 +36,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
@@ -295,7 +297,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     showAddDialog = false
                     editingDraft = null
                 },
-                onConfirm = { name, amount, day, lastOfMonth, accountId, incomeCategory ->
+                onConfirm = { name, amount, day, lastOfMonth, accountId, incomeCategory, icon ->
                     val draft = WizardItemDraft(
                         localId = initial?.localId ?: System.nanoTime(),
                         name = name,
@@ -304,7 +306,8 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                         accountId = accountId,
                         paymentDay = day,
                         paymentDayIsLastOfMonth = lastOfMonth,
-                        incomeCategory = incomeCategory
+                        incomeCategory = incomeCategory,
+                        icon = icon
                     )
                     if (initial != null) {
                         viewModel.updateItem(section, initial.localId, draft)
@@ -326,20 +329,24 @@ private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick:
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
-            Text(draft.name, style = MaterialTheme.typography.bodyLarge)
-            val dayLabel = when {
-                draft.paymentDayIsLastOfMonth -> "Last day of month"
-                draft.paymentDay != null -> "Day ${draft.paymentDay}"
-                else -> null
-            }
-            if (dayLabel != null) {
-                Text(dayLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            BudgetItemIconBadge(icon = draft.icon)
+            Column {
+                Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+                val dayLabel = when {
+                    draft.paymentDayIsLastOfMonth -> "Last day of month"
+                    draft.paymentDay != null -> "Day ${draft.paymentDay}"
+                    else -> null
+                }
+                if (dayLabel != null) {
+                    Text(dayLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
-        Row {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(formatMoney(draft.amount, draft.currency), style = MaterialTheme.typography.bodyLarge)
             IconButton(onClick = onRemove) {
                 Icon(Icons.Filled.Close, contentDescription = "Remove ${draft.name}")

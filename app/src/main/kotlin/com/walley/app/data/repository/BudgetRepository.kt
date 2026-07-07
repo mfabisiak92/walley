@@ -1,6 +1,7 @@
 package com.walley.app.data.repository
 
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetWithItems
 import java.math.BigDecimal
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,11 @@ interface BudgetRepository {
 
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
+
+    /** Edits an item's planned amount; if it drops below the amount already paid, paidAmount is clamped down to match. */
+    suspend fun updateItemAmount(itemId: Long, amount: BigDecimal)
+
+    suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?)
 
     /** @throws BudgetIsCompletedException if the budget's status is [com.walley.app.domain.model.BudgetStatus.COMPLETED]. */
     suspend fun deleteBudget(budgetId: Long)

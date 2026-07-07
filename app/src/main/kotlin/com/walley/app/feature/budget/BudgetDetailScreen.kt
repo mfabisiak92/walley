@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -50,14 +52,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
-import com.walley.app.core.ui.SwipeToDeleteBox
+import com.walley.app.core.ui.SwipeToCompleteBox
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
@@ -83,6 +87,7 @@ fun BudgetDetailScreen(
     val projectedNetWorth by viewModel.projectedNetWorth.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
+    var itemForEditDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -91,6 +96,25 @@ fun BudgetDetailScreen(
     val isEditable = status == BudgetStatus.ACTIVE
     val pagerState = rememberPagerState(pageCount = { BudgetDetailTab.entries.size })
     val tabScope = rememberCoroutineScope()
+
+    fun deleteItemWithUndo(item: BudgetItem) {
+        viewModel.deleteItem(item.id)
+        scope.launch {
+            val dismissJob = launch {
+                delay(5_000)
+                snackbarHostState.currentSnackbarData?.dismiss()
+            }
+            val result = snackbarHostState.showSnackbar(
+                message = "\"${item.name}\" deleted",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Indefinite
+            )
+            dismissJob.cancel()
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.restoreItem(item)
+            }
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -167,21 +191,23 @@ fun BudgetDetailScreen(
                             categoryTargets = categoryTargets,
                             isEditable = isEditable,
                             onItemClick = { itemForPaidDialog = it },
-                            onDeleteItem = { item ->
-                                viewModel.deleteItem(item.id)
+                            onItemLongClick = { itemForEditDialog = it },
+                            onSwipeMarkPaid = { item ->
+                                val previousPaidAmount = item.paidAmount
+                                viewModel.markPaid(item.id)
                                 scope.launch {
                                     val dismissJob = launch {
                                         delay(5_000)
                                         snackbarHostState.currentSnackbarData?.dismiss()
                                     }
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "\"${item.name}\" deleted",
+                                        message = "\"${item.name}\" marked as paid",
                                         actionLabel = "Undo",
                                         duration = SnackbarDuration.Indefinite
                                     )
                                     dismissJob.cancel()
                                     if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.restoreItem(item)
+                                        viewModel.markPartiallyPaid(item.id, previousPaidAmount)
                                     }
                                 }
                             }
@@ -203,6 +229,24 @@ fun BudgetDetailScreen(
             onMarkPartiallyPaid = { amount ->
                 viewModel.markPartiallyPaid(item.id, amount)
                 itemForPaidDialog = null
+            }
+        )
+    }
+
+    itemForEditDialog?.let { item ->
+        EditItemAmountDialog(
+            item = item,
+            onDismiss = { itemForEditDialog = null },
+            onSave = { amount, icon ->
+                viewModel.updateItemAmount(item.id, amount)
+                if (icon != item.icon) {
+                    viewModel.updateItemIcon(item.id, icon)
+                }
+                itemForEditDialog = null
+            },
+            onDelete = {
+                itemForEditDialog = null
+                deleteItemWithUndo(item)
             }
         )
     }
@@ -274,7 +318,8 @@ private fun SectionTabContent(
     categoryTargets: Map<BudgetSectionType, BigDecimal?>,
     isEditable: Boolean,
     onItemClick: (BudgetItem) -> Unit,
-    onDeleteItem: (BudgetItem) -> Unit
+    onItemLongClick: (BudgetItem) -> Unit,
+    onSwipeMarkPaid: (BudgetItem) -> Unit
 ) {
     val items = allItems.filter { it.section in tab.sections }
     val progress = budgetProgress(items, tab.sections, baseCurrency, rates)
@@ -305,11 +350,12 @@ private fun SectionTabContent(
                             BudgetItemRow(
                                 item = budgetItem,
                                 accountName = budgetItem.accountId?.let { id -> accounts.find { it.id == id }?.name },
-                                onClick = if (isEditable) ({ onItemClick(budgetItem) }) else null
+                                onClick = if (isEditable) ({ onItemClick(budgetItem) }) else null,
+                                onLongClick = if (isEditable) ({ onItemLongClick(budgetItem) }) else null
                             )
                         }
-                        if (isEditable) {
-                            SwipeToDeleteBox(onDelete = { onDeleteItem(budgetItem) }) { row() }
+                        if (isEditable && !budgetItem.isCompleted) {
+                            SwipeToCompleteBox(onComplete = { onSwipeMarkPaid(budgetItem) }) { row() }
                         } else {
                             row()
                         }
@@ -447,72 +493,89 @@ private fun ProgressSummaryHeader(progress: BudgetProgress?, currency: Currency,
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BudgetItemRow(item: BudgetItem, accountName: String?, onClick: (() -> Unit)?) {
+private fun BudgetItemRow(
+    item: BudgetItem,
+    accountName: String?,
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?
+) {
+    val progress = if (item.amount.signum() > 0) {
+        item.paidAmount.divide(item.amount, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+
     val content: @Composable () -> Unit = {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                    val subtitleParts = listOfNotNull(
-                        accountName,
-                        when {
-                            item.paymentDayIsLastOfMonth -> "Last day of month"
-                            item.paymentDay != null -> "Day ${item.paymentDay}"
-                            else -> null
-                        }
-                    )
-                    if (subtitleParts.isNotEmpty()) {
-                        Text(
-                            subtitleParts.joinToString(" · "),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    BudgetItemIconBadge(icon = item.icon, size = 28.dp)
+                    Column {
+                        Text(item.name, style = MaterialTheme.typography.bodyMedium)
+                        val subtitleParts = listOfNotNull(
+                            accountName,
+                            when {
+                                item.paymentDayIsLastOfMonth -> "Last day of month"
+                                item.paymentDay != null -> "Day ${item.paymentDay}"
+                                else -> null
+                            }
                         )
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(formatMoney(item.amount, item.currency), style = MaterialTheme.typography.bodyLarge)
-                    if (item.isCompleted) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Filled.CheckCircle,
-                                contentDescription = "Paid",
-                                tint = Color(0xFF2E7D32),
-                                modifier = Modifier.padding(end = 4.dp)
+                        if (subtitleParts.isNotEmpty()) {
+                            Text(
+                                subtitleParts.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Text("Paid", style = MaterialTheme.typography.bodySmall, color = Color(0xFF2E7D32))
                         }
-                    } else if (item.paidAmount.signum() > 0) {
-                        Text(
-                            "Paid ${formatMoney(item.paidAmount, item.currency)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text(
-                            "Unpaid",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     }
                 }
+                Text(
+                    "${formatMoney(item.paidAmount, item.currency)} / ${formatMoney(item.amount, item.currency)}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
             }
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
+                color = paidProgressColor(progress)
+            )
         }
     }
 
-    if (onClick != null) {
-        Card(
-            onClick = onClick,
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) { content() }
+    val cardModifier = if (onClick != null || onLongClick != null) {
+        Modifier
+            .fillMaxWidth()
+            .combinedClickable(onLongClick = onLongClick, onClick = { onClick?.invoke() })
     } else {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) { content() }
+        Modifier.fillMaxWidth()
+    }
+
+    Card(
+        modifier = cardModifier,
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) { content() }
+}
+
+/** Red at 0% paid, through amber, to green at 100% paid. */
+private fun paidProgressColor(progress: Float): Color {
+    val red = PieChartColors[3]
+    val amber = PieChartColors[1]
+    val green = PieChartColors[5]
+    return when {
+        progress >= 1f -> green
+        progress <= 0.5f -> lerp(red, amber, progress / 0.5f)
+        else -> lerp(amber, green, (progress - 0.5f) / 0.5f)
     }
 }

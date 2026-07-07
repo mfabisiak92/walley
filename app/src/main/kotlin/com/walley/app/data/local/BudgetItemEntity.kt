@@ -2,6 +2,7 @@ package com.walley.app.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.IncomeCategory
@@ -18,5 +19,6 @@ data class BudgetItemEntity(
     val paymentDay: Int? = null,
     val paymentDayIsLastOfMonth: Boolean = false,
     val paidAmountMinorUnits: Long = 0,
-    val incomeCategory: IncomeCategory? = null
+    val incomeCategory: IncomeCategory? = null,
+    val icon: BudgetItemIcon? = null
 )

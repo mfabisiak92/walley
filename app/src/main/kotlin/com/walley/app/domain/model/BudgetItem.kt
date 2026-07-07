@@ -20,7 +20,8 @@ data class BudgetItem(
     val paymentDayIsLastOfMonth: Boolean = false,
     val paidAmount: BigDecimal = BigDecimal.ZERO,
     /** Only set for [BudgetSectionType.INCOME] items; used to break income down by source in the monthly snapshot. */
-    val incomeCategory: IncomeCategory? = null
+    val incomeCategory: IncomeCategory? = null,
+    val icon: BudgetItemIcon? = null
 ) {
     val isCompleted: Boolean get() = amount.signum() > 0 && paidAmount >= amount
 

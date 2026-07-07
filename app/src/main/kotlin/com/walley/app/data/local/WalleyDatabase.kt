@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         LiabilityEntity::class,
         FinancialSnapshotEntity::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -184,5 +184,50 @@ val MIGRATION_12_13 = object : Migration(12, 13) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE budget_items ADD COLUMN icon TEXT")
+
+        // Income items: derive from the existing incomeCategory field.
+        db.execSQL("UPDATE budget_items SET icon = 'SALARY' WHERE icon IS NULL AND incomeCategory = 'SALARY'")
+        db.execSQL("UPDATE budget_items SET icon = 'DIVIDENDS' WHERE icon IS NULL AND incomeCategory = 'DIVIDENDS'")
+        db.execSQL("UPDATE budget_items SET icon = 'INTEREST' WHERE icon IS NULL AND incomeCategory = 'INTEREST'")
+
+        // Savings/Investments items: derive from the section itself.
+        db.execSQL("UPDATE budget_items SET icon = 'SAVING' WHERE icon IS NULL AND section = 'SAVINGS'")
+        db.execSQL("UPDATE budget_items SET icon = 'INVESTMENT' WHERE icon IS NULL AND section = 'INVESTMENTS'")
+
+        // Income-related expenses / Fixed costs / Other costs: best-effort whole-word keyword match on the name.
+        val keywordsByIcon = listOf(
+            "RENT" to listOf("rent", "mortgage"),
+            "BILLS" to listOf("bill", "bills", "utility", "utilities"),
+            "PHONE" to listOf("phone", "mobile"),
+            "ELECTRONICS" to listOf("electronics", "electronic", "laptop", "computer"),
+            "CURRENCY_EXCHANGE" to listOf("currency", "exchange"),
+            "INSURANCE" to listOf("insurance"),
+            "GIFT" to listOf("gift", "gifts", "present", "presents"),
+            "TRIP" to listOf("trip", "flight", "travel"),
+            "VACATIONS" to listOf("vacation", "vacations", "holiday", "holidays"),
+            "TRANSPORTATION" to listOf("transport", "transportation", "bus", "train", "metro", "taxi", "uber"),
+            "SUBSCRIPTION" to listOf("subscription", "subscriptions", "netflix", "spotify"),
+            "ENTERTAINMENT" to listOf("entertainment", "movie", "movies", "cinema"),
+            "EATING_OUT" to listOf("restaurant", "restaurants", "dining"),
+            "GROCERIES" to listOf("groceries", "grocery", "supermarket"),
+            "CLOTHES" to listOf("clothes", "clothing", "apparel"),
+            "FUEL" to listOf("fuel", "petrol", "gas"),
+            "CAR" to listOf("car", "vehicle"),
+            "TAX" to listOf("tax", "taxes")
+        )
+        keywordsByIcon.forEach { (icon, keywords) ->
+            keywords.forEach { keyword ->
+                db.execSQL(
+                    "UPDATE budget_items SET icon = ? WHERE icon IS NULL AND (' ' || LOWER(name) || ' ') LIKE ?",
+                    arrayOf(icon, "% $keyword %")
+                )
+            }
+        }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -22,9 +23,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.core.ui.BudgetItemIconPicker
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.EXPENSE_ICONS
+import com.walley.app.domain.model.INCOME_ICONS
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.toIcon
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,7 +48,8 @@ fun AddBudgetItemDialog(
         paymentDay: Int?,
         isLastOfMonth: Boolean,
         accountId: Long?,
-        incomeCategory: IncomeCategory?
+        incomeCategory: IncomeCategory?,
+        icon: BudgetItemIcon?
     ) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
@@ -55,6 +62,8 @@ fun AddBudgetItemDialog(
     var accountMenuExpanded by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf(initial?.incomeCategory ?: IncomeCategory.SALARY) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
+    var icon by remember { mutableStateOf(initial?.icon ?: category.takeIf { showCategoryPicker }?.toIcon()) }
+    val iconOptions = if (showCategoryPicker) INCOME_ICONS else EXPENSE_ICONS
 
     val selectedAccount = accounts.find { it.id == accountId }
     val parsedAmount = amountText.toBigDecimalOrNull()
@@ -127,6 +136,7 @@ fun AddBudgetItemDialog(
                                     text = { Text(option.label) },
                                     onClick = {
                                         category = option
+                                        icon = option.toIcon()
                                         categoryMenuExpanded = false
                                     }
                                 )
@@ -150,6 +160,8 @@ fun AddBudgetItemDialog(
                         isLastOfMonth = lastOfMonth
                     }
                 )
+                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                BudgetItemIconPicker(options = iconOptions, selected = icon, onSelect = { icon = it })
             }
         },
         confirmButton = {
@@ -161,7 +173,8 @@ fun AddBudgetItemDialog(
                         paymentDay,
                         isLastOfMonth,
                         selectedAccount?.id,
-                        if (showCategoryPicker) category else null
+                        if (showCategoryPicker) category else null,
+                        icon
                     )
                 },
                 enabled = isValid

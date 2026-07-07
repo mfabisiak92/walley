@@ -12,6 +12,7 @@ import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
@@ -106,6 +107,16 @@ class BudgetDetailViewModel @Inject constructor(
     fun markPartiallyPaid(itemId: Long, amount: BigDecimal) {
         if (!isEditable) return
         viewModelScope.launch { budgetRepository.markItemPartiallyPaid(itemId, amount) }
+    }
+
+    fun updateItemAmount(itemId: Long, amount: BigDecimal) {
+        if (!isEditable) return
+        viewModelScope.launch { budgetRepository.updateItemAmount(itemId, amount) }
+    }
+
+    fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
+        if (!isEditable) return
+        viewModelScope.launch { budgetRepository.updateItemIcon(itemId, icon) }
     }
 
     fun deleteBudget(onDeleted: () -> Unit) {

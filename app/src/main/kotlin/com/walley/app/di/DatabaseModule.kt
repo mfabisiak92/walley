@@ -20,6 +20,7 @@ import com.walley.app.data.local.MIGRATION_9_10
 import com.walley.app.data.local.MIGRATION_10_11
 import com.walley.app.data.local.MIGRATION_11_12
 import com.walley.app.data.local.MIGRATION_12_13
+import com.walley.app.data.local.MIGRATION_13_14
 import com.walley.app.data.local.WalleyDatabase
 import dagger.Module
 import dagger.Provides
@@ -48,7 +49,8 @@ object DatabaseModule {
                 MIGRATION_9_10,
                 MIGRATION_10_11,
                 MIGRATION_11_12,
-                MIGRATION_12_13
+                MIGRATION_12_13,
+                MIGRATION_13_14
             )
             .build()
 

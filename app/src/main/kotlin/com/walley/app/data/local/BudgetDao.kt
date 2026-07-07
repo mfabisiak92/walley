@@ -3,6 +3,7 @@ package com.walley.app.data.local
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetStatus
 import kotlinx.coroutines.flow.Flow
 
@@ -37,6 +38,12 @@ interface BudgetDao {
 
     @Query("UPDATE budget_items SET paidAmountMinorUnits = :paidAmountMinorUnits WHERE id = :itemId")
     suspend fun updateItemPaidAmount(itemId: Long, paidAmountMinorUnits: Long)
+
+    @Query("UPDATE budget_items SET amountMinorUnits = :amountMinorUnits WHERE id = :itemId")
+    suspend fun updateItemAmount(itemId: Long, amountMinorUnits: Long)
+
+    @Query("UPDATE budget_items SET icon = :icon WHERE id = :itemId")
+    suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?)
 
     @Query("DELETE FROM budgets WHERE id = :budgetId")
     suspend fun deleteBudget(budgetId: Long)

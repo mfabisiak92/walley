@@ -14,6 +14,7 @@ import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
@@ -112,7 +113,8 @@ class BudgetWizardViewModel @Inject constructor(
                         accountId = item.accountId,
                         paymentDay = item.paymentDay,
                         paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
-                        incomeCategory = item.incomeCategory
+                        incomeCategory = item.incomeCategory,
+                        icon = item.icon
                     )
                 }
             }
@@ -200,6 +202,11 @@ class BudgetWizardViewModel @Inject constructor(
         val allItems = mutableListOf<BudgetItem>()
         BudgetSectionType.entries.forEach { section ->
             itemsFor(section).forEach { draft ->
+                val icon = draft.icon ?: when (section) {
+                    BudgetSectionType.SAVINGS -> BudgetItemIcon.SAVING
+                    BudgetSectionType.INVESTMENTS -> BudgetItemIcon.INVESTMENT
+                    else -> null
+                }
                 allItems += BudgetItem(
                     section = section,
                     name = draft.name,
@@ -208,7 +215,8 @@ class BudgetWizardViewModel @Inject constructor(
                     accountId = draft.accountId,
                     paymentDay = draft.paymentDay,
                     paymentDayIsLastOfMonth = draft.paymentDayIsLastOfMonth,
-                    incomeCategory = draft.incomeCategory
+                    incomeCategory = draft.incomeCategory,
+                    icon = icon
                 )
             }
         }

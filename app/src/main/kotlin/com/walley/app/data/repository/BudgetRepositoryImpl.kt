@@ -7,6 +7,7 @@ import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
@@ -78,7 +79,8 @@ class BudgetRepositoryImpl @Inject constructor(
                     paymentDay = item.paymentDay,
                     paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
                     paidAmountMinorUnits = 0,
-                    incomeCategory = item.incomeCategory
+                    incomeCategory = item.incomeCategory,
+                    icon = item.icon
                 )
             }
         )
@@ -98,6 +100,20 @@ class BudgetRepositoryImpl @Inject constructor(
         val delta = clamped - item.paidAmount
         budgetDao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
         applyAccountDelta(item, delta)
+    }
+
+    override suspend fun updateItemAmount(itemId: Long, amount: BigDecimal) {
+        val item = budgetDao.getItem(itemId).toDomain()
+        budgetDao.updateItemAmount(itemId, amount.toMinorUnits())
+        val clampedPaidAmount = item.paidAmount.coerceAtMost(amount)
+        if (clampedPaidAmount != item.paidAmount) {
+            budgetDao.updateItemPaidAmount(itemId, clampedPaidAmount.toMinorUnits())
+            applyAccountDelta(item, clampedPaidAmount - item.paidAmount)
+        }
+    }
+
+    override suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
+        budgetDao.updateItemIcon(itemId, icon)
     }
 
     override suspend fun deleteBudget(budgetId: Long) {
@@ -126,7 +142,8 @@ class BudgetRepositoryImpl @Inject constructor(
                 paymentDay = item.paymentDay,
                 paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
                 paidAmountMinorUnits = item.paidAmount.toMinorUnits(),
-                incomeCategory = item.incomeCategory
+                incomeCategory = item.incomeCategory,
+                icon = item.icon
             )
         )
     }

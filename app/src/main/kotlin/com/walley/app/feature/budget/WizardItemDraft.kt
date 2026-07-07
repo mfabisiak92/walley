@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
@@ -13,5 +14,6 @@ data class WizardItemDraft(
     val accountId: Long? = null,
     val paymentDay: Int? = null,
     val paymentDayIsLastOfMonth: Boolean = false,
-    val incomeCategory: IncomeCategory? = null
+    val incomeCategory: IncomeCategory? = null,
+    val icon: BudgetItemIcon? = null
 )
