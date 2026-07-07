@@ -80,6 +80,7 @@ fun BudgetDetailScreen(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val (baseCurrency, rates) = viewModel.baseCurrencyRates.collectAsStateWithLifecycle().value
     val categoryTargets by viewModel.categoryTargets.collectAsStateWithLifecycle()
+    val projectedNetWorth by viewModel.projectedNetWorth.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -154,7 +155,8 @@ fun BudgetDetailScreen(
                         BudgetDetailTab.SUMMARY -> SummaryTabContent(
                             items = budget.items,
                             baseCurrency = baseCurrency,
-                            rates = rates
+                            rates = rates,
+                            projectedNetWorth = projectedNetWorth
                         )
                         else -> SectionTabContent(
                             allItems = budget.items,
@@ -338,7 +340,12 @@ private fun SectionTabContent(
 }
 
 @Composable
-private fun SummaryTabContent(items: List<BudgetItem>, baseCurrency: Currency, rates: ExchangeRates?) {
+private fun SummaryTabContent(
+    items: List<BudgetItem>,
+    baseCurrency: Currency,
+    rates: ExchangeRates?,
+    projectedNetWorth: BigDecimal?
+) {
     val overallProgress = budgetProgress(items, SPENDING_SECTIONS, baseCurrency, rates)
     val disposable = disposableIncome(items, baseCurrency, rates)
     val unallocated = unallocatedAmount(items, baseCurrency, rates)
@@ -355,6 +362,8 @@ private fun SummaryTabContent(items: List<BudgetItem>, baseCurrency: Currency, r
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ProgressSummaryHeader(progress = overallProgress, currency = baseCurrency)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        SummaryRow("Projected net worth (end of month)", projectedNetWorth, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         SummaryRow("Disposable income", disposable, baseCurrency)
         SummaryRow("Unallocated", unallocated, baseCurrency)

@@ -4,9 +4,11 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
@@ -15,8 +17,10 @@ import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.math.RoundingMode
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +39,8 @@ class BudgetDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
     accountRepository: AccountRepository,
+    assetRepository: AssetRepository,
+    liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -64,6 +70,20 @@ class BudgetDetailViewModel @Inject constructor(
             BudgetSectionType.INVESTMENTS to investments
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /** Current net worth plus this budget's remaining unpaid items, i.e. "if I follow this budget". */
+    val projectedNetWorth: StateFlow<BigDecimal?> = combine(
+        budget,
+        accountRepository.observeAccounts(),
+        assetRepository.observeAssets(),
+        liabilityRepository.observeLiabilities(),
+        baseCurrencyRates
+    ) { budgetWithItems, accounts, assets, liabilities, (base, rates) ->
+        val items = budgetWithItems?.items ?: return@combine null
+        val currentNetWorth = calculateNetWorth(accounts, assets, liabilities, base, rates) ?: return@combine null
+        val delta = projectedNetWorthDelta(items, base, rates) ?: return@combine null
+        (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     init {
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }

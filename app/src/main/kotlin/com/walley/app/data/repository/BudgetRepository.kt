@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 interface BudgetRepository {
     fun observeBudgetsWithItems(): Flow<List<BudgetWithItems>>
     fun observeBudget(budgetId: Long): Flow<BudgetWithItems?>
+    /** The budget for the given calendar month, if one exists. */
+    fun observeBudgetForMonth(year: Int, month: Int): Flow<BudgetWithItems?>
     suspend fun monthHasBudget(year: Int, month: Int): Boolean
 
     /** [items] should carry section/name/amount/currency/accountId/paymentDay; id and budgetId are ignored. */

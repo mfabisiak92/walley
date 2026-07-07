@@ -4,19 +4,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
+import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Asset
+import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.Liability
+import com.walley.app.feature.budget.projectedNetWorthDelta
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -54,7 +58,10 @@ data class NetWorthState(
     // breakdown of net worth by the original currency of each account, converted to base currency
     val breakdown: List<NetWorthByCurrency> = emptyList(),
     // every account and asset that contributes to net worth, for the detail/breakdown screen
-    val elements: List<NetWorthElement> = emptyList()
+    val elements: List<NetWorthElement> = emptyList(),
+    // projected net worth at the end of the current calendar month if this month's budget is followed
+    // through to completion; null when there's no budget for the current month, or amount is null
+    val projectedAmount: BigDecimal? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -63,6 +70,7 @@ class HomeViewModel @Inject constructor(
     accountRepository: AccountRepository,
     assetRepository: AssetRepository,
     liabilityRepository: LiabilityRepository,
+    budgetRepository: BudgetRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -81,16 +89,21 @@ class HomeViewModel @Inject constructor(
             exchangeRateRepository.observeRates(base).map { rates -> base to rates }
         }
 
+    private val currentMonthBudgetItems = LocalDate.now().let { today ->
+        budgetRepository.observeBudgetForMonth(today.year, today.monthValue)
+    }.map { it?.items ?: emptyList() }
+
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
         assetRepository.observeAssets(),
         liabilityRepository.observeLiabilities(),
-        baseCurrencyRates
-    ) { accounts, assets, liabilities, (base, rates) ->
+        baseCurrencyRates,
+        currentMonthBudgetItems
+    ) { accounts, assets, liabilities, (base, rates), budgetItems ->
         if (accounts.isEmpty() && assets.isEmpty() && liabilities.isEmpty()) {
             null
         } else {
-            computeNetWorth(accounts, assets, liabilities, base, rates)
+            computeNetWorth(accounts, assets, liabilities, budgetItems, base, rates)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -98,6 +111,7 @@ class HomeViewModel @Inject constructor(
         accounts: List<Account>,
         assets: List<Asset>,
         liabilities: List<Liability>,
+        currentMonthBudgetItems: List<BudgetItem>,
         base: Currency,
         rates: ExchangeRates?
     ): NetWorthState {
@@ -159,12 +173,20 @@ class HomeViewModel @Inject constructor(
                 NetWorthByCurrency(currency, amount.setScale(2, RoundingMode.HALF_UP), percent)
             }
             .sortedByDescending { it.amountInBaseCurrency }
+        val projectedAmount = if (currentMonthBudgetItems.isEmpty()) {
+            null
+        } else {
+            projectedNetWorthDelta(currentMonthBudgetItems, base, rates)?.let { delta ->
+                (total + delta).setScale(2, RoundingMode.HALF_UP)
+            }
+        }
         return NetWorthState(
             currency = base,
             amount = total.setScale(2, RoundingMode.HALF_UP),
             rateDate = if (usedRates) rates?.date else null,
             breakdown = breakdown,
-            elements = elements.sortedByDescending { it.amountInBaseCurrency }
+            elements = elements.sortedByDescending { it.amountInBaseCurrency },
+            projectedAmount = projectedAmount
         )
     }
 

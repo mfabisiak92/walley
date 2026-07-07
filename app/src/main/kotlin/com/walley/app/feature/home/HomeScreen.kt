@@ -97,6 +97,12 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
+                netWorth.projectedAmount?.let { projected ->
+                    Text(
+                        text = "Projected end of month: ${formatMoney(projected, netWorth.currency)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             } else {
                 Text(
                     text = "Exchange rates unavailable",

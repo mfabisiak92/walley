@@ -44,6 +44,15 @@ class BudgetRepositoryImpl @Inject constructor(
             }
         }
 
+    override fun observeBudgetForMonth(year: Int, month: Int): Flow<BudgetWithItems?> =
+        combine(budgetDao.observeBudgets(), budgetDao.observeAllItems()) { budgets, items ->
+            val budgetEntity = budgets.find { it.year == year && it.month == month } ?: return@combine null
+            BudgetWithItems(
+                budget = budgetEntity.toDomain(),
+                items = items.filter { it.budgetId == budgetEntity.id }.map { it.toDomain() }
+            )
+        }
+
     override fun observeBudget(budgetId: Long): Flow<BudgetWithItems?> =
         combine(
             budgetDao.observeBudgetById(budgetId),

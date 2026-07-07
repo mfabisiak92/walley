@@ -79,3 +79,24 @@ fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: 
     val spending = budgetProgress(items, SPENDING_SECTIONS, targetCurrency, rates) ?: return null
     return disposable - spending.planned
 }
+
+/**
+ * Net change to net worth from this budget's still-unpaid items, in [targetCurrency]; null if a
+ * needed rate is unavailable. Income/Savings/Investments add (they land in an account once paid);
+ * Income-related-expenses/Fixed costs/Other costs subtract (they represent money going out).
+ */
+fun projectedNetWorthDelta(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
+    fun remaining(section: BudgetSectionType): BigDecimal? {
+        val progress = budgetProgress(items, setOf(section), targetCurrency, rates) ?: return null
+        return progress.planned - progress.spent
+    }
+
+    val income = remaining(BudgetSectionType.INCOME) ?: return null
+    val incomeRelatedExpenses = remaining(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: return null
+    val savings = remaining(BudgetSectionType.SAVINGS) ?: return null
+    val investments = remaining(BudgetSectionType.INVESTMENTS) ?: return null
+    val fixedCosts = remaining(BudgetSectionType.FIXED_COSTS) ?: return null
+    val otherCosts = remaining(BudgetSectionType.OTHER_COSTS) ?: return null
+
+    return income - incomeRelatedExpenses + savings + investments - fixedCosts - otherCosts
+}
