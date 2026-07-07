@@ -24,3 +24,15 @@ val BudgetSectionType.isSpendingLimit: Boolean
 /** Savings/investment floors — a target here is a goal you want to reach or exceed. */
 val BudgetSectionType.isSavingsGoal: Boolean
     get() = this == BudgetSectionType.SAVINGS || this == BudgetSectionType.INVESTMENTS
+
+/** Account types a user can link an item in this section to; null if accounts don't apply to this section. */
+fun BudgetSectionType.allowedAccountTypes(): Set<AccountType>? = when (this) {
+    BudgetSectionType.INCOME, BudgetSectionType.INCOME_RELATED_EXPENSES ->
+        setOf(AccountType.CHECKING, AccountType.CASH, AccountType.INVESTMENT)
+    // Deliberately excludes Investment accounts — pulling an expense straight out of an investment
+    // position isn't supported, only Cash/Checking/Saving.
+    BudgetSectionType.OTHER_COSTS -> setOf(AccountType.CHECKING, AccountType.CASH, AccountType.SAVING)
+    BudgetSectionType.SAVINGS -> setOf(AccountType.SAVING)
+    BudgetSectionType.INVESTMENTS -> setOf(AccountType.INVESTMENT)
+    BudgetSectionType.FIXED_COSTS -> null
+}

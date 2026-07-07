@@ -116,6 +116,20 @@ class BudgetRepositoryImpl @Inject constructor(
         budgetDao.updateItemIcon(itemId, icon)
     }
 
+    override suspend fun updateItemAccount(itemId: Long, accountId: Long?) {
+        val item = budgetDao.getItem(itemId).toDomain()
+        if (item.accountId == accountId) return
+        if (item.paidAmount.signum() > 0) {
+            item.accountId?.let { oldAccountId ->
+                applyAccountDeltaForAccount(item.section, oldAccountId, item.paidAmount.negate())
+            }
+            accountId?.let { newAccountId ->
+                applyAccountDeltaForAccount(item.section, newAccountId, item.paidAmount)
+            }
+        }
+        budgetDao.updateItemAccount(itemId, accountId)
+    }
+
     override suspend fun deleteBudget(budgetId: Long) {
         val budget = budgetDao.observeBudgetById(budgetId).first()
         if (budget?.status == BudgetStatus.COMPLETED) {
@@ -184,10 +198,15 @@ class BudgetRepositoryImpl @Inject constructor(
     private suspend fun applyAccountDelta(item: BudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val accountId = item.accountId ?: return
-        when (item.section) {
+        applyAccountDeltaForAccount(item.section, accountId, delta)
+    }
+
+    private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal) {
+        if (delta.signum() == 0) return
+        when (section) {
             BudgetSectionType.SAVINGS, BudgetSectionType.INVESTMENTS, BudgetSectionType.INCOME ->
                 accountRepository.addToBalance(accountId, delta)
-            BudgetSectionType.INCOME_RELATED_EXPENSES ->
+            BudgetSectionType.INCOME_RELATED_EXPENSES, BudgetSectionType.OTHER_COSTS ->
                 accountRepository.addToBalance(accountId, delta.negate())
             else -> Unit
         }

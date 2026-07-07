@@ -119,6 +119,11 @@ class BudgetDetailViewModel @Inject constructor(
         viewModelScope.launch { budgetRepository.updateItemIcon(itemId, icon) }
     }
 
+    fun updateItemAccount(itemId: Long, accountId: Long?) {
+        if (!isEditable) return
+        viewModelScope.launch { budgetRepository.updateItemAccount(itemId, accountId) }
+    }
+
     fun deleteBudget(onDeleted: () -> Unit) {
         viewModelScope.launch {
             try {

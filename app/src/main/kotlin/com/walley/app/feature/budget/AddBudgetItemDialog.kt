@@ -23,8 +23,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.BudgetItemIconPicker
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.EXPENSE_ICONS
@@ -40,6 +42,7 @@ fun AddBudgetItemDialog(
     initial: WizardItemDraft? = null,
     accounts: List<Account> = emptyList(),
     requireAccount: Boolean = false,
+    showAccountPicker: Boolean = requireAccount,
     showCategoryPicker: Boolean = false,
     onDismiss: () -> Unit,
     onConfirm: (
@@ -57,7 +60,10 @@ fun AddBudgetItemDialog(
     var paymentDay by remember { mutableStateOf(initial?.paymentDay) }
     var isLastOfMonth by remember { mutableStateOf(initial?.paymentDayIsLastOfMonth ?: false) }
     var accountId by remember {
-        mutableStateOf(initial?.accountId ?: accounts.find { it.isDefault }?.id ?: accounts.firstOrNull()?.id)
+        mutableStateOf(
+            initial?.accountId
+                ?: (if (requireAccount) accounts.find { it.isDefault }?.id ?: accounts.firstOrNull()?.id else null)
+        )
     }
     var accountMenuExpanded by remember { mutableStateOf(false) }
     var category by remember { mutableStateOf(initial?.incomeCategory ?: IncomeCategory.SALARY) }
@@ -67,8 +73,10 @@ fun AddBudgetItemDialog(
 
     val selectedAccount = accounts.find { it.id == accountId }
     val parsedAmount = amountText.toBigDecimalOrNull()
+    val exceedsSavingsBalance = selectedAccount?.type == AccountType.SAVING &&
+        parsedAmount != null && parsedAmount > selectedAccount.balance
     val isValid = name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0 &&
-        (!requireAccount || selectedAccount != null)
+        (!requireAccount || selectedAccount != null) && !exceedsSavingsBalance
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -84,24 +92,33 @@ fun AddBudgetItemDialog(
                     label = { Text("Name") },
                     singleLine = true
                 )
-                if (requireAccount) {
+                if (showAccountPicker && accounts.isNotEmpty()) {
                     ExposedDropdownMenuBox(
                         expanded = accountMenuExpanded,
                         onExpandedChange = { accountMenuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = selectedAccount?.name ?: "",
+                            value = selectedAccount?.name ?: if (requireAccount) "" else "None",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Account") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
-                            isError = selectedAccount == null,
+                            isError = requireAccount && selectedAccount == null,
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
                             expanded = accountMenuExpanded,
                             onDismissRequest = { accountMenuExpanded = false }
                         ) {
+                            if (!requireAccount) {
+                                DropdownMenuItem(
+                                    text = { Text("None") },
+                                    onClick = {
+                                        accountId = null
+                                        accountMenuExpanded = false
+                                    }
+                                )
+                            }
                             accounts.forEach { account ->
                                 DropdownMenuItem(
                                     text = { Text(account.name) },
@@ -111,6 +128,24 @@ fun AddBudgetItemDialog(
                                     }
                                 )
                             }
+                        }
+                    }
+                    selectedAccount?.let { account ->
+                        Text(
+                            "Currently: ${formatMoney(account.balance, account.currency)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (exceedsSavingsBalance) {
+                                MaterialTheme.colorScheme.error
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        )
+                        if (exceedsSavingsBalance) {
+                            Text(
+                                "Amount exceeds this account's balance",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }

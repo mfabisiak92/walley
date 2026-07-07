@@ -24,6 +24,9 @@ interface BudgetRepository {
 
     suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?)
 
+    /** Reassigns an item's linked account, reversing/reapplying any already-paid amount's balance effect. */
+    suspend fun updateItemAccount(itemId: Long, accountId: Long?)
+
     /** @throws BudgetIsCompletedException if the budget's status is [com.walley.app.domain.model.BudgetStatus.COMPLETED]. */
     suspend fun deleteBudget(budgetId: Long)
 

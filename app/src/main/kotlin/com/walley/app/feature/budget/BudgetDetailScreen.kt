@@ -236,11 +236,15 @@ fun BudgetDetailScreen(
     itemForEditDialog?.let { item ->
         EditItemAmountDialog(
             item = item,
+            accounts = accounts,
             onDismiss = { itemForEditDialog = null },
-            onSave = { amount, icon ->
+            onSave = { amount, icon, accountId ->
                 viewModel.updateItemAmount(item.id, amount)
                 if (icon != item.icon) {
                     viewModel.updateItemIcon(item.id, icon)
+                }
+                if (accountId != item.accountId) {
+                    viewModel.updateItemAccount(item.id, accountId)
                 }
                 itemForEditDialog = null
             },

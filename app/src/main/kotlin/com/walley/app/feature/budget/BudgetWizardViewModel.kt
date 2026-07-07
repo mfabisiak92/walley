@@ -12,12 +12,12 @@ import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
-import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.allowedAccountTypes
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -121,14 +121,9 @@ class BudgetWizardViewModel @Inject constructor(
         }
     }
 
-    fun accountsFor(section: BudgetSectionType): List<Account> = when (section) {
-        BudgetSectionType.SAVINGS -> accounts.value.filter { it.type == AccountType.SAVING }
-        BudgetSectionType.INVESTMENTS -> accounts.value.filter { it.type == AccountType.INVESTMENT }
-        BudgetSectionType.INCOME, BudgetSectionType.INCOME_RELATED_EXPENSES ->
-            accounts.value.filter {
-                it.type == AccountType.CHECKING || it.type == AccountType.CASH || it.type == AccountType.INVESTMENT
-            }
-        else -> emptyList()
+    fun accountsFor(section: BudgetSectionType): List<Account> {
+        val types = section.allowedAccountTypes() ?: return emptyList()
+        return accounts.value.filter { it.type in types }
     }
 
     fun itemsFor(section: BudgetSectionType): List<WizardItemDraft> = itemsBySection[section].orEmpty()

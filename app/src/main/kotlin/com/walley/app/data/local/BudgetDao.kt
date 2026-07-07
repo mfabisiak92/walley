@@ -45,6 +45,9 @@ interface BudgetDao {
     @Query("UPDATE budget_items SET icon = :icon WHERE id = :itemId")
     suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?)
 
+    @Query("UPDATE budget_items SET accountId = :accountId WHERE id = :itemId")
+    suspend fun updateItemAccount(itemId: Long, accountId: Long?)
+
     @Query("DELETE FROM budgets WHERE id = :budgetId")
     suspend fun deleteBudget(budgetId: Long)
 

@@ -210,9 +210,10 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
     val isAccountLinked = section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS
     val requiresCashAccount = section == BudgetSectionType.INCOME ||
         section == BudgetSectionType.INCOME_RELATED_EXPENSES
+    val allowsOptionalAccount = section == BudgetSectionType.OTHER_COSTS
     val showFooter = section != BudgetSectionType.INCOME && section != BudgetSectionType.INCOME_RELATED_EXPENSES
     val linkedAccounts = if (isAccountLinked) viewModel.accountsFor(section) else emptyList()
-    val cashAccounts = if (requiresCashAccount) viewModel.accountsFor(section) else emptyList()
+    val cashAccounts = if (requiresCashAccount || allowsOptionalAccount) viewModel.accountsFor(section) else emptyList()
 
     Column(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -292,6 +293,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                 initial = initial,
                 accounts = cashAccounts,
                 requireAccount = requiresCashAccount,
+                showAccountPicker = requiresCashAccount || allowsOptionalAccount,
                 showCategoryPicker = section == BudgetSectionType.INCOME,
                 onDismiss = {
                     showAddDialog = false
