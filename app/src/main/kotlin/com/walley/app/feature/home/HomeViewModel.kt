@@ -200,13 +200,14 @@ class HomeViewModel @Inject constructor(
         }
 
         for (account in accounts) {
-            val amountInBase = convertToBase(account.balance, account.currency)
+            // Net worth reflects investment gains after tax, not their pre-tax market value.
+            val amountInBase = convertToBase(account.netWorthValue, account.currency)
                 ?: return NetWorthState(currency = base, amount = null, rateDate = null)
             byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
             elements += NetWorthElement(
                 name = account.name,
                 currency = account.currency,
-                originalAmount = account.balance,
+                originalAmount = account.netWorthValue,
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
             )
         }

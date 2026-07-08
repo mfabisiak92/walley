@@ -265,6 +265,11 @@ class BudgetRepositoryImpl @Inject constructor(
             .filter { it.type == type }
             .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.balance, account.currency, base, rates) }
 
+        // Net worth counts investment gains after tax, not their pre-tax market value.
+        fun accountsNetWorthTotal(type: AccountType) = accounts
+            .filter { it.type == type }
+            .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.netWorthValue, account.currency, base, rates) }
+
         val cashAndChecking = accountsTotal(AccountType.CHECKING) + accountsTotal(AccountType.CASH)
         val savings = accountsTotal(AccountType.SAVING)
         val investments = accountsTotal(AccountType.INVESTMENT)
@@ -272,7 +277,7 @@ class BudgetRepositoryImpl @Inject constructor(
         val liabilitiesTotal = liabilities.fold(BigDecimal.ZERO) { acc, liability ->
             acc + convert(liability.currentBalance, liability.currency, base, rates)
         }
-        val netWorth = cashAndChecking + savings + investments + assetsTotal - liabilitiesTotal
+        val netWorth = cashAndChecking + savings + accountsNetWorthTotal(AccountType.INVESTMENT) + assetsTotal - liabilitiesTotal
 
         fun sectionTotal(section: BudgetSectionType) = items
             .filter { it.section == section }

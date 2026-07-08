@@ -18,7 +18,7 @@ fun calculateNetWorth(
 ): BigDecimal? {
     var total = BigDecimal.ZERO
     for (account in accounts) {
-        total += convertToCurrency(account.balance, account.currency, targetCurrency, rates) ?: return null
+        total += convertToCurrency(account.netWorthValue, account.currency, targetCurrency, rates) ?: return null
     }
     for (asset in assets) {
         total += convertToCurrency(asset.currentValue, asset.currency, targetCurrency, rates) ?: return null

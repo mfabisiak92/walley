@@ -29,9 +29,9 @@ data class Account(
     val targetReached: Boolean
         get() = targetAmount != null && targetAmount.signum() > 0 && balance >= targetAmount
 
-    /** Current value minus cost basis of linked investments; only meaningful for [AccountType.INVESTMENT]. */
+    /** Current value minus cost basis of linked investments; zero for anything but [AccountType.INVESTMENT]. */
     val investmentGainLoss: BigDecimal
-        get() = (balance - uninvestedCash) - investmentCostBasis
+        get() = if (type == AccountType.INVESTMENT) (balance - uninvestedCash) - investmentCostBasis else BigDecimal.ZERO
 
     /** Tax owed on the gain, if there is a gain and [taxRate] isn't [AccountTaxRate.TAX_FREE]; null otherwise. */
     val investmentTaxAmount: BigDecimal?
@@ -41,4 +41,8 @@ data class Account(
     /** Gain after tax; null whenever [investmentTaxAmount] is null. */
     val investmentNetProfit: BigDecimal?
         get() = investmentTaxAmount?.let { investmentGainLoss - it }
+
+    /** [balance] minus tax owed on unrealized investment gains — what this account actually contributes to net worth. */
+    val netWorthValue: BigDecimal
+        get() = balance - (investmentTaxAmount ?: BigDecimal.ZERO)
 }
