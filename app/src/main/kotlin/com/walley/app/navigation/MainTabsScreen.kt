@@ -1,5 +1,6 @@
 package com.walley.app.navigation
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -84,6 +85,7 @@ fun MainTabsScreen(
             state = pagerState,
             modifier = Modifier
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
                 .fillMaxSize()
         ) { page ->
             when (page) {
