@@ -40,7 +40,12 @@ import kotlinx.coroutines.flow.stateIn
 
 data class HomeBalances(
     val total: List<CurrencyTotal> = emptyList(),
-    val savings: List<CurrencyTotal> = emptyList()
+    val savings: List<CurrencyTotal> = emptyList(),
+    val investments: List<CurrencyTotal> = emptyList(),
+    /** Same as [investments], but with tax owed on any unrealized gain subtracted per account. */
+    val investmentsAfterTax: List<CurrencyTotal> = emptyList(),
+    /** Current value minus cost basis, summed per currency — used to color the Investments tile. */
+    val investmentsGainLoss: List<CurrencyTotal> = emptyList()
 )
 
 data class NetWorthByCurrency(
@@ -103,9 +108,13 @@ class HomeViewModel @Inject constructor(
 
     val homeBalances: StateFlow<HomeBalances> = accountRepository.observeAccounts()
         .map { accounts ->
+            val investmentAccounts = accounts.filter { it.type == AccountType.INVESTMENT }
             HomeBalances(
                 total = currencyTotals(accounts),
-                savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING })
+                savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING }),
+                investments = currencyTotals(investmentAccounts),
+                investmentsAfterTax = currencyTotals(investmentAccounts) { it.netWorthValue },
+                investmentsGainLoss = currencyTotals(investmentAccounts) { it.investmentGainLoss }
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeBalances())
@@ -263,9 +272,12 @@ class HomeViewModel @Inject constructor(
         )
     }
 
-    private fun currencyTotals(accounts: List<Account>): List<CurrencyTotal> =
+    private fun currencyTotals(
+        accounts: List<Account>,
+        amount: (Account) -> BigDecimal = { it.balance }
+    ): List<CurrencyTotal> =
         Currency.entries.mapNotNull { currency ->
-            val total = accounts.filter { it.currency == currency }.sumOf { it.balance }
+            val total = accounts.filter { it.currency == currency }.sumOf(amount)
             if (total.signum() == 0) null else CurrencyTotal(currency, total)
         }
 }

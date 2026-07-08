@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -256,24 +258,55 @@ private fun UpcomingItemIconBadge(icon: BudgetItemIcon?, size: androidx.compose.
     }
 }
 
+private val GainColor = Color(0xFF2E7D32)
+private val NeutralProfitColor = Color(0xFF1565C0)
+
 @Composable
 private fun BalanceStatsRow(balances: HomeBalances) {
-    if (balances.total.isEmpty() && balances.savings.isEmpty()) return
+    if (balances.total.isEmpty() && balances.savings.isEmpty() && balances.investments.isEmpty()) return
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        StatCard(title = "Total balance", currencyTotals = balances.total, modifier = Modifier.weight(1f))
-        StatCard(title = "Savings", currencyTotals = balances.savings, modifier = Modifier.weight(1f))
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (balances.total.isNotEmpty() || balances.savings.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                StatCard(
+                    title = "Total balance",
+                    currencyTotals = balances.total,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                StatCard(
+                    title = "Savings",
+                    currencyTotals = balances.savings,
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        if (balances.investments.isNotEmpty()) {
+            InvestmentsStatCard(
+                grossTotals = balances.investments,
+                netTotals = balances.investmentsAfterTax,
+                gainLossTotals = balances.investmentsGainLoss
+            )
+        }
     }
 }
 
 @Composable
-private fun StatCard(title: String, currencyTotals: List<CurrencyTotal>, modifier: Modifier = Modifier) {
+private fun StatCard(
+    title: String,
+    currencyTotals: List<CurrencyTotal>,
+    containerColor: Color,
+    modifier: Modifier = Modifier
+) {
     Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        modifier = modifier.fillMaxHeight(),
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -285,6 +318,47 @@ private fun StatCard(title: String, currencyTotals: List<CurrencyTotal>, modifie
             } else {
                 currencyTotals.forEach { currencyTotal ->
                     Text(formatMoney(currencyTotal.total, currencyTotal.currency), style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Full-width tile: one row per currency, gross value on the left and the after-tax value on the
+ * right — kept as a single wide row (rather than squeezed into a third equal-width column like
+ * Total balance/Savings) so neither number has to wrap. Both values are tinted by that currency's
+ * overall investment gain/loss: green for a gain, red for a loss, blue when it's exactly zero.
+ */
+@Composable
+private fun InvestmentsStatCard(
+    grossTotals: List<CurrencyTotal>,
+    netTotals: List<CurrencyTotal>,
+    gainLossTotals: List<CurrencyTotal>
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text("Investments", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            grossTotals.forEach { gross ->
+                val net = netTotals.find { it.currency == gross.currency }?.total ?: gross.total
+                val gainLoss = gainLossTotals.find { it.currency == gross.currency }?.total ?: BigDecimal.ZERO
+                val color = when {
+                    gainLoss.signum() > 0 -> GainColor
+                    gainLoss.signum() < 0 -> MaterialTheme.colorScheme.error
+                    else -> NeutralProfitColor
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(formatMoney(gross.total, gross.currency), style = MaterialTheme.typography.titleMedium, color = color)
+                    Text(formatMoney(net, gross.currency), style = MaterialTheme.typography.titleMedium, color = color)
                 }
             }
         }
