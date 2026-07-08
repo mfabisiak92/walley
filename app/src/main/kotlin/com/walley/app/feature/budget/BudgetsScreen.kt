@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,12 +26,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,14 +45,68 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
+import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetStatus
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.format.DateTimeFormatter
+import kotlinx.coroutines.launch
+
+private val TABS = listOf("Monthly", "Ad-hoc")
 
 @Composable
 fun BudgetsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
+    onCreateBudget: () -> Unit,
+    onOpenBudget: (Long) -> Unit,
+    onResumeDraft: (Long) -> Unit,
+    onCreateAdHocBudget: () -> Unit,
+    onOpenAdHocBudget: (Long) -> Unit
+) {
+    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        modifier = modifier,
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            TabRow(selectedTabIndex = pagerState.currentPage) {
+                TABS.forEachIndexed { index, label ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = { Text(label) }
+                    )
+                }
+            }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (page) {
+                    0 -> MonthlyBudgetsPage(
+                        onCreateBudget = onCreateBudget,
+                        onOpenBudget = onOpenBudget,
+                        onResumeDraft = onResumeDraft
+                    )
+                    else -> AdHocBudgetsPage(
+                        onCreateBudget = onCreateAdHocBudget,
+                        onOpenBudget = onOpenAdHocBudget
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MonthlyBudgetsPage(
     onCreateBudget: () -> Unit,
     onOpenBudget: (Long) -> Unit,
     onResumeDraft: (Long) -> Unit,
@@ -58,8 +117,6 @@ fun BudgetsScreen(
     var pendingDeleteBudget by remember { mutableStateOf<BudgetRowData?>(null) }
 
     Scaffold(
-        modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateBudget) {
                 Icon(Icons.Default.Add, contentDescription = "Create budget")
@@ -257,6 +314,139 @@ private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AdHocBudgetsPage(
+    onCreateBudget: () -> Unit,
+    onOpenBudget: (Long) -> Unit,
+    viewModel: AdHocBudgetsViewModel = hiltViewModel()
+) {
+    val budgets by viewModel.budgets.collectAsStateWithLifecycle()
+    var pendingDeleteBudget by remember { mutableStateOf<AdHocBudgetWithItems?>(null) }
+
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = onCreateBudget) {
+                Icon(Icons.Default.Add, contentDescription = "Create ad-hoc budget")
+            }
+        }
+    ) { innerPadding ->
+        if (budgets.isEmpty()) {
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Calculate,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "No ad-hoc budgets yet — tap + to create one.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(budgets, key = { it.budget.id }) { row ->
+                    SwipeToDeleteBox(
+                        onDelete = { pendingDeleteBudget = row },
+                        dismissOnDelete = false
+                    ) {
+                        AdHocBudgetRow(row = row, onClick = { onOpenBudget(row.budget.id) })
+                    }
+                }
+            }
+        }
+    }
+
+    pendingDeleteBudget?.let { row ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteBudget = null },
+            title = { Text("Delete budget?") },
+            text = {
+                Text("This will permanently delete \"${row.budget.name}\" and all its items. This cannot be undone.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteBudget(row.budget.id)
+                        pendingDeleteBudget = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteBudget = null }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun AdHocBudgetRow(row: AdHocBudgetWithItems, onClick: () -> Unit) {
+    val planned = row.totalPlanned
+    val paid = row.totalPaid
+    val percent = if (planned.signum() == 0) {
+        BigDecimal.ZERO
+    } else {
+        (paid.divide(planned, 6, RoundingMode.HALF_UP) * BigDecimal(100)).coerceIn(BigDecimal.ZERO, BigDecimal(100))
+    }
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(row.budget.name, style = MaterialTheme.typography.titleMedium)
+            Text(
+                "${row.budget.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)} – " +
+                    row.budget.endDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    "${formatMoney(paid, row.budget.currency)} / ${formatMoney(planned, row.budget.currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "${percent.setScale(0, RoundingMode.HALF_UP)}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            LinearProgressIndicator(
+                progress = {
+                    percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(3.dp))
+            )
         }
     }
 }

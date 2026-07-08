@@ -17,9 +17,11 @@ import java.time.LocalDate
         LiabilityEntity::class,
         FinancialSnapshotEntity::class,
         WatchedEquityEntity::class,
-        EquityNoteEntity::class
+        EquityNoteEntity::class,
+        AdHocBudgetEntity::class,
+        AdHocBudgetItemEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -31,6 +33,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun liabilityDao(): LiabilityDao
     abstract fun financialSnapshotDao(): FinancialSnapshotDao
     abstract fun watchedEquityDao(): WatchedEquityDao
+    abstract fun adHocBudgetDao(): AdHocBudgetDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -273,5 +276,34 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
         // The real historical purchase date isn't knowable for existing investments, so default
         // to the day this migration runs; users can correct it afterward.
         db.execSQL("ALTER TABLE investments ADD COLUMN purchaseDate TEXT NOT NULL DEFAULT '${LocalDate.now()}'")
+    }
+}
+
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `adhoc_budgets` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `startDate` TEXT NOT NULL,
+                `endDate` TEXT NOT NULL,
+                `accountId` INTEGER NOT NULL,
+                `currency` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `adhoc_budget_items` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `budgetId` INTEGER NOT NULL,
+                `name` TEXT NOT NULL,
+                `amountMinorUnits` INTEGER NOT NULL,
+                `paidAmountMinorUnits` INTEGER NOT NULL DEFAULT 0,
+                `icon` TEXT
+            )
+            """.trimIndent()
+        )
     }
 }

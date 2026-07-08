@@ -3,6 +3,7 @@ package com.walley.app.di
 import android.content.Context
 import androidx.room.Room
 import com.walley.app.data.local.AccountDao
+import com.walley.app.data.local.AdHocBudgetDao
 import com.walley.app.data.local.AssetDao
 import com.walley.app.data.local.BudgetDao
 import com.walley.app.data.local.FinancialSnapshotDao
@@ -24,6 +25,7 @@ import com.walley.app.data.local.MIGRATION_13_14
 import com.walley.app.data.local.MIGRATION_14_15
 import com.walley.app.data.local.MIGRATION_15_16
 import com.walley.app.data.local.MIGRATION_16_17
+import com.walley.app.data.local.MIGRATION_17_18
 import com.walley.app.data.local.WalleyDatabase
 import com.walley.app.data.local.WatchedEquityDao
 import dagger.Module
@@ -57,7 +59,8 @@ object DatabaseModule {
                 MIGRATION_13_14,
                 MIGRATION_14_15,
                 MIGRATION_15_16,
-                MIGRATION_16_17
+                MIGRATION_16_17,
+                MIGRATION_17_18
             )
             .build()
 
@@ -81,4 +84,7 @@ object DatabaseModule {
 
     @Provides
     fun provideWatchedEquityDao(database: WalleyDatabase): WatchedEquityDao = database.watchedEquityDao()
+
+    @Provides
+    fun provideAdHocBudgetDao(database: WalleyDatabase): AdHocBudgetDao = database.adHocBudgetDao()
 }

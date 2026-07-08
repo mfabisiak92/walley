@@ -56,7 +56,7 @@ Split into two tabs.
 - Each tracked equity has a name and an optional ticker (stored uppercase).
 - Adding one requires its first **note**: a date (defaults to today, editable via a date picker), one of four statuses — **Sell, Hold, Wait, Buy** (shown as a bold, solid-colored pill for visibility) — and an optional free-text note.
 - Each row leads with a small colored icon badge for the latest status (trending-up for Buy, trending-down for Sell, pause for Hold, clock for Wait — the same icon-badge treatment used for budget item/account icons elsewhere), followed by the equity's name, ticker, note count, and status as plain text: just the latest status if it's unchanged since the previous note, or "PREVIOUS → LATEST" (e.g. "Hold → Buy") when the two most recent notes disagree, so a status change is obvious at a glance without two competing solid-color pills.
-- Tapping an equity opens its full note history in **reverse-chronological order** (most recent first). A floating action button adds another dated note with a new status; tapping an existing note opens the same dialog pre-filled to edit its date, status, and text.
+- Tapping an equity opens its full note history in **reverse-chronological order** (most recent first). Each note leads with the same status icon badge used on the equity list, and its own status as colored text next to the date — no solid pill badges anywhere in Strategies. A floating action button adds another dated note with a new status; tapping an existing note opens the same dialog pre-filled to edit its date, status, and text.
 - Both equities (with all their notes) and individual notes can be deleted by swiping left and confirming, or via the equity detail screen's delete icon for the equity itself.
 
 ## Assets & Liabilities
@@ -76,6 +76,10 @@ One bottom tab, split into two sub-tabs so each keeps its own simple list/add/ed
 Both support swiping a row left and tapping the red trash icon (or the edit dialog) to delete, after confirming in a dialog.
 
 ## Budget
+
+Split into two tabs: **Monthly** and **Ad-hoc**.
+
+### Monthly
 
 Monthly budgeting with a guided creation flow and payment tracking.
 
@@ -102,6 +106,17 @@ Monthly budgeting with a guided creation flow and payment tracking.
 - **Deleting a whole budget**: swipe a budget row left and tap the red trash icon (or use the trash icon on its detail screen), then confirm. A **Completed** budget can't be deleted, and the swipe gesture/trash icon are hidden for it entirely rather than just blocked after the fact.
 - **Status: Draft → Active → Completed**: a budget starts as a Draft while being built in the wizard, becomes Active once you tap "Create budget", and can then be marked Completed. From its detail screen, a one-way "Mark as completed" action switches an Active budget to Completed (with a confirmation, since it becomes permanently read-only). Once Completed, nothing about the budget can change — items can no longer be paid, partially paid, or deleted, and the budget itself can't be deleted. Completed (and Draft) budgets show a muted card color and status label in the Budget list to set them apart from Active ones.
 - **Cloning a budget**: from a budget's detail screen, the clone icon opens the creation wizard pre-filled with that budget's items (defaulting to the following month, paid/completed state reset). Every item can still be edited (tap it) or removed before creating, and a new month must be chosen if the default is already taken.
+
+### Ad-hoc
+
+A one-off, date-ranged budget (e.g. "Kitchen renovation") for expenses that don't fit a calendar month — drawn from a single Saving account rather than tracked against monthly income/disposable income. Much simpler than Monthly: no Draft/Active/Completed lifecycle or autosave — a 3-step wizard creates it in one sitting, then you pay off its items over time until you delete it.
+
+- **Creation wizard**, in order:
+  1. **Details** — name, start date, end date (date pickers), and which **Saving account** the money is drawn from. The account is fixed for the whole budget, unlike Monthly items which each pick their own account.
+  2. **Expenses** — add items the same way Fixed/Other costs items are added in Monthly (name, amount, icon, with the same icon auto-suggestion while typing), except there's no per-item account picker (it's fixed from step 1) and no payment day (it doesn't map cleanly onto an arbitrary date range).
+  3. **Summary** — the full item list, the total, and how much the linked account currently holds. If the total exceeds the account's balance, "Create budget" is blocked until you either shrink the total or add money to the account, mirroring the same overdraw rule Monthly's Savings-linked items already follow.
+- **Paying items**: same interactions as Monthly's Fixed/Other costs tab — tap an item to mark it fully or partially paid, swipe it right to mark fully paid immediately (5-second "Undo" snackbar), or long-press it to edit its planned amount, change its icon, or delete it. Paying an item withdraws its amount from the linked account's balance; editing or un-paying reverses the delta so nothing double-counts.
+- **Deleting**: swipe a budget row left (or use the trash icon on its detail screen) to delete the whole budget and all its items, after confirming — there's no Completed/locked state, so this is always available. Deleting a single item (via its long-press edit dialog) doesn't reverse any account balance change it already applied, same as Monthly.
 
 ## Analytics
 

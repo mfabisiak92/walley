@@ -36,7 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.walley.app.core.ui.EquityStatusBadge
+import com.walley.app.core.ui.EquityStatusColors
+import com.walley.app.core.ui.EquityStatusIconBadge
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.EquityNote
 import java.time.format.DateTimeFormatter
@@ -185,26 +186,39 @@ private fun NoteRow(note: EquityNote, onClick: () -> Unit) {
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            EquityStatusIconBadge(status = note.status)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    note.date.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    modifier = Modifier.weight(1f)
-                )
-                EquityStatusBadge(status = note.status, modifier = Modifier.padding(start = 8.dp))
-            }
-            if (note.note.isNotBlank()) {
-                Text(note.note, style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        note.date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        note.status.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = EquityStatusColors.getValue(note.status),
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                if (note.note.isNotBlank()) {
+                    Text(note.note, style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
