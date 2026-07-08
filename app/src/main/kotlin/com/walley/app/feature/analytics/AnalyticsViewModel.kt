@@ -2,8 +2,11 @@ package com.walley.app.feature.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.core.ui.InvestmentCategoryColors
+import com.walley.app.core.ui.PieSlice
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.BudgetSectionType
@@ -12,9 +15,11 @@ import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
+import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
+import com.walley.app.feature.budget.convertToCurrency
 import com.walley.app.feature.budget.disposableIncome
 import com.walley.app.feature.budget.sectionTotal
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -59,6 +64,7 @@ data class SnapshotPoint(
 class AnalyticsViewModel @Inject constructor(
     budgetRepository: BudgetRepository,
     snapshotRepository: SnapshotRepository,
+    investmentRepository: InvestmentRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -88,6 +94,35 @@ class AnalyticsViewModel @Inject constructor(
     val snapshotHistory: StateFlow<List<SnapshotPoint>> = snapshotRepository.observeSnapshots()
         .map { snapshots -> snapshots.map(::toSnapshotPoint) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Current value of every investment, grouped by category and converted to base currency. */
+    val investmentCategoryBreakdown: StateFlow<List<PieSlice>> = combine(
+        investmentRepository.observeInvestments(),
+        baseCurrencyRates
+    ) { investments, (base, rates) ->
+        val totalsByCategory = InvestmentCategory.entries.associateWith { category ->
+            investments
+                .filter { it.category == category }
+                .fold(BigDecimal.ZERO) { acc, investment ->
+                    acc + (convertToCurrency(investment.currentValue, investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+        }
+        val total = totalsByCategory.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
+        if (total.signum() <= 0) {
+            emptyList()
+        } else {
+            totalsByCategory
+                .filter { (_, value) -> value.signum() > 0 }
+                .map { (category, value) ->
+                    PieSlice(
+                        label = category.label,
+                        percent = (value.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)).toFloat(),
+                        color = InvestmentCategoryColors.getValue(category)
+                    )
+                }
+                .sortedByDescending { it.percent }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private fun toHistoryPoint(budgetWithItems: BudgetWithItems, base: Currency, rates: ExchangeRates?): BudgetHistoryPoint {
         val items = budgetWithItems.items

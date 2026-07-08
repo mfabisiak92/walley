@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.ChartSeries
+import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.SwipeableTrendChartCard
 import com.walley.app.core.ui.TrendChartCard
@@ -53,7 +54,7 @@ private enum class HistoryHorizon(val label: String, val months: Int?) {
 
 private fun <T> HistoryHorizon.applyTo(items: List<T>): List<T> = months?.let { items.takeLast(it) } ?: items
 
-private val TABS = listOf("Budget", "History")
+private val TABS = listOf("Budget", "History", "Investments")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -96,7 +97,8 @@ fun AnalyticsScreen(
             ) { page ->
                 when (page) {
                     0 -> BudgetHistoryPage(viewModel)
-                    else -> SnapshotHistoryPage(viewModel)
+                    1 -> SnapshotHistoryPage(viewModel)
+                    else -> InvestmentsBreakdownPage(viewModel)
                 }
             }
         }
@@ -244,6 +246,26 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             valueFormatter = moneyFormatter,
             showValueLabels = true
         )
+    }
+}
+
+@Composable
+private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
+    val breakdown by viewModel.investmentCategoryBreakdown.collectAsStateWithLifecycle()
+
+    if (breakdown.isEmpty()) {
+        EmptyState("No investments yet — add one from the Investments tab to see a breakdown.")
+        return
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        PieChartCard(title = "Investments by category", slices = breakdown)
     }
 }
 

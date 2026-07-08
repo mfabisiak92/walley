@@ -105,7 +105,7 @@ Monthly budgeting with a guided creation flow and payment tracking.
 
 ## Analytics
 
-Reachable via an icon on Home's top bar, split into two tabs. Charts are hand-rolled (no charting library dependency, consistent with Home's pie chart/currency bar); months with a missing exchange rate show as a gap rather than a wrong value.
+Reachable via an icon on Home's top bar, split into three tabs. Charts are hand-rolled (no charting library dependency, consistent with Home's pie chart/currency bar); months with a missing exchange rate show as a gap rather than a wrong value.
 
 **Budget tab** — charts every past budget (oldest → newest), converted into your Settings base currency using the same helpers as the budget detail screen, as horizontally-scrollable grouped bar charts:
 - **Income vs Expenses vs Savings**: grouped bar chart per budget month.
@@ -121,6 +121,8 @@ Reachable via an icon on Home's top bar, split into two tabs. Charts are hand-ro
 A **data horizon** selector at the top of this tab (6M / 1Y / 2Y / 5Y / ∞, defaulting to 1Y) limits every chart on the tab to that many trailing months (∞ shows everything ever recorded). Each of this tab's 4 charts (Account balances, Net worth, Income by source, Investment growth) is drawn as an **area chart by default**; swiping left or right anywhere on a chart toggles it to a **line chart** and back — independently per chart, so different charts can be in different modes at once.
 
 If exchange rates are unavailable at the exact moment a budget is completed, the snapshot is still recorded (budget completion always succeeds); any unconvertible figure falls back to zero rather than blocking the action.
+
+**Investments tab** — a single pie chart breaking down the current value of every investment in Portfolio by its **category** (Stock, ETF, Precious metal, Energy metal, Crypto), converted to your Settings base currency, using the same slice colors as the category chips shown in Portfolio. Absent if you have no investments yet.
 
 ## Settings
 
