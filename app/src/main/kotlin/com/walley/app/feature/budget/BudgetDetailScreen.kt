@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,7 +39,6 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 fun BudgetDetailScreen(
     onNavigateBack: () -> Unit,
     onCloneBudget: (Long) -> Unit,
+    onOpenSettings: (Long) -> Unit,
     viewModel: BudgetDetailViewModel = hiltViewModel()
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
@@ -143,6 +144,9 @@ fun BudgetDetailScreen(
                             Icon(Icons.Filled.CheckCircle, contentDescription = "Mark as completed")
                         }
                     }
+                    IconButton(onClick = { budgetWithItems?.budget?.id?.let(onOpenSettings) }) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Budget settings")
+                    }
                     IconButton(onClick = { budgetWithItems?.budget?.id?.let(onCloneBudget) }) {
                         Icon(Icons.Filled.ContentCopy, contentDescription = "Clone to another month")
                     }
@@ -182,10 +186,7 @@ fun BudgetDetailScreen(
                             items = budget.items,
                             baseCurrency = baseCurrency,
                             rates = rates,
-                            projectedNetWorth = projectedNetWorth,
-                            applyAccountEffects = budget.budget.applyAccountEffects,
-                            isEditable = isEditable,
-                            onToggleApplyAccountEffects = viewModel::updateApplyAccountEffects
+                            projectedNetWorth = projectedNetWorth
                         )
                         else -> SectionTabContent(
                             allItems = budget.items,
@@ -399,10 +400,7 @@ private fun SummaryTabContent(
     items: List<BudgetItem>,
     baseCurrency: Currency,
     rates: ExchangeRates?,
-    projectedNetWorth: BigDecimal?,
-    applyAccountEffects: Boolean,
-    isEditable: Boolean,
-    onToggleApplyAccountEffects: (Boolean) -> Unit
+    projectedNetWorth: BigDecimal?
 ) {
     val overallProgress = budgetProgress(items, SPENDING_SECTIONS, baseCurrency, rates)
     val disposable = disposableIncome(items, baseCurrency, rates)
@@ -420,22 +418,6 @@ private fun SummaryTabContent(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         ProgressSummaryHeader(progress = overallProgress, currency = baseCurrency)
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Draw from linked accounts", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "When off, paying items here won't move money in any account.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(checked = applyAccountEffects, onCheckedChange = onToggleApplyAccountEffects, enabled = isEditable)
-        }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         SummaryRow("Projected net worth (end of month)", projectedNetWorth, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))

@@ -46,3 +46,19 @@ val BudgetSectionType.requiresAccount: Boolean
 val BudgetSectionType.isAccountWithdrawal: Boolean
     get() = this == BudgetSectionType.INCOME_RELATED_EXPENSES || this == BudgetSectionType.FIXED_COSTS ||
         this == BudgetSectionType.OTHER_COSTS
+
+/** Groups sections for the "draw from linked accounts" toggle, which is set independently per group. */
+enum class AccountEffectsGroup(val label: String) {
+    INCOME("Income & income-related expenses"),
+    COSTS("Fixed & other costs"),
+    SAVINGS("Savings"),
+    INVESTMENTS("Investments")
+}
+
+val BudgetSectionType.accountEffectsGroup: AccountEffectsGroup
+    get() = when (this) {
+        BudgetSectionType.INCOME, BudgetSectionType.INCOME_RELATED_EXPENSES -> AccountEffectsGroup.INCOME
+        BudgetSectionType.FIXED_COSTS, BudgetSectionType.OTHER_COSTS -> AccountEffectsGroup.COSTS
+        BudgetSectionType.SAVINGS -> AccountEffectsGroup.SAVINGS
+        BudgetSectionType.INVESTMENTS -> AccountEffectsGroup.INVESTMENTS
+    }

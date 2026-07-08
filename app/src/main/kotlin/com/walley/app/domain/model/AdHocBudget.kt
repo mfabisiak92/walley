@@ -11,9 +11,7 @@ data class AdHocBudget(
     val endDate: LocalDate,
     /** The Saving account every item's cost is withdrawn from. */
     val accountId: Long,
-    val currency: Currency,
-    /** Whether paying/editing/un-paying an item in this budget moves money in the linked account. */
-    val applyAccountEffects: Boolean = true
+    val currency: Currency
 )
 
 data class AdHocBudgetItem(

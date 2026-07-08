@@ -17,8 +17,7 @@ interface AdHocBudgetRepository {
         startDate: LocalDate,
         endDate: LocalDate,
         accountId: Long,
-        items: List<AdHocBudgetItem>,
-        applyAccountEffects: Boolean
+        items: List<AdHocBudgetItem>
     ): Long
 
     suspend fun markItemPaid(itemId: Long)
@@ -36,10 +35,4 @@ interface AdHocBudgetRepository {
     suspend fun restoreBudgetItem(item: AdHocBudgetItem)
 
     suspend fun deleteAdHocBudget(budgetId: Long)
-
-    /**
-     * Toggles whether paying/editing/un-paying an item in this budget moves money in its linked
-     * account. Only affects future actions — balance changes already applied are left as-is.
-     */
-    suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean)
 }

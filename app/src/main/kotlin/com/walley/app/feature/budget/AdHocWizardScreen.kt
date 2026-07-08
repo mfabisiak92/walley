@@ -34,7 +34,6 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -232,25 +231,6 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-        HorizontalDivider()
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Draw from linked account", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "When off, paying items in this budget won't move money in the linked account.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = viewModel.applyAccountEffects,
-                onCheckedChange = { viewModel.applyAccountEffects = it }
-            )
         }
     }
 

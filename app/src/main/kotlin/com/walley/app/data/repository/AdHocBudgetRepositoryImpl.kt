@@ -40,8 +40,7 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         startDate: LocalDate,
         endDate: LocalDate,
         accountId: Long,
-        items: List<AdHocBudgetItem>,
-        applyAccountEffects: Boolean
+        items: List<AdHocBudgetItem>
     ): Long {
         val account = accountRepository.observeAccounts().first().first { it.id == accountId }
         val budgetId = dao.insertBudget(
@@ -50,8 +49,7 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
                 startDate = startDate,
                 endDate = endDate,
                 accountId = accountId,
-                currency = account.currency,
-                applyAccountEffects = applyAccountEffects
+                currency = account.currency
             )
         )
         dao.insertItems(
@@ -118,15 +116,10 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         dao.deleteBudget(budgetId)
     }
 
-    override suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean) {
-        dao.updateApplyAccountEffects(budgetId, enabled)
-    }
-
-    /** Paying an ad-hoc item always withdraws from its single linked account, unless the budget has account effects turned off. */
+    /** Paying an ad-hoc item always withdraws from its single linked account. */
     private suspend fun applyAccountDelta(item: AdHocBudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val budget = dao.observeBudgetById(item.budgetId).first() ?: return
-        if (!budget.applyAccountEffects) return
         accountRepository.addToBalance(budget.accountId, delta.negate())
     }
 }

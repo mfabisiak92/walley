@@ -5,7 +5,16 @@ import com.walley.app.domain.model.BudgetItem
 import java.math.BigDecimal
 
 fun BudgetEntity.toDomain(): Budget =
-    Budget(id = id, year = year, month = month, status = status, applyAccountEffects = applyAccountEffects)
+    Budget(
+        id = id,
+        year = year,
+        month = month,
+        status = status,
+        applyIncomeAccountEffects = applyIncomeAccountEffects,
+        applyCostsAccountEffects = applyCostsAccountEffects,
+        applySavingsAccountEffects = applySavingsAccountEffects,
+        applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+    )
 
 fun BudgetItemEntity.toDomain(): BudgetItem = BudgetItem(
     id = id,

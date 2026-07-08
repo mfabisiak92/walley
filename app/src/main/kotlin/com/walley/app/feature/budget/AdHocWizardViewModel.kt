@@ -43,7 +43,6 @@ class AdHocWizardViewModel @Inject constructor(
     var endDate by mutableStateOf(LocalDate.now().plusDays(7))
     var accountId by mutableStateOf<Long?>(null)
         private set
-    var applyAccountEffects by mutableStateOf(true)
 
     private val itemDrafts = mutableStateListOf<AdHocItemDraft>()
     val items: List<AdHocItemDraft> get() = itemDrafts
@@ -94,8 +93,7 @@ class AdHocWizardViewModel @Inject constructor(
             startDate = startDate,
             endDate = endDate,
             accountId = account,
-            items = itemDrafts.map { draft -> AdHocBudgetItem(name = draft.name, amount = draft.amount, icon = draft.icon) },
-            applyAccountEffects = applyAccountEffects
+            items = itemDrafts.map { draft -> AdHocBudgetItem(name = draft.name, amount = draft.amount, icon = draft.icon) }
         )
     }
 }

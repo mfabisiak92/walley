@@ -32,7 +32,6 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,6 +51,7 @@ import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
+import com.walley.app.domain.model.AccountEffectsGroup
 import com.walley.app.domain.model.Budget
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
@@ -149,6 +149,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -218,24 +219,33 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
             )
         }
         HorizontalDivider()
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Draw from linked accounts", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "When off, paying items in this budget won't move money in any account.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = viewModel.applyAccountEffects,
-                onCheckedChange = { viewModel.applyAccountEffects = it }
-            )
-        }
+        Text("Draw from linked accounts", style = MaterialTheme.typography.bodyLarge)
+        Text(
+            "When off for a category, paying its items won't move money in any account. " +
+                "This can be changed later from the budget's settings.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        AccountEffectsToggleRow(
+            label = AccountEffectsGroup.INCOME.label,
+            checked = viewModel.applyIncomeAccountEffects,
+            onCheckedChange = { viewModel.applyIncomeAccountEffects = it }
+        )
+        AccountEffectsToggleRow(
+            label = AccountEffectsGroup.COSTS.label,
+            checked = viewModel.applyCostsAccountEffects,
+            onCheckedChange = { viewModel.applyCostsAccountEffects = it }
+        )
+        AccountEffectsToggleRow(
+            label = AccountEffectsGroup.SAVINGS.label,
+            checked = viewModel.applySavingsAccountEffects,
+            onCheckedChange = { viewModel.applySavingsAccountEffects = it }
+        )
+        AccountEffectsToggleRow(
+            label = AccountEffectsGroup.INVESTMENTS.label,
+            checked = viewModel.applyInvestmentsAccountEffects,
+            onCheckedChange = { viewModel.applyInvestmentsAccountEffects = it }
+        )
     }
 }
 

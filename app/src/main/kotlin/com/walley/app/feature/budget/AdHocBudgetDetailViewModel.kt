@@ -65,8 +65,4 @@ class AdHocBudgetDetailViewModel @Inject constructor(
             onDeleted()
         }
     }
-
-    fun updateApplyAccountEffects(enabled: Boolean) {
-        viewModelScope.launch { repository.updateApplyAccountEffects(budgetId, enabled) }
-    }
 }

@@ -10,5 +10,8 @@ data class BudgetEntity(
     val year: Int,
     val month: Int,
     val status: BudgetStatus = BudgetStatus.ACTIVE,
-    val applyAccountEffects: Boolean = true
+    val applyIncomeAccountEffects: Boolean = true,
+    val applyCostsAccountEffects: Boolean = true,
+    val applySavingsAccountEffects: Boolean = true,
+    val applyInvestmentsAccountEffects: Boolean = true
 )

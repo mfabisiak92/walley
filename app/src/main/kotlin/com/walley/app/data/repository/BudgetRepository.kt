@@ -25,7 +25,10 @@ interface BudgetRepository {
         year: Int,
         month: Int,
         items: List<BudgetItem>,
-        applyAccountEffects: Boolean
+        applyIncomeAccountEffects: Boolean,
+        applyCostsAccountEffects: Boolean,
+        applySavingsAccountEffects: Boolean,
+        applyInvestmentsAccountEffects: Boolean
     ): Long
 
     /** Finalizes a budget as Active (Draft -&gt; Active if [budgetId] is given, otherwise a brand-new Active budget). */
@@ -34,7 +37,10 @@ interface BudgetRepository {
         year: Int,
         month: Int,
         items: List<BudgetItem>,
-        applyAccountEffects: Boolean
+        applyIncomeAccountEffects: Boolean,
+        applyCostsAccountEffects: Boolean,
+        applySavingsAccountEffects: Boolean,
+        applyInvestmentsAccountEffects: Boolean
     ): Long
 
     suspend fun markItemPaid(itemId: Long)
@@ -61,10 +67,13 @@ interface BudgetRepository {
     suspend fun markBudgetCompleted(budgetId: Long)
 
     /**
-     * Toggles whether paying/editing/un-paying an item in this budget moves money in its linked
-     * account. Only affects future actions — balance changes already applied are left as-is.
+     * Toggles, per section group, whether paying/editing/un-paying an item moves money in its
+     * linked account. Only affects future actions — balance changes already applied are left as-is.
      */
-    suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean)
+    suspend fun updateApplyIncomeAccountEffects(budgetId: Long, enabled: Boolean)
+    suspend fun updateApplyCostsAccountEffects(budgetId: Long, enabled: Boolean)
+    suspend fun updateApplySavingsAccountEffects(budgetId: Long, enabled: Boolean)
+    suspend fun updateApplyInvestmentsAccountEffects(budgetId: Long, enabled: Boolean)
 
     /** Auto-marks items whose payment day has passed as paid, for Active budgets only; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()

@@ -10,6 +10,7 @@ import com.walley.app.feature.analytics.AnalyticsScreen
 import com.walley.app.feature.budget.AdHocBudgetDetailScreen
 import com.walley.app.feature.budget.AdHocWizardScreen
 import com.walley.app.feature.budget.BudgetDetailScreen
+import com.walley.app.feature.budget.BudgetSettingsScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.investments.EquityDetailScreen
@@ -27,8 +28,10 @@ private object WalleyDestinations {
     const val AD_HOC_WIZARD = "ad_hoc_wizard"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
     const val UPDATE_PRICES = "update_prices"
+    const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
+    fun budgetSettings(budgetId: Long) = "budget_settings/$budgetId"
     fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
         val params = listOfNotNull(
             cloneFromBudgetId?.let { "cloneFrom=$it" },
@@ -104,8 +107,17 @@ fun WalleyNavHost() {
                 onNavigateBack = { navController.popBackStack() },
                 onCloneBudget = { budgetId ->
                     navController.navigate(WalleyDestinations.budgetWizard(budgetId))
+                },
+                onOpenSettings = { budgetId ->
+                    navController.navigate(WalleyDestinations.budgetSettings(budgetId))
                 }
             )
+        }
+        composable(
+            WalleyDestinations.BUDGET_SETTINGS,
+            arguments = listOf(navArgument("budgetId") { type = NavType.LongType })
+        ) {
+            BudgetSettingsScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(
             WalleyDestinations.EQUITY_DETAIL,

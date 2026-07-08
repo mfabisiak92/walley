@@ -15,6 +15,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.accountEffectsGroup
 import com.walley.app.domain.model.isAccountWithdrawal
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -74,16 +75,28 @@ class BudgetRepositoryImpl @Inject constructor(
         year: Int,
         month: Int,
         items: List<BudgetItem>,
-        applyAccountEffects: Boolean
-    ): Long = upsertBudget(budgetId, year, month, items, BudgetStatus.DRAFT, applyAccountEffects)
+        applyIncomeAccountEffects: Boolean,
+        applyCostsAccountEffects: Boolean,
+        applySavingsAccountEffects: Boolean,
+        applyInvestmentsAccountEffects: Boolean
+    ): Long = upsertBudget(
+        budgetId, year, month, items, BudgetStatus.DRAFT,
+        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+    )
 
     override suspend fun submitBudget(
         budgetId: Long?,
         year: Int,
         month: Int,
         items: List<BudgetItem>,
-        applyAccountEffects: Boolean
-    ): Long = upsertBudget(budgetId, year, month, items, BudgetStatus.ACTIVE, applyAccountEffects)
+        applyIncomeAccountEffects: Boolean,
+        applyCostsAccountEffects: Boolean,
+        applySavingsAccountEffects: Boolean,
+        applyInvestmentsAccountEffects: Boolean
+    ): Long = upsertBudget(
+        budgetId, year, month, items, BudgetStatus.ACTIVE,
+        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+    )
 
     private suspend fun upsertBudget(
         budgetId: Long?,
@@ -91,15 +104,29 @@ class BudgetRepositoryImpl @Inject constructor(
         month: Int,
         items: List<BudgetItem>,
         status: BudgetStatus,
-        applyAccountEffects: Boolean
+        applyIncomeAccountEffects: Boolean,
+        applyCostsAccountEffects: Boolean,
+        applySavingsAccountEffects: Boolean,
+        applyInvestmentsAccountEffects: Boolean
     ): Long {
         val id = if (budgetId != null) {
             budgetDao.updateYearMonthAndStatus(budgetId, year, month, status)
-            budgetDao.updateApplyAccountEffects(budgetId, applyAccountEffects)
+            budgetDao.updateApplyIncomeAccountEffects(budgetId, applyIncomeAccountEffects)
+            budgetDao.updateApplyCostsAccountEffects(budgetId, applyCostsAccountEffects)
+            budgetDao.updateApplySavingsAccountEffects(budgetId, applySavingsAccountEffects)
+            budgetDao.updateApplyInvestmentsAccountEffects(budgetId, applyInvestmentsAccountEffects)
             budgetId
         } else {
             budgetDao.insertBudget(
-                BudgetEntity(year = year, month = month, status = status, applyAccountEffects = applyAccountEffects)
+                BudgetEntity(
+                    year = year,
+                    month = month,
+                    status = status,
+                    applyIncomeAccountEffects = applyIncomeAccountEffects,
+                    applyCostsAccountEffects = applyCostsAccountEffects,
+                    applySavingsAccountEffects = applySavingsAccountEffects,
+                    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+                )
             )
         }
         budgetDao.replaceItems(
@@ -155,7 +182,7 @@ class BudgetRepositoryImpl @Inject constructor(
     override suspend fun updateItemAccount(itemId: Long, accountId: Long?) {
         val item = budgetDao.getItem(itemId).toDomain()
         if (item.accountId == accountId) return
-        if (item.paidAmount.signum() > 0 && accountEffectsEnabledFor(item.budgetId)) {
+        if (item.paidAmount.signum() > 0 && accountEffectsEnabledFor(item.budgetId, item.section)) {
             item.accountId?.let { oldAccountId ->
                 applyAccountDeltaForAccount(item.section, oldAccountId, item.paidAmount.negate())
             }
@@ -211,8 +238,20 @@ class BudgetRepositoryImpl @Inject constructor(
         captureSnapshot(budgetId)
     }
 
-    override suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean) {
-        budgetDao.updateApplyAccountEffects(budgetId, enabled)
+    override suspend fun updateApplyIncomeAccountEffects(budgetId: Long, enabled: Boolean) {
+        budgetDao.updateApplyIncomeAccountEffects(budgetId, enabled)
+    }
+
+    override suspend fun updateApplyCostsAccountEffects(budgetId: Long, enabled: Boolean) {
+        budgetDao.updateApplyCostsAccountEffects(budgetId, enabled)
+    }
+
+    override suspend fun updateApplySavingsAccountEffects(budgetId: Long, enabled: Boolean) {
+        budgetDao.updateApplySavingsAccountEffects(budgetId, enabled)
+    }
+
+    override suspend fun updateApplyInvestmentsAccountEffects(budgetId: Long, enabled: Boolean) {
+        budgetDao.updateApplyInvestmentsAccountEffects(budgetId, enabled)
     }
 
     override suspend fun checkAndAutoCompleteDueItems() {
@@ -247,12 +286,12 @@ class BudgetRepositoryImpl @Inject constructor(
     private suspend fun applyAccountDelta(item: BudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val accountId = item.accountId ?: return
-        if (!accountEffectsEnabledFor(item.budgetId)) return
+        if (!accountEffectsEnabledFor(item.budgetId, item.section)) return
         applyAccountDeltaForAccount(item.section, accountId, delta)
     }
 
-    private suspend fun accountEffectsEnabledFor(budgetId: Long): Boolean =
-        budgetDao.observeBudgetById(budgetId).first()?.applyAccountEffects ?: true
+    private suspend fun accountEffectsEnabledFor(budgetId: Long, section: BudgetSectionType): Boolean =
+        budgetDao.observeBudgetById(budgetId).first()?.toDomain()?.accountEffectsEnabled(section.accountEffectsGroup) ?: true
 
     private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal) {
         if (delta.signum() == 0) return

@@ -21,7 +21,7 @@ import java.time.LocalDate
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class
     ],
-    version = 19,
+    version = 21,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -313,5 +313,63 @@ val MIGRATION_18_19 = object : Migration(18, 19) {
         // Both default to enabled — the existing behavior (paying an item always moves money).
         db.execSQL("ALTER TABLE budgets ADD COLUMN applyAccountEffects INTEGER NOT NULL DEFAULT 1")
         db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN applyAccountEffects INTEGER NOT NULL DEFAULT 1")
+    }
+}
+
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Splits the single "draw from linked accounts" toggle into one per section group
+        // (Income & income-related expenses / Fixed & other costs / Savings / Investments) —
+        // ad-hoc budgets don't have these sections, so they keep their single toggle unchanged.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `budgets_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `year` INTEGER NOT NULL,
+                `month` INTEGER NOT NULL,
+                `status` TEXT NOT NULL DEFAULT 'ACTIVE',
+                `applyIncomeAccountEffects` INTEGER NOT NULL DEFAULT 1,
+                `applyCostsAccountEffects` INTEGER NOT NULL DEFAULT 1,
+                `applySavingsAccountEffects` INTEGER NOT NULL DEFAULT 1,
+                `applyInvestmentsAccountEffects` INTEGER NOT NULL DEFAULT 1
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO budgets_new (id, year, month, status, applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects)
+            SELECT id, year, month, status, applyAccountEffects, applyAccountEffects, applyAccountEffects, applyAccountEffects FROM budgets
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE budgets")
+        db.execSQL("ALTER TABLE budgets_new RENAME TO budgets")
+    }
+}
+
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Ad-hoc budgets always draw from their linked account now — the toggle didn't make
+        // sense here (unlike Monthly, there's only one account and no per-section split), so
+        // it's removed rather than replaced.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `adhoc_budgets_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `startDate` TEXT NOT NULL,
+                `endDate` TEXT NOT NULL,
+                `accountId` INTEGER NOT NULL,
+                `currency` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO adhoc_budgets_new (id, name, startDate, endDate, accountId, currency)
+            SELECT id, name, startDate, endDate, accountId, currency FROM adhoc_budgets
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE adhoc_budgets")
+        db.execSQL("ALTER TABLE adhoc_budgets_new RENAME TO adhoc_budgets")
     }
 }

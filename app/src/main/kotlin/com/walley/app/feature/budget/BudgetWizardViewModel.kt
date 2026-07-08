@@ -70,7 +70,10 @@ class BudgetWizardViewModel @Inject constructor(
         private set
     var monthTaken by mutableIntStateOf(0)
         private set
-    var applyAccountEffects by mutableStateOf(true)
+    var applyIncomeAccountEffects by mutableStateOf(true)
+    var applyCostsAccountEffects by mutableStateOf(true)
+    var applySavingsAccountEffects by mutableStateOf(true)
+    var applyInvestmentsAccountEffects by mutableStateOf(true)
 
     private val itemsBySection = mutableStateMapOf<BudgetSectionType, List<WizardItemDraft>>().apply {
         BudgetSectionType.entries.forEach { put(it, emptyList()) }
@@ -110,7 +113,10 @@ class BudgetWizardViewModel @Inject constructor(
                 val nextMonth = source.budget.yearMonth.plusMonths(1)
                 year = nextMonth.year
                 month = nextMonth.monthValue
-                applyAccountEffects = source.budget.applyAccountEffects
+                applyIncomeAccountEffects = source.budget.applyIncomeAccountEffects
+                applyCostsAccountEffects = source.budget.applyCostsAccountEffects
+                applySavingsAccountEffects = source.budget.applySavingsAccountEffects
+                applyInvestmentsAccountEffects = source.budget.applyInvestmentsAccountEffects
                 loadDraftItems(source.items)
             }
         }
@@ -119,7 +125,10 @@ class BudgetWizardViewModel @Inject constructor(
                 val source = budgetRepository.observeBudget(budgetId).first() ?: return@launch
                 year = source.budget.year
                 month = source.budget.month
-                applyAccountEffects = source.budget.applyAccountEffects
+                applyIncomeAccountEffects = source.budget.applyIncomeAccountEffects
+                applyCostsAccountEffects = source.budget.applyCostsAccountEffects
+                applySavingsAccountEffects = source.budget.applySavingsAccountEffects
+                applyInvestmentsAccountEffects = source.budget.applyInvestmentsAccountEffects
                 loadDraftItems(source.items)
                 // Month is already settled for a resumed draft — land straight on the first section.
                 currentStep = 1
@@ -229,7 +238,10 @@ class BudgetWizardViewModel @Inject constructor(
     private fun autosaveDraft() {
         if (currentStep <= WIZARD_STEP_MONTH) return
         viewModelScope.launch {
-            draftBudgetId = budgetRepository.saveDraft(draftBudgetId, year, month, collectItems(), applyAccountEffects)
+            draftBudgetId = budgetRepository.saveDraft(
+                draftBudgetId, year, month, collectItems(),
+                applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+            )
         }
     }
 
@@ -260,7 +272,10 @@ class BudgetWizardViewModel @Inject constructor(
 
     /** Finalizes the wizard's budget as Active — a one-way transition out of Draft. */
     suspend fun createBudget(): Long {
-        val id = budgetRepository.submitBudget(draftBudgetId, year, month, collectItems(), applyAccountEffects)
+        val id = budgetRepository.submitBudget(
+            draftBudgetId, year, month, collectItems(),
+            applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+        )
         draftBudgetId = id
         return id
     }
