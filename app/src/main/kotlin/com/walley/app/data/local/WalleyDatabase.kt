@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import java.time.LocalDate
 
 @Database(
     entities = [
@@ -18,7 +19,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         WatchedEquityEntity::class,
         EquityNoteEntity::class
     ],
-    version = 15,
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -257,5 +258,20 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Existing investments default to Stock; users can re-categorize them individually.
+        db.execSQL("ALTER TABLE investments ADD COLUMN category TEXT NOT NULL DEFAULT 'STOCK'")
+    }
+}
+
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // The real historical purchase date isn't knowable for existing investments, so default
+        // to the day this migration runs; users can correct it afterward.
+        db.execSQL("ALTER TABLE investments ADD COLUMN purchaseDate TEXT NOT NULL DEFAULT '${LocalDate.now()}'")
     }
 }

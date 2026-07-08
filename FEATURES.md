@@ -43,10 +43,13 @@ Accounts can be deleted by swiping a row left and tapping the red trash icon (or
 Split into two tabs.
 
 **Portfolio** — your actual holdings:
-- Each investment (name, ticker, quantity, currency, purchase price, current price) can be linked to an Investment-type account.
+- Each investment (name, ticker, mandatory **category**, **purchase date**, quantity, currency, purchase price, current price) can be linked to an Investment-type account.
+- **Category** is one of **Stock, ETF, Precious metal, Energy metal, Crypto** — always required, picked from a dropdown when adding or editing, shown as a small colored chip next to the investment's name in the list. Existing investments from before this field existed were backfilled as Stock and can be re-categorized individually.
+- **Purchase date** defaults to today when adding one, picked via a date picker (same as Assets/Liabilities), shown as its own line (DD-MM-YYYY) between the ticker/account line and the quantity/price line, and editable afterward via long-press. Existing investments from before this field existed were backfilled to the date the app was updated, since the real historical date isn't recoverable.
 - Tracks **cost basis**, **current value**, and **gain/loss** (absolute and %).
 - An account's displayed balance automatically includes the combined current value of everything linked to it, on top of its uninvested cash.
-- Investments can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog.
+- **Tapping** an investment opens a lightweight dialog to update just its **current price** (marking it to market) — the fast path for the thing you do most often. **Long-pressing** it opens the full edit dialog for everything else (name, ticker, category, quantity, purchase price, account), plus deleting it.
+- Investments can be deleted by swiping a row left and tapping the red trash icon (or via the long-press edit dialog), after confirming in a dialog.
 
 **Strategies** — a watchlist for equities you're actively monitoring but may not hold (or hold and are deciding what to do with):
 - Each tracked equity has a name and an optional ticker (stored uppercase).

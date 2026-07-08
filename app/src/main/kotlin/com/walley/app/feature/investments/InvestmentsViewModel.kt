@@ -8,8 +8,10 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.Investment
+import com.walley.app.domain.model.InvestmentCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,8 @@ class InvestmentsViewModel @Inject constructor(
     fun addInvestment(
         name: String,
         ticker: String,
+        category: InvestmentCategory,
+        purchaseDate: LocalDate,
         quantity: BigDecimal,
         currency: Currency,
         price: BigDecimal,
@@ -40,7 +44,7 @@ class InvestmentsViewModel @Inject constructor(
         accountId: Long
     ) {
         viewModelScope.launch {
-            repository.addInvestment(name, ticker, quantity, currency, price, currentPrice, accountId)
+            repository.addInvestment(name, ticker, category, purchaseDate, quantity, currency, price, currentPrice, accountId)
         }
     }
 
@@ -48,14 +52,20 @@ class InvestmentsViewModel @Inject constructor(
         investmentId: Long,
         name: String,
         ticker: String,
+        category: InvestmentCategory,
+        purchaseDate: LocalDate,
         quantity: BigDecimal,
         price: BigDecimal,
         currentPrice: BigDecimal,
         accountId: Long
     ) {
         viewModelScope.launch {
-            repository.updateInvestment(investmentId, name, ticker, quantity, price, currentPrice, accountId)
+            repository.updateInvestment(investmentId, name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId)
         }
+    }
+
+    fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal) {
+        viewModelScope.launch { repository.updateCurrentPrice(investmentId, currentPrice) }
     }
 
     fun deleteInvestment(investmentId: Long) {

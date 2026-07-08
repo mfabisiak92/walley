@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -40,13 +42,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.InvestmentCategoryChip
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
 import java.math.RoundingMode
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 private val TABS = listOf("Portfolio", "Strategies")
+private val PURCHASE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
 @Composable
 fun InvestmentsScreen(
@@ -94,6 +99,7 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
+    var priceUpdateInvestment by remember { mutableStateOf<Investment?>(null) }
     var pendingDeleteInvestment by remember { mutableStateOf<Investment?>(null) }
 
     Scaffold(
@@ -142,7 +148,8 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
                             accountName = investment.accountId?.let { id ->
                                 investmentAccounts.find { it.id == id }?.name
                             },
-                            onClick = { editingInvestment = investment }
+                            onClick = { priceUpdateInvestment = investment },
+                            onLongClick = { editingInvestment = investment }
                         )
                     }
                 }
@@ -154,8 +161,8 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
         AddInvestmentDialog(
             investmentAccounts = investmentAccounts,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, ticker, quantity, currency, price, currentPrice, accountId ->
-                viewModel.addInvestment(name, ticker, quantity, currency, price, currentPrice, accountId)
+            onConfirm = { name, ticker, category, purchaseDate, quantity, currency, price, currentPrice, accountId ->
+                viewModel.addInvestment(name, ticker, category, purchaseDate, quantity, currency, price, currentPrice, accountId)
                 showAddDialog = false
             }
         )
@@ -166,13 +173,24 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
             investment = investment,
             investmentAccounts = investmentAccounts,
             onDismiss = { editingInvestment = null },
-            onSave = { name, ticker, quantity, price, currentPrice, accountId ->
-                viewModel.updateInvestment(investment.id, name, ticker, quantity, price, currentPrice, accountId)
+            onSave = { name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId ->
+                viewModel.updateInvestment(investment.id, name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId)
                 editingInvestment = null
             },
             onDelete = {
                 viewModel.deleteInvestment(investment.id)
                 editingInvestment = null
+            }
+        )
+    }
+
+    priceUpdateInvestment?.let { investment ->
+        UpdateCurrentPriceDialog(
+            investment = investment,
+            onDismiss = { priceUpdateInvestment = null },
+            onSave = { currentPrice ->
+                viewModel.updateCurrentPrice(investment.id, currentPrice)
+                priceUpdateInvestment = null
             }
         )
     }
@@ -198,15 +216,18 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun InvestmentRow(
     investment: Investment,
     accountName: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -215,9 +236,12 @@ private fun InvestmentRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text(investment.name, style = MaterialTheme.typography.titleMedium)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(investment.name, style = MaterialTheme.typography.titleMedium)
+                        InvestmentCategoryChip(category = investment.category)
+                    }
                     Text(
-                        text = accountName?.let { "${investment.ticker} · $it" } ?: investment.ticker,
+                        text = listOfNotNull(investment.ticker, accountName).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -227,6 +251,11 @@ private fun InvestmentRow(
                     style = MaterialTheme.typography.titleMedium
                 )
             }
+            Text(
+                text = investment.purchaseDate.format(PURCHASE_DATE_FORMATTER),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
