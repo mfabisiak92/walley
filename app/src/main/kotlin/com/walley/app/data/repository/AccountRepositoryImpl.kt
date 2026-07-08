@@ -29,7 +29,11 @@ class AccountRepositoryImpl @Inject constructor(
                 .map { entity ->
                     val account = entity.toDomain()
                     if (account.type == AccountType.INVESTMENT) {
-                        account.copy(balance = account.balance + investmentsValue(entity.id, investments))
+                        val linked = investments.filter { it.accountId == entity.id }
+                        account.copy(
+                            balance = account.balance + investmentsValue(linked),
+                            investmentCostBasis = investmentsCostBasis(linked)
+                        )
                     } else {
                         account
                     }
@@ -37,10 +41,14 @@ class AccountRepositoryImpl @Inject constructor(
                 .sortedWith(compareBy({ ACCOUNT_TYPE_ORDER[it.type] ?: Int.MAX_VALUE }, { it.name }))
         }
 
-    private fun investmentsValue(accountId: Long, investments: List<InvestmentEntity>): BigDecimal =
+    private fun investmentsValue(investments: List<InvestmentEntity>): BigDecimal =
         investments
-            .filter { it.accountId == accountId }
             .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.quantity * investment.currentPrice }
+            .setScale(2, RoundingMode.HALF_UP)
+
+    private fun investmentsCostBasis(investments: List<InvestmentEntity>): BigDecimal =
+        investments
+            .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.quantity * investment.price }
             .setScale(2, RoundingMode.HALF_UP)
 
     override suspend fun addAccount(

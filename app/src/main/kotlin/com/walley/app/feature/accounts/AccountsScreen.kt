@@ -276,6 +276,32 @@ private fun AccountRow(account: Account, onClick: () -> Unit, onSetDefault: () -
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val gainLoss = account.investmentGainLoss
+                    if (gainLoss.signum() != 0) {
+                        Text(
+                            text = if (gainLoss.signum() > 0) {
+                                "Gain: ${formatMoney(gainLoss, account.currency)}"
+                            } else {
+                                "Loss: ${formatMoney(gainLoss.abs(), account.currency)}"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (gainLoss.signum() > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                        )
+                        account.investmentTaxAmount?.let { tax ->
+                            Text(
+                                text = "Tax (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF1565C0)
+                            )
+                        }
+                        account.investmentNetProfit?.let { netProfit ->
+                            Text(
+                                text = "Net profit: ${formatMoney(netProfit, account.currency)}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF2E7D32)
+                            )
+                        }
+                    }
                 }
                 val progressPercent = account.targetProgressPercent
                 if (progressPercent != null) {

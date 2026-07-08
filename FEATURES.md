@@ -28,9 +28,11 @@ Four account types, each with its own extra fields:
 | Saving | optional **target amount**; UI shows progress toward the goal and whether it's been reached |
 | Investment | balance = **uninvested cash** (money not yet in a position) + current value of linked investments |
 
-Every account also has a **currency** and a **tax rate** (Tax-free or 19%), used for future tax-aware calculations.
+Every account also has a **currency** and a **tax rate** (Tax-free or 19%), used for tax-aware calculations on Investment accounts (below).
 
 The Accounts screen is split into three tabs — **Cash & Checking**, **Savings**, **Investments** — each showing only accounts of its own type(s). Adding an account from the Cash & Checking tab offers a Type dropdown limited to Checking/Cash; the Savings and Investments tabs skip the dropdown entirely and create that tab's type directly, since there's nothing to choose. Editing an account's type is restricted the same way, scoped to the tab it's shown on.
+
+On the Investments tab, whenever an account's linked positions show a net gain or loss (current value vs. cost basis), the account row shows it on its own line — green **Gain** or red **Loss**. If there's a gain and the account's tax rate isn't Tax-free, two more lines follow: a neutral blue **Tax** line (gain × the account's rate) and a green **Net profit** line (gain minus tax).
 
 Exactly one account is the **default account** at a time (regardless of tab) — the first account you create becomes default automatically; tap the star on any other account's row to make it the default instead (deleting the default account promotes another one automatically, as long as any accounts remain). The default account is pre-selected wherever an account picker defaults to one (e.g. new Income/Income-related-expenses budget items).
 
