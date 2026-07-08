@@ -32,6 +32,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -214,6 +215,25 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
             Text(
                 "A budget for ${Budget(year = viewModel.year, month = viewModel.month).displayName} already exists.",
                 color = MaterialTheme.colorScheme.error
+            )
+        }
+        HorizontalDivider()
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Draw from linked accounts", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "When off, paying items in this budget won't move money in any account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = viewModel.applyAccountEffects,
+                onCheckedChange = { viewModel.applyAccountEffects = it }
             )
         }
     }

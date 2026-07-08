@@ -9,5 +9,6 @@ data class BudgetEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val year: Int,
     val month: Int,
-    val status: BudgetStatus = BudgetStatus.ACTIVE
+    val status: BudgetStatus = BudgetStatus.ACTIVE,
+    val applyAccountEffects: Boolean = true
 )

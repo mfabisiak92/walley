@@ -71,6 +71,9 @@ interface BudgetDao {
     @Query("UPDATE budgets SET year = :year, month = :month, status = :status WHERE id = :budgetId")
     suspend fun updateYearMonthAndStatus(budgetId: Long, year: Int, month: Int, status: BudgetStatus)
 
+    @Query("UPDATE budgets SET applyAccountEffects = :enabled WHERE id = :budgetId")
+    suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean)
+
     @Transaction
     suspend fun replaceItems(budgetId: Long, items: List<BudgetItemEntity>) {
         deleteItemsForBudget(budgetId)

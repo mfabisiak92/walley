@@ -3,6 +3,7 @@ package com.walley.app.feature.budget
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -69,6 +70,7 @@ class BudgetWizardViewModel @Inject constructor(
         private set
     var monthTaken by mutableIntStateOf(0)
         private set
+    var applyAccountEffects by mutableStateOf(true)
 
     private val itemsBySection = mutableStateMapOf<BudgetSectionType, List<WizardItemDraft>>().apply {
         BudgetSectionType.entries.forEach { put(it, emptyList()) }
@@ -108,6 +110,7 @@ class BudgetWizardViewModel @Inject constructor(
                 val nextMonth = source.budget.yearMonth.plusMonths(1)
                 year = nextMonth.year
                 month = nextMonth.monthValue
+                applyAccountEffects = source.budget.applyAccountEffects
                 loadDraftItems(source.items)
             }
         }
@@ -116,6 +119,7 @@ class BudgetWizardViewModel @Inject constructor(
                 val source = budgetRepository.observeBudget(budgetId).first() ?: return@launch
                 year = source.budget.year
                 month = source.budget.month
+                applyAccountEffects = source.budget.applyAccountEffects
                 loadDraftItems(source.items)
                 // Month is already settled for a resumed draft — land straight on the first section.
                 currentStep = 1
@@ -225,7 +229,7 @@ class BudgetWizardViewModel @Inject constructor(
     private fun autosaveDraft() {
         if (currentStep <= WIZARD_STEP_MONTH) return
         viewModelScope.launch {
-            draftBudgetId = budgetRepository.saveDraft(draftBudgetId, year, month, collectItems())
+            draftBudgetId = budgetRepository.saveDraft(draftBudgetId, year, month, collectItems(), applyAccountEffects)
         }
     }
 
@@ -256,7 +260,7 @@ class BudgetWizardViewModel @Inject constructor(
 
     /** Finalizes the wizard's budget as Active — a one-way transition out of Draft. */
     suspend fun createBudget(): Long {
-        val id = budgetRepository.submitBudget(draftBudgetId, year, month, collectItems())
+        val id = budgetRepository.submitBudget(draftBudgetId, year, month, collectItems(), applyAccountEffects)
         draftBudgetId = id
         return id
     }

@@ -8,7 +8,9 @@ data class Budget(
     val id: Long = 0,
     val year: Int,
     val month: Int,
-    val status: BudgetStatus = BudgetStatus.ACTIVE
+    val status: BudgetStatus = BudgetStatus.ACTIVE,
+    /** Whether paying/editing/un-paying an item in this budget moves money in its linked account. */
+    val applyAccountEffects: Boolean = true
 ) {
     val yearMonth: YearMonth get() = YearMonth.of(year, month)
 

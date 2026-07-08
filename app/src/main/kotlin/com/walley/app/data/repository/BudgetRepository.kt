@@ -20,10 +20,22 @@ interface BudgetRepository {
      * its items otherwise). Drafts aren't shown as Active and never auto-pay items. [items] should
      * carry section/name/amount/currency/accountId/paymentDay; id and budgetId are ignored.
      */
-    suspend fun saveDraft(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long
+    suspend fun saveDraft(
+        budgetId: Long?,
+        year: Int,
+        month: Int,
+        items: List<BudgetItem>,
+        applyAccountEffects: Boolean
+    ): Long
 
     /** Finalizes a budget as Active (Draft -&gt; Active if [budgetId] is given, otherwise a brand-new Active budget). */
-    suspend fun submitBudget(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long
+    suspend fun submitBudget(
+        budgetId: Long?,
+        year: Int,
+        month: Int,
+        items: List<BudgetItem>,
+        applyAccountEffects: Boolean
+    ): Long
 
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
@@ -47,6 +59,12 @@ interface BudgetRepository {
 
     /** One-way transition marking a budget as completed; completed budgets can no longer be deleted. */
     suspend fun markBudgetCompleted(budgetId: Long)
+
+    /**
+     * Toggles whether paying/editing/un-paying an item in this budget moves money in its linked
+     * account. Only affects future actions — balance changes already applied are left as-is.
+     */
+    suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean)
 
     /** Auto-marks items whose payment day has passed as paid, for Active budgets only; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()

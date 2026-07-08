@@ -21,7 +21,7 @@ import java.time.LocalDate
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -305,5 +305,13 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Both default to enabled — the existing behavior (paying an item always moves money).
+        db.execSQL("ALTER TABLE budgets ADD COLUMN applyAccountEffects INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN applyAccountEffects INTEGER NOT NULL DEFAULT 1")
     }
 }

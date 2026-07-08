@@ -69,24 +69,38 @@ class BudgetRepositoryImpl @Inject constructor(
     override suspend fun monthHasBudget(year: Int, month: Int, excludeBudgetId: Long?): Boolean =
         budgetDao.countForMonth(year, month, excludeBudgetId) > 0
 
-    override suspend fun saveDraft(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long =
-        upsertBudget(budgetId, year, month, items, BudgetStatus.DRAFT)
+    override suspend fun saveDraft(
+        budgetId: Long?,
+        year: Int,
+        month: Int,
+        items: List<BudgetItem>,
+        applyAccountEffects: Boolean
+    ): Long = upsertBudget(budgetId, year, month, items, BudgetStatus.DRAFT, applyAccountEffects)
 
-    override suspend fun submitBudget(budgetId: Long?, year: Int, month: Int, items: List<BudgetItem>): Long =
-        upsertBudget(budgetId, year, month, items, BudgetStatus.ACTIVE)
+    override suspend fun submitBudget(
+        budgetId: Long?,
+        year: Int,
+        month: Int,
+        items: List<BudgetItem>,
+        applyAccountEffects: Boolean
+    ): Long = upsertBudget(budgetId, year, month, items, BudgetStatus.ACTIVE, applyAccountEffects)
 
     private suspend fun upsertBudget(
         budgetId: Long?,
         year: Int,
         month: Int,
         items: List<BudgetItem>,
-        status: BudgetStatus
+        status: BudgetStatus,
+        applyAccountEffects: Boolean
     ): Long {
         val id = if (budgetId != null) {
             budgetDao.updateYearMonthAndStatus(budgetId, year, month, status)
+            budgetDao.updateApplyAccountEffects(budgetId, applyAccountEffects)
             budgetId
         } else {
-            budgetDao.insertBudget(BudgetEntity(year = year, month = month, status = status))
+            budgetDao.insertBudget(
+                BudgetEntity(year = year, month = month, status = status, applyAccountEffects = applyAccountEffects)
+            )
         }
         budgetDao.replaceItems(
             id,
@@ -141,7 +155,7 @@ class BudgetRepositoryImpl @Inject constructor(
     override suspend fun updateItemAccount(itemId: Long, accountId: Long?) {
         val item = budgetDao.getItem(itemId).toDomain()
         if (item.accountId == accountId) return
-        if (item.paidAmount.signum() > 0) {
+        if (item.paidAmount.signum() > 0 && accountEffectsEnabledFor(item.budgetId)) {
             item.accountId?.let { oldAccountId ->
                 applyAccountDeltaForAccount(item.section, oldAccountId, item.paidAmount.negate())
             }
@@ -197,6 +211,10 @@ class BudgetRepositoryImpl @Inject constructor(
         captureSnapshot(budgetId)
     }
 
+    override suspend fun updateApplyAccountEffects(budgetId: Long, enabled: Boolean) {
+        budgetDao.updateApplyAccountEffects(budgetId, enabled)
+    }
+
     override suspend fun checkAndAutoCompleteDueItems() {
         val today = LocalDate.now()
         val budgets = budgetDao.observeBudgets().first()
@@ -229,8 +247,12 @@ class BudgetRepositoryImpl @Inject constructor(
     private suspend fun applyAccountDelta(item: BudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val accountId = item.accountId ?: return
+        if (!accountEffectsEnabledFor(item.budgetId)) return
         applyAccountDeltaForAccount(item.section, accountId, delta)
     }
+
+    private suspend fun accountEffectsEnabledFor(budgetId: Long): Boolean =
+        budgetDao.observeBudgetById(budgetId).first()?.applyAccountEffects ?: true
 
     private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal) {
         if (delta.signum() == 0) return

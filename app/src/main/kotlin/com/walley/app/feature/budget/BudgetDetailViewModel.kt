@@ -147,4 +147,9 @@ class BudgetDetailViewModel @Inject constructor(
     fun markCompleted() {
         viewModelScope.launch { budgetRepository.markBudgetCompleted(budgetId) }
     }
+
+    fun updateApplyAccountEffects(enabled: Boolean) {
+        if (!isEditable) return
+        viewModelScope.launch { budgetRepository.updateApplyAccountEffects(budgetId, enabled) }
+    }
 }

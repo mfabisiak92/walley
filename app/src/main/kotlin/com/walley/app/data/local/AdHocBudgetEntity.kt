@@ -12,5 +12,6 @@ data class AdHocBudgetEntity(
     val startDate: LocalDate,
     val endDate: LocalDate,
     val accountId: Long,
-    val currency: Currency
+    val currency: Currency,
+    val applyAccountEffects: Boolean = true
 )
