@@ -50,6 +50,23 @@ class BudgetItemIconSuggestionTest {
     }
 
     @Test
+    fun `doctor resolves to doctor icon not the more generic health`() {
+        assertEquals(BudgetItemIcon.DOCTOR, suggestIconForName("Doctor appointment"))
+        assertEquals(BudgetItemIcon.DOCTOR, suggestIconForName("Wizyta u lekarza, wizyta lekarska"))
+        assertEquals(BudgetItemIcon.HEALTH, suggestIconForName("General health checkup"))
+    }
+
+    @Test
+    fun `matches new english and polish keywords for parking, ship, and shipment`() {
+        assertEquals(BudgetItemIcon.PARKING, suggestIconForName("Downtown parking"))
+        assertEquals(BudgetItemIcon.PARKING, suggestIconForName("Postój w centrum"))
+        assertEquals(BudgetItemIcon.SHIP, suggestIconForName("Ferry to the island"))
+        assertEquals(BudgetItemIcon.SHIP, suggestIconForName("Rejs statkiem"))
+        assertEquals(BudgetItemIcon.SHIPMENT, suggestIconForName("Package delivery"))
+        assertEquals(BudgetItemIcon.SHIPMENT, suggestIconForName("Wysyłka paczki"))
+    }
+
+    @Test
     fun `returns null when nothing matches`() {
         assertNull(suggestIconForName("Xyzabc"))
     }

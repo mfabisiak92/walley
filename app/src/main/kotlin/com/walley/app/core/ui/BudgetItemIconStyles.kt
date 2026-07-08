@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Elderly
@@ -20,6 +21,9 @@ import androidx.compose.material.icons.filled.Handyman
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.LocalShipping
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Movie
@@ -85,5 +89,9 @@ val BudgetItemIconStyles: Map<BudgetItemIcon, BudgetItemIconStyle> = mapOf(
     BudgetItemIcon.PET to BudgetItemIconStyle(Icons.Filled.Pets, Color(0xFFFB8C00)),
     BudgetItemIcon.MOVIE to BudgetItemIconStyle(Icons.Filled.Movie, Color(0xFF7B1FA2)),
     BudgetItemIcon.KIDS to BudgetItemIconStyle(Icons.Filled.ChildCare, Color(0xFFF06292)),
-    BudgetItemIcon.RETIREMENT to BudgetItemIconStyle(Icons.Filled.Elderly, Color(0xFF607D8B))
+    BudgetItemIcon.RETIREMENT to BudgetItemIconStyle(Icons.Filled.Elderly, Color(0xFF607D8B)),
+    BudgetItemIcon.PARKING to BudgetItemIconStyle(Icons.Filled.LocalParking, Color(0xFF1E88E5)),
+    BudgetItemIcon.SHIP to BudgetItemIconStyle(Icons.Filled.DirectionsBoat, Color(0xFF00796B)),
+    BudgetItemIcon.SHIPMENT to BudgetItemIconStyle(Icons.Filled.LocalShipping, Color(0xFF5D4037)),
+    BudgetItemIcon.DOCTOR to BudgetItemIconStyle(Icons.Filled.MedicalServices, Color(0xFFD32F2F))
 )

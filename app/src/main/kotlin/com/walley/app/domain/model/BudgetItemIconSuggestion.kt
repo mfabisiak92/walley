@@ -36,13 +36,20 @@ private val iconKeywords: List<Pair<BudgetItemIcon, List<String>>> = listOf(
     BudgetItemIcon.BOOKS to listOf("books", "book", "książki", "książka"),
     BudgetItemIcon.REPAIR to listOf("repair", "repairs", "naprawa", "naprawy", "serwis"),
     BudgetItemIcon.MEDICINE to listOf("medicine", "pharmacy", "lekarstwo", "leki", "apteka"),
-    BudgetItemIcon.HEALTH to listOf("health", "doctor", "zdrowie", "lekarz"),
+    // Checked before HEALTH so "doctor"/"lekarz" resolve to the more specific icon.
+    BudgetItemIcon.DOCTOR to listOf("doctor", "physician", "clinic", "lekarz", "przychodnia", "wizyta lekarska"),
+    BudgetItemIcon.HEALTH to listOf("health", "zdrowie"),
     BudgetItemIcon.PET to listOf("pet", "pets", "vet", "zwierzak", "zwierzę", "weterynarz"),
     BudgetItemIcon.KIDS to listOf("kids", "children", "dzieci", "dziecko"),
     BudgetItemIcon.RETIREMENT to listOf("retirement", "pension", "emerytura"),
     BudgetItemIcon.PIGGY_BANK to listOf("piggy bank", "skarbonka", "oszczędności"),
     BudgetItemIcon.FUEL to listOf("fuel", "petrol", "gas", "paliwo", "benzyna"),
+    BudgetItemIcon.PARKING to listOf("parking", "car park", "postój", "parkometr"),
     BudgetItemIcon.CAR to listOf("car", "vehicle", "samochód", "auto"),
+    BudgetItemIcon.SHIP to listOf("ship", "boat", "cruise", "ferry", "statek", "łódź", "prom", "rejs"),
+    BudgetItemIcon.SHIPMENT to listOf(
+        "shipment", "shipping", "delivery", "package", "parcel", "przesyłka", "wysyłka", "paczka", "dostawa"
+    ),
     BudgetItemIcon.TAX to listOf("tax", "taxes", "podatek", "podatki")
 )
 

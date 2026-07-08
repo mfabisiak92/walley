@@ -39,7 +39,11 @@ enum class BudgetItemIcon(val label: String) {
     PET("Pet"),
     MOVIE("Movie"),
     KIDS("Kids"),
-    RETIREMENT("Retirement")
+    RETIREMENT("Retirement"),
+    PARKING("Parking"),
+    SHIP("Ship"),
+    SHIPMENT("Shipment"),
+    DOCTOR("Doctor")
 }
 
 /** The icon that mirrors this income category, if any ([IncomeCategory.OTHER] has no natural icon). */
@@ -92,5 +96,9 @@ val EXPENSE_ICONS: List<BudgetItemIcon> = listOf(
     BudgetItemIcon.PET,
     BudgetItemIcon.MOVIE,
     BudgetItemIcon.KIDS,
-    BudgetItemIcon.RETIREMENT
+    BudgetItemIcon.RETIREMENT,
+    BudgetItemIcon.PARKING,
+    BudgetItemIcon.SHIP,
+    BudgetItemIcon.SHIPMENT,
+    BudgetItemIcon.DOCTOR
 )
