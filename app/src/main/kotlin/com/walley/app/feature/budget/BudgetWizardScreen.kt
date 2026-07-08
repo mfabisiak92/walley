@@ -87,6 +87,15 @@ fun BudgetWizardScreen(
                             contentDescription = "Back"
                         )
                     }
+                },
+                actions = {
+                    // Progress is autosaved as a Draft on every change, so it's always safe to jump
+                    // straight out from any step rather than making the user go back one at a time.
+                    if (step != WIZARD_STEP_MONTH) {
+                        IconButton(onClick = onCancel) {
+                            Icon(Icons.Filled.Close, contentDescription = "Close")
+                        }
+                    }
                 }
             )
         },
@@ -401,11 +410,12 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
                     sectionTotal.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 }
                 Text(
-                    "Unallocated: ${formatMoney(unallocated, baseCurrency)}",
+                    "Allocated to ${section.label}: ${formatMoney(sectionTotal, baseCurrency)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
-                    "${percent.setScale(1, RoundingMode.HALF_UP)}% of disposable income allocated to ${section.label}",
+                    "${percent.setScale(1, RoundingMode.HALF_UP)}% of disposable income · " +
+                        "Unallocated overall: ${formatMoney(unallocated, baseCurrency)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
