@@ -31,6 +31,7 @@ import java.math.BigDecimal
 @Composable
 fun EditAccountDialog(
     account: Account,
+    allowedTypes: List<AccountType>,
     onDismiss: () -> Unit,
     onSave: (
         name: String,
@@ -76,30 +77,32 @@ fun EditAccountDialog(
                     label = { Text("Name") },
                     singleLine = true
                 )
-                ExposedDropdownMenuBox(
-                    expanded = typeMenuExpanded,
-                    onExpandedChange = { typeMenuExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = type.label,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
+                if (allowedTypes.size > 1) {
+                    ExposedDropdownMenuBox(
                         expanded = typeMenuExpanded,
-                        onDismissRequest = { typeMenuExpanded = false }
+                        onExpandedChange = { typeMenuExpanded = it }
                     ) {
-                        AccountType.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.label) },
-                                onClick = {
-                                    type = option
-                                    typeMenuExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = type.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Type") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = typeMenuExpanded,
+                            onDismissRequest = { typeMenuExpanded = false }
+                        ) {
+                            allowedTypes.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        type = option
+                                        typeMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }

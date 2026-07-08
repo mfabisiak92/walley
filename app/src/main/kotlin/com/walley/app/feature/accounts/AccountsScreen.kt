@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -28,12 +30,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,6 +54,13 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import java.math.BigDecimal
 import java.math.RoundingMode
+import kotlinx.coroutines.launch
+
+private val ACCOUNTS_TABS = listOf(
+    "Cash & Checking" to listOf(AccountType.CHECKING, AccountType.CASH),
+    "Savings" to listOf(AccountType.SAVING),
+    "Investments" to listOf(AccountType.INVESTMENT)
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,22 +69,59 @@ fun AccountsScreen(
     onNavigateHome: () -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
 ) {
+    val pagerState = rememberPagerState(pageCount = { ACCOUNTS_TABS.size })
+    val scope = rememberCoroutineScope()
+
+    Scaffold(
+        modifier = modifier,
+        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            TabRow(selectedTabIndex = pagerState.currentPage) {
+                ACCOUNTS_TABS.forEachIndexed { index, (label, _) ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                        text = { Text(label) }
+                    )
+                }
+            }
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val (label, allowedTypes) = ACCOUNTS_TABS[page]
+                AccountsListPage(viewModel = viewModel, allowedTypes = allowedTypes, tabLabel = label)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AccountsListPage(
+    viewModel: AccountsViewModel,
+    allowedTypes: List<AccountType>,
+    tabLabel: String
+) {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<Account?>(null) }
     var pendingDeleteAccount by remember { mutableStateOf<Account?>(null) }
 
     Scaffold(
-        modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add account")
             }
         }
     ) { innerPadding ->
-        if (accounts.isEmpty()) {
+        if (filteredAccounts.isEmpty()) {
             Column(
                 modifier = Modifier
                     .padding(innerPadding)
@@ -88,7 +137,7 @@ fun AccountsScreen(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "No accounts yet — tap + to add one.",
+                    "No $tabLabel accounts yet — tap + to add one.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -101,7 +150,7 @@ fun AccountsScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(accounts, key = { it.id }) { account ->
+                items(filteredAccounts, key = { it.id }) { account ->
                     SwipeToDeleteBox(
                         onDelete = { pendingDeleteAccount = account },
                         dismissOnDelete = false
@@ -119,6 +168,7 @@ fun AccountsScreen(
 
     if (showAddDialog) {
         AddAccountDialog(
+            allowedTypes = allowedTypes,
             onDismiss = { showAddDialog = false },
             onConfirm = { name, type, currency, balance, taxRate, targetAmount ->
                 viewModel.addAccount(name, type, currency, balance, taxRate, targetAmount)
@@ -130,6 +180,7 @@ fun AccountsScreen(
     editingAccount?.let { account ->
         EditAccountDialog(
             account = account,
+            allowedTypes = allowedTypes,
             onDismiss = { editingAccount = null },
             onSave = { name, type, taxRate, newBalance, targetAmount ->
                 viewModel.updateAccount(account.id, name, type, taxRate, newBalance, targetAmount)

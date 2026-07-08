@@ -29,6 +29,7 @@ import java.math.BigDecimal
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAccountDialog(
+    allowedTypes: List<AccountType>,
     onDismiss: () -> Unit,
     onConfirm: (
         name: String,
@@ -40,7 +41,7 @@ fun AddAccountDialog(
     ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
-    var type by remember { mutableStateOf(AccountType.CHECKING) }
+    var type by remember { mutableStateOf(allowedTypes.first()) }
     var currency by remember { mutableStateOf(Currency.PLN) }
     var balanceText by remember { mutableStateOf("0") }
     var taxRate by remember { mutableStateOf(AccountTaxRate.STANDARD_19) }
@@ -58,7 +59,7 @@ fun AddAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add account") },
+        title = { Text(if (allowedTypes.size == 1) "Add ${allowedTypes.first().label.lowercase()} account" else "Add account") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -67,30 +68,32 @@ fun AddAccountDialog(
                     label = { Text("Name") },
                     singleLine = true
                 )
-                ExposedDropdownMenuBox(
-                    expanded = typeMenuExpanded,
-                    onExpandedChange = { typeMenuExpanded = it }
-                ) {
-                    OutlinedTextField(
-                        value = type.label,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Type") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
-                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
+                if (allowedTypes.size > 1) {
+                    ExposedDropdownMenuBox(
                         expanded = typeMenuExpanded,
-                        onDismissRequest = { typeMenuExpanded = false }
+                        onExpandedChange = { typeMenuExpanded = it }
                     ) {
-                        AccountType.entries.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option.label) },
-                                onClick = {
-                                    type = option
-                                    typeMenuExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = type.label,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Type") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
+                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                        )
+                        ExposedDropdownMenu(
+                            expanded = typeMenuExpanded,
+                            onDismissRequest = { typeMenuExpanded = false }
+                        ) {
+                            allowedTypes.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option.label) },
+                                    onClick = {
+                                        type = option
+                                        typeMenuExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }

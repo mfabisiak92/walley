@@ -30,7 +30,9 @@ Four account types, each with its own extra fields:
 
 Every account also has a **currency** and a **tax rate** (Tax-free or 19%), used for future tax-aware calculations.
 
-Exactly one account is the **default account** at a time — the first account you create becomes default automatically; tap the star on any other account's row to make it the default instead (deleting the default account promotes another one automatically, as long as any accounts remain). The default account is pre-selected wherever an account picker defaults to one (e.g. new Income/Income-related-expenses budget items).
+The Accounts screen is split into three tabs — **Cash & Checking**, **Savings**, **Investments** — each showing only accounts of its own type(s). Adding an account from the Cash & Checking tab offers a Type dropdown limited to Checking/Cash; the Savings and Investments tabs skip the dropdown entirely and create that tab's type directly, since there's nothing to choose. Editing an account's type is restricted the same way, scoped to the tab it's shown on.
+
+Exactly one account is the **default account** at a time (regardless of tab) — the first account you create becomes default automatically; tap the star on any other account's row to make it the default instead (deleting the default account promotes another one automatically, as long as any accounts remain). The default account is pre-selected wherever an account picker defaults to one (e.g. new Income/Income-related-expenses budget items).
 
 Accounts can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog. **An account with linked investments can't be deleted** until those investments are unlinked or deleted first.
 
