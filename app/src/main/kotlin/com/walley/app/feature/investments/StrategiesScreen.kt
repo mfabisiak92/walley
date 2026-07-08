@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,8 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.walley.app.core.ui.EquityStatusBadge
-import com.walley.app.core.ui.EquityStatusTransitionBadge
+import com.walley.app.core.ui.EquityStatusIconBadge
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.WatchedEquityWithNotes
 
@@ -65,7 +64,7 @@ fun StrategiesListPage(
                 verticalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    Icons.Filled.TrendingUp,
+                    Icons.AutoMirrored.Filled.TrendingUp,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -142,32 +141,29 @@ private fun EquityRow(item: WatchedEquityWithNotes, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            item.latestStatus?.let { latest -> EquityStatusIconBadge(status = latest) }
             Column(modifier = Modifier.weight(1f)) {
                 Text(item.equity.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val previous = item.previousStatus
+                val latest = item.latestStatus
+                val statusText = when {
+                    latest == null -> null
+                    previous != null && previous != latest -> "${previous.label} → ${latest.label}"
+                    else -> latest.label
+                }
                 val subtitle = listOfNotNull(
                     item.equity.ticker,
-                    "${item.notes.size} note" + if (item.notes.size == 1) "" else "s"
+                    "${item.notes.size} note" + if (item.notes.size == 1) "" else "s",
+                    statusText
                 ).joinToString(" · ")
                 Text(
                     subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            item.latestStatus?.let { latest ->
-                val previous = item.previousStatus
-                if (previous != null && previous != latest) {
-                    EquityStatusTransitionBadge(
-                        previous = previous,
-                        latest = latest,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                } else {
-                    EquityStatusBadge(status = latest, modifier = Modifier.padding(start = 8.dp))
-                }
             }
         }
     }

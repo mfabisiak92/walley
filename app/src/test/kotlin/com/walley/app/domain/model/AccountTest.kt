@@ -2,7 +2,9 @@ package com.walley.app.domain.model
 
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AccountTest {
@@ -94,5 +96,41 @@ class AccountTest {
             investmentCostBasis = BigDecimal("1000")
         )
         assertEquals(BigDecimal("800"), account.netWorthValue)
+    }
+
+    private fun savingsAccount(balance: String, targetAmount: String?) = Account(
+        name = "Savings",
+        type = AccountType.SAVING,
+        currency = Currency.PLN,
+        balance = BigDecimal(balance),
+        targetAmount = targetAmount?.let { BigDecimal(it) }
+    )
+
+    @Test
+    fun `targetProgressPercent is balance over target as a percentage`() {
+        val account = savingsAccount(balance = "250", targetAmount = "1000")
+        assertEquals(0, BigDecimal("25").compareTo(account.targetProgressPercent))
+    }
+
+    @Test
+    fun `targetProgressPercent is null when there is no target`() {
+        assertNull(savingsAccount(balance = "250", targetAmount = null).targetProgressPercent)
+    }
+
+    @Test
+    fun `targetProgressPercent is null when the target is zero or negative`() {
+        assertNull(savingsAccount(balance = "250", targetAmount = "0").targetProgressPercent)
+    }
+
+    @Test
+    fun `targetReached is true once balance meets or exceeds the target`() {
+        assertTrue(savingsAccount(balance = "1000", targetAmount = "1000").targetReached)
+        assertTrue(savingsAccount(balance = "1200", targetAmount = "1000").targetReached)
+    }
+
+    @Test
+    fun `targetReached is false below the target, or with no target set`() {
+        assertFalse(savingsAccount(balance = "900", targetAmount = "1000").targetReached)
+        assertFalse(savingsAccount(balance = "900", targetAmount = null).targetReached)
     }
 }

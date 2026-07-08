@@ -55,7 +55,7 @@ Split into two tabs.
 **Strategies** — a watchlist for equities you're actively monitoring but may not hold (or hold and are deciding what to do with):
 - Each tracked equity has a name and an optional ticker (stored uppercase).
 - Adding one requires its first **note**: a date (defaults to today, editable via a date picker), one of four statuses — **Sell, Hold, Wait, Buy** (shown as a bold, solid-colored pill for visibility) — and an optional free-text note.
-- The list shows each equity's name, ticker, note count, and its status: just the latest status if it's unchanged since the previous note, or a **transition badge** (e.g. "HOLD → BUY") when the two most recent notes disagree, so a status change is obvious at a glance.
+- Each row leads with a small colored icon badge for the latest status (trending-up for Buy, trending-down for Sell, pause for Hold, clock for Wait — the same icon-badge treatment used for budget item/account icons elsewhere), followed by the equity's name, ticker, note count, and status as plain text: just the latest status if it's unchanged since the previous note, or "PREVIOUS → LATEST" (e.g. "Hold → Buy") when the two most recent notes disagree, so a status change is obvious at a glance without two competing solid-color pills.
 - Tapping an equity opens its full note history in **reverse-chronological order** (most recent first). A floating action button adds another dated note with a new status; tapping an existing note opens the same dialog pre-filled to edit its date, status, and text.
 - Both equities (with all their notes) and individual notes can be deleted by swiping left and confirming, or via the equity detail screen's delete icon for the equity itself.
 
