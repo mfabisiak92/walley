@@ -6,8 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,6 +18,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PriceCheck
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -25,6 +28,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -57,7 +61,8 @@ private val PURCHASE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 fun InvestmentsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
-    onOpenEquity: (Long) -> Unit
+    onOpenEquity: (Long) -> Unit,
+    onOpenUpdatePrices: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
     val scope = rememberCoroutineScope()
@@ -85,7 +90,7 @@ fun InvestmentsScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> PortfolioListPage()
+                    0 -> PortfolioListPage(onOpenUpdatePrices = onOpenUpdatePrices)
                     else -> StrategiesListPage(onOpenEquity = onOpenEquity)
                 }
             }
@@ -94,7 +99,10 @@ fun InvestmentsScreen(
 }
 
 @Composable
-private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel()) {
+private fun PortfolioListPage(
+    onOpenUpdatePrices: () -> Unit,
+    viewModel: InvestmentsViewModel = hiltViewModel()
+) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -104,8 +112,14 @@ private fun PortfolioListPage(viewModel: InvestmentsViewModel = hiltViewModel())
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add investment")
+            Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(onClick = onOpenUpdatePrices) {
+                    Icon(Icons.Default.PriceCheck, contentDescription = "Update prices")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add investment")
+                }
             }
         }
     ) { innerPadding ->

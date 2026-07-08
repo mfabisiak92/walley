@@ -51,6 +51,7 @@ Split into two tabs.
 - An account's displayed balance automatically includes the combined current value of everything linked to it, on top of its uninvested cash.
 - **Tapping** an investment opens a lightweight dialog to update just its **current price** (marking it to market) — the fast path for the thing you do most often. **Long-pressing** it opens the full edit dialog for everything else (name, ticker, category, quantity, purchase price, account), plus deleting it.
 - Investments can be deleted by swiping a row left and tapping the red trash icon (or via the long-press edit dialog), after confirming in a dialog.
+- **Update prices** — a small floating action button stacked above the "Add investment" FAB on the Portfolio tab opens a single screen listing every investment as a compact row (name · ticker, with its current price prefilled in an editable field), so you can mark several to market in one pass instead of one dialog at a time. One "Save all" button writes only the prices you actually changed.
 
 **Strategies** — a watchlist for equities you're actively monitoring but may not hold (or hold and are deciding what to do with):
 - Each tracked equity has a name and an optional ticker (stored uppercase).

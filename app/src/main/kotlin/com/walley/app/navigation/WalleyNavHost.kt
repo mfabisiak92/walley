@@ -13,6 +13,7 @@ import com.walley.app.feature.budget.BudgetDetailScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.investments.EquityDetailScreen
+import com.walley.app.feature.investments.UpdatePricesScreen
 import com.walley.app.feature.settings.SettingsScreen
 
 private object WalleyDestinations {
@@ -25,6 +26,7 @@ private object WalleyDestinations {
     const val EQUITY_DETAIL = "equity_detail/{equityId}"
     const val AD_HOC_WIZARD = "ad_hoc_wizard"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
+    const val UPDATE_PRICES = "update_prices"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
@@ -61,7 +63,8 @@ fun WalleyNavHost() {
                 onNavigateToAdHocWizard = { navController.navigate(WalleyDestinations.AD_HOC_WIZARD) },
                 onOpenAdHocBudget = { adHocBudgetId ->
                     navController.navigate(WalleyDestinations.adHocDetail(adHocBudgetId))
-                }
+                },
+                onOpenUpdatePrices = { navController.navigate(WalleyDestinations.UPDATE_PRICES) }
             )
         }
         composable(WalleyDestinations.NET_WORTH_DETAIL) {
@@ -125,6 +128,9 @@ fun WalleyNavHost() {
             arguments = listOf(navArgument("adHocBudgetId") { type = NavType.LongType })
         ) {
             AdHocBudgetDetailScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(WalleyDestinations.UPDATE_PRICES) {
+            UpdatePricesScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }
