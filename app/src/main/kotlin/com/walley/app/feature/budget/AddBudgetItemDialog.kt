@@ -32,6 +32,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.EXPENSE_ICONS
 import com.walley.app.domain.model.INCOME_ICONS
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.suggestIconForName
 import com.walley.app.domain.model.toIcon
 import java.math.BigDecimal
 
@@ -69,6 +70,8 @@ fun AddBudgetItemDialog(
     var category by remember { mutableStateOf(initial?.incomeCategory ?: IncomeCategory.SALARY) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var icon by remember { mutableStateOf(initial?.icon ?: category.takeIf { showCategoryPicker }?.toIcon()) }
+    // Once the user manually picks an icon, stop overriding it as they keep editing the name.
+    var iconAutoAssigned by remember { mutableStateOf(!showCategoryPicker && initial?.icon == null) }
     val iconOptions = if (showCategoryPicker) INCOME_ICONS else EXPENSE_ICONS
 
     val selectedAccount = accounts.find { it.id == accountId }
@@ -88,7 +91,12 @@ fun AddBudgetItemDialog(
             ) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = {
+                        name = it
+                        if (iconAutoAssigned) {
+                            suggestIconForName(it)?.let { suggested -> icon = suggested }
+                        }
+                    },
                     label = { Text("Name") },
                     singleLine = true
                 )
@@ -196,7 +204,14 @@ fun AddBudgetItemDialog(
                     }
                 )
                 Text("Icon", style = MaterialTheme.typography.labelLarge)
-                BudgetItemIconPicker(options = iconOptions, selected = icon, onSelect = { icon = it })
+                BudgetItemIconPicker(
+                    options = iconOptions,
+                    selected = icon,
+                    onSelect = {
+                        icon = it
+                        iconAutoAssigned = false
+                    }
+                )
             }
         },
         confirmButton = {

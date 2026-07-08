@@ -7,18 +7,26 @@ import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Checkroom
+import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Elderly
 import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Handyman
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Medication
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Percent
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Savings
@@ -26,6 +34,7 @@ import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.TrendingUp
@@ -67,5 +76,14 @@ val BudgetItemIconStyles: Map<BudgetItemIcon, BudgetItemIconStyle> = mapOf(
     BudgetItemIcon.TV to BudgetItemIconStyle(Icons.Filled.Tv, Color(0xFF546E7A)),
     BudgetItemIcon.MUSIC to BudgetItemIconStyle(Icons.Filled.MusicNote, Color(0xFF8E24AA)),
     BudgetItemIcon.BARBER to BudgetItemIconStyle(Icons.Filled.ContentCut, Color(0xFF8D6E63)),
-    BudgetItemIcon.GAMES to BudgetItemIconStyle(Icons.Filled.SportsEsports, Color(0xFF7C4DFF))
+    BudgetItemIcon.GAMES to BudgetItemIconStyle(Icons.Filled.SportsEsports, Color(0xFF7C4DFF)),
+    BudgetItemIcon.SPORT to BudgetItemIconStyle(Icons.Filled.SportsSoccer, Color(0xFF43A047)),
+    BudgetItemIcon.BOOKS to BudgetItemIconStyle(Icons.Filled.MenuBook, Color(0xFF3F51B5)),
+    BudgetItemIcon.REPAIR to BudgetItemIconStyle(Icons.Filled.Handyman, Color(0xFFFF7043)),
+    BudgetItemIcon.HEALTH to BudgetItemIconStyle(Icons.Filled.HealthAndSafety, Color(0xFFE53935)),
+    BudgetItemIcon.MEDICINE to BudgetItemIconStyle(Icons.Filled.Medication, Color(0xFF26A69A)),
+    BudgetItemIcon.PET to BudgetItemIconStyle(Icons.Filled.Pets, Color(0xFFFB8C00)),
+    BudgetItemIcon.MOVIE to BudgetItemIconStyle(Icons.Filled.Movie, Color(0xFF7B1FA2)),
+    BudgetItemIcon.KIDS to BudgetItemIconStyle(Icons.Filled.ChildCare, Color(0xFFF06292)),
+    BudgetItemIcon.RETIREMENT to BudgetItemIconStyle(Icons.Filled.Elderly, Color(0xFF607D8B))
 )
