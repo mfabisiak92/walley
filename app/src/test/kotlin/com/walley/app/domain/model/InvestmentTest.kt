@@ -242,6 +242,40 @@ class InvestmentTest {
     }
 
     @Test
+    fun `a sell matches the oldest buy lot first (FIFO)`() {
+        // Buy 10 @ 20, then 10 @ 30. Sell 10 -> consumes the first lot entirely, leaving 10 @ 30.
+        val data = InvestmentWithTransactions(
+            investment("25"),
+            listOf(
+                buy("2026-01-01", "10", "20"),
+                buy("2026-02-01", "10", "30"),
+                sell("2026-03-01", "10", "40")
+            )
+        )
+        assertEquals(BigDecimal("10"), data.quantity)
+        assertEquals(0, BigDecimal("30").compareTo(data.averageCost))
+        // Realized gain is against the oldest (20) lot, not the blended average (25): (40-20)*10 = 200.
+        assertEquals(0, BigDecimal("200").compareTo(data.realizedGainLoss))
+    }
+
+    @Test
+    fun `a sell spanning two lots realizes gain against each lot's own cost`() {
+        // Buy 10 @ 20, then 10 @ 30. Sell 15 -> consumes all of the first lot and half of the second.
+        val data = InvestmentWithTransactions(
+            investment("25"),
+            listOf(
+                buy("2026-01-01", "10", "20"),
+                buy("2026-02-01", "10", "30"),
+                sell("2026-03-01", "15", "40")
+            )
+        )
+        assertEquals(BigDecimal("5"), data.quantity)
+        assertEquals(0, BigDecimal("30").compareTo(data.averageCost))
+        // Realized = (40-20)*10 + (40-30)*5 = 200 + 50 = 250.
+        assertEquals(0, BigDecimal("250").compareTo(data.realizedGainLoss))
+    }
+
+    @Test
     fun `a sell's commission reduces realized gain`() {
         // Buy 10 @ 20 (cost 20/unit). Sell 10 @ 30 with 20 commission -> net proceeds 280, i.e. 28/unit.
         // Realized gain = (28 - 20) * 10 = 80, instead of 100 without commission.

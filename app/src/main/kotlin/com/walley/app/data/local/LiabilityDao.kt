@@ -16,6 +16,12 @@ interface LiabilityDao {
     @Query("UPDATE liabilities SET currentBalanceMinorUnits = :currentBalanceMinorUnits WHERE id = :liabilityId")
     suspend fun updateCurrentBalance(liabilityId: Long, currentBalanceMinorUnits: Long)
 
+    @Query(
+        "UPDATE liabilities SET originalAmountMinorUnits = :amountMinorUnits, " +
+            "currentBalanceMinorUnits = :amountMinorUnits WHERE id = :liabilityId"
+    )
+    suspend fun resyncOriginalAndCurrentAmount(liabilityId: Long, amountMinorUnits: Long)
+
     @Query("DELETE FROM liabilities WHERE id = :liabilityId")
     suspend fun delete(liabilityId: Long)
 }

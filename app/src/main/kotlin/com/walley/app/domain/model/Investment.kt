@@ -39,9 +39,9 @@ data class InvestmentTransaction(
 }
 
 /**
- * An investment's position, derived entirely from its buy/sell events using average cost basis:
- * each sell realizes gain/loss against the running average buy price, matching how most brokerages
- * report it. This is what lets one ticker bought multiple times stay a single position.
+ * An investment's position, derived entirely from its buy/sell events using FIFO cost basis: each
+ * sell consumes the oldest open buy lots first, and realizes gain/loss against those lots' cost.
+ * This is what lets one ticker bought multiple times stay a single position.
  */
 data class InvestmentWithTransactions(
     val investment: Investment,
@@ -50,37 +50,55 @@ data class InvestmentWithTransactions(
 ) {
     private val running: RunningState by lazy { runningState(includeRealized = { true }) }
 
+    /** An open buy lot still (partially) held, oldest lots consumed first by sells. */
+    private data class Lot(val quantity: BigDecimal, val unitCost: BigDecimal)
+
     /**
-     * Replays every transaction in chronological order to track quantity and average cost, but only
-     * sums realized gain/loss for sells where [includeRealized] returns true — quantity/cost still
-     * account for every sell regardless, since a later sell's cost basis depends on all prior ones.
+     * Replays every transaction in chronological order to track open buy lots, but only sums
+     * realized gain/loss for sells where [includeRealized] returns true — lots still get consumed
+     * for every sell regardless, since a later sell's cost basis depends on all prior ones.
      */
     private fun runningState(includeRealized: (InvestmentTransaction) -> Boolean): RunningState =
         transactions.sortedWith(compareBy({ it.date }, { it.id }))
-            .fold(RunningState(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, emptyMap())) { state, t ->
+            .fold(RunningState(emptyList(), BigDecimal.ZERO, emptyMap())) { state, t ->
                 when (t.type) {
                     InvestmentTransactionType.BUY -> {
                         // Commission is folded into cost basis, same as it would show up on a brokerage statement.
-                        val newQuantity = state.quantity + t.quantity
-                        val newAverageCost = if (newQuantity.signum() == 0) {
+                        val unitCost = if (t.quantity.signum() == 0) {
                             BigDecimal.ZERO
                         } else {
-                            ((state.averageCost * state.quantity) + t.netAmount)
-                                .divide(newQuantity, 8, RoundingMode.HALF_UP)
+                            t.netAmount.divide(t.quantity, 8, RoundingMode.HALF_UP)
                         }
-                        state.copy(quantity = newQuantity, averageCost = newAverageCost)
+                        state.copy(lots = state.lots + Lot(t.quantity, unitCost))
                     }
                     InvestmentTransactionType.SELL -> {
                         // Commission reduces net proceeds, so it's netted per unit before comparing to cost.
-                        val soldQuantity = t.quantity.min(state.quantity)
+                        val heldQuantity = state.lots.fold(BigDecimal.ZERO) { acc, lot -> acc + lot.quantity }
+                        var toSell = t.quantity.min(heldQuantity)
                         val proceedsPerUnit = if (t.quantity.signum() == 0) {
                             BigDecimal.ZERO
                         } else {
                             t.netAmount.divide(t.quantity, 8, RoundingMode.HALF_UP)
                         }
-                        val realized = (proceedsPerUnit - state.averageCost) * soldQuantity
+
+                        var realized = BigDecimal.ZERO
+                        val remainingLots = mutableListOf<Lot>()
+                        for (lot in state.lots) {
+                            if (toSell.signum() <= 0) {
+                                remainingLots += lot
+                                continue
+                            }
+                            val consumed = lot.quantity.min(toSell)
+                            realized += (proceedsPerUnit - lot.unitCost) * consumed
+                            toSell -= consumed
+                            val leftover = lot.quantity - consumed
+                            if (leftover.signum() > 0) {
+                                remainingLots += lot.copy(quantity = leftover)
+                            }
+                        }
+
                         state.copy(
-                            quantity = state.quantity - soldQuantity,
+                            lots = remainingLots,
                             realizedGainLoss = state.realizedGainLoss +
                                 if (includeRealized(t)) realized else BigDecimal.ZERO,
                             realizedByTransactionId = state.realizedByTransactionId + (t.id to realized)
@@ -90,12 +108,18 @@ data class InvestmentWithTransactions(
             }
 
     /** Net quantity currently held. */
-    val quantity: BigDecimal get() = running.quantity
+    val quantity: BigDecimal get() = running.lots.fold(BigDecimal.ZERO) { acc, lot -> acc + lot.quantity }
 
-    /** Weighted average cost per unit of the currently held quantity. */
-    val averageCost: BigDecimal get() = running.averageCost
+    /** Weighted average cost per unit across the currently open (oldest-first) buy lots. */
+    val averageCost: BigDecimal get() {
+        val lots = running.lots
+        val totalQuantity = lots.fold(BigDecimal.ZERO) { acc, lot -> acc + lot.quantity }
+        if (totalQuantity.signum() == 0) return BigDecimal.ZERO
+        val totalCost = lots.fold(BigDecimal.ZERO) { acc, lot -> acc + (lot.quantity * lot.unitCost) }
+        return totalCost.divide(totalQuantity, 8, RoundingMode.HALF_UP)
+    }
 
-    /** Realized gain/loss from all sells, against the average cost at the time of each sale. */
+    /** Realized gain/loss from all sells, each matched FIFO against the oldest open buy lots. */
     val realizedGainLoss: BigDecimal get() = running.realizedGainLoss
 
     /** Realized gain/loss for each individual sell, keyed by transaction id — for showing it per event. */
@@ -138,8 +162,7 @@ data class InvestmentWithTransactions(
         }
 
     private data class RunningState(
-        val quantity: BigDecimal,
-        val averageCost: BigDecimal,
+        val lots: List<Lot>,
         val realizedGainLoss: BigDecimal,
         val realizedByTransactionId: Map<Long, BigDecimal>
     )

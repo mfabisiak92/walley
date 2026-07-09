@@ -68,7 +68,10 @@ class LiabilityRepositoryImpl @Inject constructor(
                     currentBalance = rounded,
                     startDate = LocalDate.of(year, 1, 1)
                 )
-                existing.currentBalance.compareTo(rounded) != 0 -> updateCurrentBalance(existing.id, rounded)
+                // Both originalAmount and currentBalance track the live estimate, not an amount actually
+                // paid, so a shrinking estimate must not show up as "paid off" — reset both together.
+                existing.currentBalance.compareTo(rounded) != 0 ->
+                    liabilityDao.resyncOriginalAndCurrentAmount(existing.id, rounded.toMinorUnits())
             }
         }
 
