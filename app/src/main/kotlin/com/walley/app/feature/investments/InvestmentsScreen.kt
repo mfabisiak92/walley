@@ -1,5 +1,6 @@
 package com.walley.app.feature.investments
 
+import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,9 +18,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PriceCheck
+import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -113,10 +117,18 @@ private fun PortfolioListPage(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
     var pendingDeleteInvestment by remember { mutableStateOf<InvestmentWithTransactions?>(null) }
+    var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        pendingImportUri = uri
+    }
 
     Scaffold(
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(onClick = { importLauncher.launch(arrayOf("text/*", "*/*")) }) {
+                    Icon(Icons.Default.UploadFile, contentDescription = "Import from file")
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 SmallFloatingActionButton(onClick = onOpenUpdatePrices) {
                     Icon(Icons.Default.PriceCheck, contentDescription = "Update prices")
                 }
@@ -230,6 +242,13 @@ private fun PortfolioListPage(
             dismissButton = {
                 TextButton(onClick = { pendingDeleteInvestment = null }) { Text("Cancel") }
             }
+        )
+    }
+
+    pendingImportUri?.let { uri ->
+        ImportInvestmentsDialog(
+            uri = uri,
+            onDismiss = { pendingImportUri = null }
         )
     }
 }

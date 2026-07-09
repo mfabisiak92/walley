@@ -124,4 +124,39 @@ class InvestmentRepositoryImpl @Inject constructor(
     override suspend fun deleteTransaction(transactionId: Long) {
         investmentDao.deleteTransaction(transactionId)
     }
+
+    override suspend fun importTransaction(
+        accountId: Long,
+        ticker: String,
+        name: String,
+        category: InvestmentCategory,
+        currency: Currency,
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
+    ) {
+        val existing = investmentDao.findByAccountAndTicker(accountId, ticker)
+        val investmentId = existing?.id ?: investmentDao.insert(
+            InvestmentEntity(
+                name = name,
+                ticker = ticker,
+                category = category,
+                currency = currency,
+                currentPrice = pricePerUnit,
+                accountId = accountId
+            )
+        )
+        investmentDao.insertTransaction(
+            InvestmentTransactionEntity(
+                investmentId = investmentId,
+                type = type,
+                date = date,
+                quantity = quantity,
+                pricePerUnit = pricePerUnit,
+                commission = commission
+            )
+        )
+    }
 }

@@ -55,4 +55,21 @@ interface InvestmentRepository {
     )
 
     suspend fun deleteTransaction(transactionId: Long)
+
+    /**
+     * Used by CSV import: finds the existing investment for (accountId, ticker) or creates one
+     * (using [name]/[category]/[currentPrice] only when creating), then appends the transaction to it.
+     */
+    suspend fun importTransaction(
+        accountId: Long,
+        ticker: String,
+        name: String,
+        category: InvestmentCategory,
+        currency: Currency,
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
+    )
 }

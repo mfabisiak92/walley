@@ -18,6 +18,9 @@ interface InvestmentDao {
     @Query("SELECT * FROM investments WHERE id = :investmentId")
     fun observeById(investmentId: Long): Flow<InvestmentEntity?>
 
+    @Query("SELECT * FROM investments WHERE accountId = :accountId AND ticker = :ticker LIMIT 1")
+    suspend fun findByAccountAndTicker(accountId: Long, ticker: String): InvestmentEntity?
+
     @Query("SELECT * FROM investment_transactions")
     fun observeAllTransactions(): Flow<List<InvestmentTransactionEntity>>
 
