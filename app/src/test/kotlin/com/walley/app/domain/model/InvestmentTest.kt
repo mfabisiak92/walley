@@ -122,6 +122,18 @@ class InvestmentTest {
     }
 
     @Test
+    fun `realizedGainLossByTransactionId attributes each sell's own gain, not the running total`() {
+        // Buy 10 @ 20. Sell 4 @ 30 (gain 40). Sell 6 @ 15 (loss -30). Total realized = 10, but per-sell differs.
+        val firstSell = sell("2026-03-01", "4", "30", id = 10)
+        val secondSell = sell("2026-04-01", "6", "15", id = 20)
+        val data = InvestmentWithTransactions(investment("25"), listOf(buy("2026-01-01", "10", "20"), firstSell, secondSell))
+        val byId = data.realizedGainLossByTransactionId
+        assertEquals(0, BigDecimal("40").compareTo(byId.getValue(10)))
+        assertEquals(0, BigDecimal("-30").compareTo(byId.getValue(20)))
+        assertEquals(0, BigDecimal("10").compareTo(data.realizedGainLoss))
+    }
+
+    @Test
     fun `transactions out of chronological input order are still aggregated correctly`() {
         // Listed newest-first (as the repository returns them), but math must follow actual dates.
         val data = InvestmentWithTransactions(

@@ -57,7 +57,7 @@ data class InvestmentWithTransactions(
      */
     private fun runningState(includeRealized: (InvestmentTransaction) -> Boolean): RunningState =
         transactions.sortedWith(compareBy({ it.date }, { it.id }))
-            .fold(RunningState(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO)) { state, t ->
+            .fold(RunningState(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, emptyMap())) { state, t ->
                 when (t.type) {
                     InvestmentTransactionType.BUY -> {
                         // Commission is folded into cost basis, same as it would show up on a brokerage statement.
@@ -82,7 +82,8 @@ data class InvestmentWithTransactions(
                         state.copy(
                             quantity = state.quantity - soldQuantity,
                             realizedGainLoss = state.realizedGainLoss +
-                                if (includeRealized(t)) realized else BigDecimal.ZERO
+                                if (includeRealized(t)) realized else BigDecimal.ZERO,
+                            realizedByTransactionId = state.realizedByTransactionId + (t.id to realized)
                         )
                     }
                 }
@@ -96,6 +97,9 @@ data class InvestmentWithTransactions(
 
     /** Realized gain/loss from all sells, against the average cost at the time of each sale. */
     val realizedGainLoss: BigDecimal get() = running.realizedGainLoss
+
+    /** Realized gain/loss for each individual sell, keyed by transaction id — for showing it per event. */
+    val realizedGainLossByTransactionId: Map<Long, BigDecimal> get() = running.realizedByTransactionId
 
     /** Realized gain/loss from only the sells dated in [year] — what a tax bill for that year is based on. */
     fun realizedGainLossInYear(year: Int): BigDecimal =
@@ -133,7 +137,12 @@ data class InvestmentWithTransactions(
             (investment.currentPrice - averageCost).divide(averageCost, 4, RoundingMode.HALF_UP) * BigDecimal(100)
         }
 
-    private data class RunningState(val quantity: BigDecimal, val averageCost: BigDecimal, val realizedGainLoss: BigDecimal)
+    private data class RunningState(
+        val quantity: BigDecimal,
+        val averageCost: BigDecimal,
+        val realizedGainLoss: BigDecimal,
+        val realizedByTransactionId: Map<Long, BigDecimal>
+    )
 }
 
 /**

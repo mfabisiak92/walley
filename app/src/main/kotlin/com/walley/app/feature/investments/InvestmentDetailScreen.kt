@@ -1,33 +1,49 @@
 package com.walley.app.feature.investments
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -41,6 +57,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -236,62 +253,110 @@ private fun OverviewTab(data: InvestmentWithTransactions, onClickCurrentPrice: (
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             InvestmentCategoryChip(category = investment.category)
+            Text(investment.ticker, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        StatCard {
-            StatRow("Current value", formatMoney(data.currentValue, investment.currency))
-            StatRow("Quantity held", data.quantity.toPlainString())
-            StatRow(
-                "Current price",
-                formatMoney(investment.currentPrice, investment.currency),
-                onClick = onClickCurrentPrice
-            )
-        }
-        StatCard {
-            StatRow("Average cost", formatMoney(data.averageCost, investment.currency))
-            StatRow("Cost basis", formatMoney(data.costBasis, investment.currency))
-            StatRow(
-                "First purchase",
-                data.firstPurchaseDate?.format(DATE_FORMATTER) ?: "—"
-            )
-            StatRow("Commission paid", formatMoney(data.totalCommissionPaid, investment.currency))
-        }
-        StatCard {
-            GainLossRow("Unrealized gain/loss", data.unrealizedGainLoss, data.unrealizedGainLossPercent, investment.currency)
-            GainLossRow("Realized gain/loss", data.realizedGainLoss, null, investment.currency)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "Current value",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(formatMoney(data.currentValue, investment.currency), style = MaterialTheme.typography.headlineMedium)
+                Spacer(modifier = Modifier.height(6.dp))
+                UnrealizedGainBadge(data.unrealizedGainLoss, data.unrealizedGainLossPercent, investment.currency)
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile("Quantity", data.quantity.toPlainString())
+                    StatTile(
+                        "Current price",
+                        formatMoney(investment.currentPrice, investment.currency),
+                        onClick = onClickCurrentPrice
+                    )
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile("Avg cost", formatMoney(data.averageCost, investment.currency))
+                    StatTile("Cost basis", formatMoney(data.costBasis, investment.currency))
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile("First purchase", data.firstPurchaseDate?.format(DATE_FORMATTER) ?: "—")
+                    StatTile("Commission paid", formatMoney(data.totalCommissionPaid, investment.currency))
+                }
+                if (data.realizedGainLoss.signum() != 0) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    GainLossRow("Realized gain/loss", data.realizedGainLoss, null, investment.currency)
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun StatCard(content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            content = content
+private fun UnrealizedGainBadge(amount: BigDecimal, percent: BigDecimal?, currency: Currency) {
+    val isGain = amount.signum() >= 0
+    val color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+    val sign = if (isGain) "+" else ""
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(
+            if (isGain) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = color
+        )
+        Text(
+            text = "$sign${formatMoney(amount, currency)}" +
+                (percent?.setScale(1, RoundingMode.HALF_UP)?.let { " ($sign${it.toPlainString()}%)" } ?: "") +
+                " unrealized",
+            style = MaterialTheme.typography.bodyMedium,
+            color = color
         )
     }
 }
 
 @Composable
-private fun StatRow(label: String, value: String, onClick: (() -> Unit)? = null) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+private fun RowScope.StatTile(label: String, value: String, onClick: (() -> Unit)? = null) {
+    Surface(
+        modifier = Modifier.weight(1f),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+        onClick = onClick ?: {},
+        enabled = onClick != null
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (onClick != null) {
-            TextButton(onClick = onClick) { Text(value) }
-        } else {
-            Text(value, style = MaterialTheme.typography.bodyMedium)
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (onClick != null) {
+                    Icon(
+                        Icons.Filled.Edit,
+                        contentDescription = "Edit $label",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(value, style = MaterialTheme.typography.bodyLarge)
         }
     }
 }
@@ -337,28 +402,46 @@ private fun EventsTab(
         }
         return
     }
+    val realizedByTransactionId = data.realizedGainLossByTransactionId
+    val groupedByYear = data.transactions.groupBy { it.date.year }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(data.transactions, key = { it.id }) { transaction ->
-            SwipeToDeleteBox(
-                onDelete = { onDeleteTransaction(transaction) },
-                dismissOnDelete = false
-            ) {
-                TransactionRow(
-                    transaction = transaction,
-                    currency = data.investment.currency,
-                    onClick = { onClickTransaction(transaction) }
+        groupedByYear.forEach { (year, transactionsInYear) ->
+            item(key = "year-$year") {
+                Text(
+                    "$year · ${transactionsInYear.size} event${if (transactionsInYear.size == 1) "" else "s"}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+            items(transactionsInYear, key = { it.id }) { transaction ->
+                SwipeToDeleteBox(
+                    onDelete = { onDeleteTransaction(transaction) },
+                    dismissOnDelete = false
+                ) {
+                    TransactionRow(
+                        transaction = transaction,
+                        currency = data.investment.currency,
+                        realizedGainLoss = realizedByTransactionId[transaction.id],
+                        onClick = { onClickTransaction(transaction) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun TransactionRow(transaction: InvestmentTransaction, currency: Currency, onClick: () -> Unit) {
+private fun TransactionRow(
+    transaction: InvestmentTransaction,
+    currency: Currency,
+    realizedGainLoss: BigDecimal?,
+    onClick: () -> Unit
+) {
     val isBuy = transaction.type == InvestmentTransactionType.BUY
     val typeColor = if (isBuy) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
 
@@ -367,35 +450,86 @@ private fun TransactionRow(transaction: InvestmentTransaction, currency: Currenc
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .background(typeColor.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
             ) {
-                Text(transaction.type.label, style = MaterialTheme.typography.titleMedium, color = typeColor)
-                Text(formatMoney(transaction.total, currency), style = MaterialTheme.typography.titleMedium)
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    transaction.date.format(DATE_FORMATTER),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "${transaction.quantity.toPlainString()} @ ${formatMoney(transaction.pricePerUnit, currency)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Icon(
+                    if (isBuy) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = typeColor
                 )
             }
-            if (transaction.commission.signum() > 0) {
-                Text(
-                    "Commission: ${formatMoney(transaction.commission, currency)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(transaction.type.label, style = MaterialTheme.typography.bodyLarge)
+                    Text(formatMoney(transaction.total, currency), style = MaterialTheme.typography.bodyLarge)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        transaction.date.format(DATE_FORMATTER),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "${transaction.quantity.toPlainString()} @ ${formatMoney(transaction.pricePerUnit, currency)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (realizedGainLoss != null) {
+                    val isGain = realizedGainLoss.signum() >= 0
+                    val sign = if (isGain) "+" else ""
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Realized gain/loss",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "$sign${formatMoney(realizedGainLoss, currency)}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                        )
+                    }
+                } else if (transaction.commission.signum() > 0) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "Commission",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            formatMoney(transaction.commission, currency),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }

@@ -68,6 +68,15 @@ class AccountsViewModel @Inject constructor(
         PortfolioTaxEstimate(BigDecimal.ZERO, BigDecimal.ZERO)
     )
 
+    /** Sum of every investment account's unrealized net profit (after tax), converted to base currency. */
+    val investmentsNetProfit: StateFlow<BigDecimal> = combine(accounts, baseCurrencyRates) { accts, (base, rates) ->
+        accts.filter { it.type == AccountType.INVESTMENT }
+            .fold(BigDecimal.ZERO) { acc, account ->
+                val netProfit = account.investmentNetProfit ?: BigDecimal.ZERO
+                acc + (convertToCurrency(netProfit, account.currency, base, rates) ?: BigDecimal.ZERO)
+            }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BigDecimal.ZERO)
+
     private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
     val deleteBlockedMessage: StateFlow<String?> = _deleteBlockedMessage.asStateFlow()
 

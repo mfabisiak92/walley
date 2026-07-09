@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -34,6 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -58,8 +60,8 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.InvestmentWithTransactions
-import com.walley.app.domain.model.PortfolioTaxEstimate
 import com.walley.app.domain.model.estimatedTaxForYear
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -123,6 +125,7 @@ private fun AccountsListPage(
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val investmentsByAccount by viewModel.investmentsByAccount.collectAsStateWithLifecycle()
     val portfolioTaxEstimate by viewModel.portfolioTaxEstimate.collectAsStateWithLifecycle()
+    val investmentsNetProfit by viewModel.investmentsNetProfit.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -173,14 +176,14 @@ private fun AccountsListPage(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (group == AccountBalanceGroup.INVESTMENTS) {
-                    item {
-                        TaxCalculatorCard(
-                            estimate = portfolioTaxEstimate,
-                            currency = baseCurrency,
-                            year = LocalDate.now().year
-                        )
-                    }
+                item {
+                    val isInvestments = group == AccountBalanceGroup.INVESTMENTS
+                    SummaryRibbon(
+                        totalsByCurrency = currencyTotals(filteredAccounts),
+                        netProfit = if (isInvestments) investmentsNetProfit else null,
+                        estimatedTax = if (isInvestments) portfolioTaxEstimate.taxOwed else null,
+                        baseCurrency = baseCurrency
+                    )
                 }
                 items(filteredAccounts, key = { it.id }) { account ->
                     SwipeToDeleteBox(
@@ -309,8 +312,7 @@ private fun AccountRow(
             Column(modifier = Modifier.padding(start = 32.dp)) {
                 if (account.type == AccountType.INVESTMENT) {
                     Text(
-                        text = "Invested: ${formatMoney(account.balance - account.uninvestedCash, account.currency)} · " +
-                            "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
+                        text = "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -327,7 +329,7 @@ private fun AccountRow(
                         )
                         account.investmentTaxAmount?.let { tax ->
                             Text(
-                                text = "If sold today (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
+                                text = "Estimated tax (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF1565C0)
                             )
@@ -342,8 +344,7 @@ private fun AccountRow(
                     }
                     account.estimatedTaxForYear(investmentsInAccount, LocalDate.now().year)?.let { estimatedTax ->
                         Text(
-                            text = "Est. tax next year (${LocalDate.now().year} sales, ${account.taxRate.label}): " +
-                                formatMoney(estimatedTax, account.currency),
+                            text = "Owed tax next year: ${formatMoney(estimatedTax, account.currency)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF1565C0)
                         )
@@ -358,52 +359,58 @@ private fun AccountRow(
     }
 }
 
+private fun currencyTotals(accounts: List<Account>): List<CurrencyTotal> =
+    Currency.entries.mapNotNull { currency ->
+        val total = accounts.filter { it.currency == currency }.fold(BigDecimal.ZERO) { acc, a -> acc + a.balance }
+        if (total.signum() == 0) null else CurrencyTotal(currency, total)
+    }
+
 /**
- * Combined tax estimate across every taxable investment account, netting realized gains and losses
- * within the same tax rate before applying it — unlike each account's own standalone figure, a loss
- * here can offset a gain elsewhere. Tax-free accounts never contribute to this number.
+ * Small at-a-glance strip above a tab's account list — total balance, plus net profit and estimated
+ * tax for Investments. Deliberately flat (tinted fill, no elevation or border) and slimmer than the
+ * account cards below it, so it reads as a summary header rather than another list item.
  */
 @Composable
-private fun TaxCalculatorCard(estimate: PortfolioTaxEstimate, currency: Currency, year: Int) {
-    val netIsGain = estimate.netRealizedGainLoss.signum() >= 0
-    Card(
+private fun SummaryRibbon(
+    totalsByCurrency: List<CurrencyTotal>,
+    netProfit: BigDecimal?,
+    estimatedTax: BigDecimal?,
+    baseCurrency: Currency
+) {
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Tax calculator — $year sales", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Nets gains and losses across every taxable account (tax-free accounts excluded).",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    if (netIsGain) "Net realized gain" else "Net realized loss",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    formatMoney(estimate.netRealizedGainLoss.abs(), currency),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (netIsGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-                )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            val tint = MaterialTheme.colorScheme.onPrimaryContainer
+            val totalText = if (totalsByCurrency.isEmpty()) {
+                formatMoney(BigDecimal.ZERO, baseCurrency)
+            } else {
+                totalsByCurrency.joinToString(" · ") { formatMoney(it.total, it.currency) }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Estimated tax owed", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    formatMoney(estimate.taxOwed, currency),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF1565C0)
-                )
+            RibbonStat("Total", totalText, tint)
+            if (netProfit != null) {
+                RibbonStat("Profit", formatMoney(netProfit, baseCurrency), tint)
+            }
+            if (estimatedTax != null) {
+                RibbonStat("Tax", formatMoney(estimatedTax, baseCurrency), tint)
             }
         }
+    }
+}
+
+/** Equal-width column so 3 stats never squeeze unevenly — a long value wraps onto a second line instead of being hidden or forcing a sibling to shrink. */
+@Composable
+private fun RowScope.RibbonStat(label: String, value: String, tint: Color) {
+    Column(modifier = Modifier.weight(1f)) {
+        Text(label, style = MaterialTheme.typography.labelSmall, color = tint.copy(alpha = 0.75f))
+        Text(value, style = MaterialTheme.typography.titleSmall, color = tint)
     }
 }
 
