@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
+import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.feature.accounts.AccountsScreen
 import com.walley.app.feature.assets.AssetsScreen
 import com.walley.app.feature.budget.BudgetsScreen
@@ -55,7 +56,8 @@ fun MainTabsScreen(
     onOpenEquity: (Long) -> Unit,
     onNavigateToAdHocWizard: () -> Unit,
     onOpenAdHocBudget: (Long) -> Unit,
-    onOpenUpdatePrices: () -> Unit
+    onOpenUpdatePrices: () -> Unit,
+    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -94,7 +96,10 @@ fun MainTabsScreen(
                     onNavigateToNetWorthDetail = onNavigateToNetWorthDetail,
                     onNavigateToAnalytics = onNavigateToAnalytics
                 )
-                1 -> AccountsScreen(onNavigateHome = goHome)
+                1 -> AccountsScreen(
+                    onNavigateHome = goHome,
+                    onOpenUpdateBalances = onOpenUpdateBalances
+                )
                 2 -> BudgetsScreen(
                     onNavigateHome = goHome,
                     onCreateBudget = onNavigateToBudgetWizard,

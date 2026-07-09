@@ -38,6 +38,9 @@ interface AccountDao {
     @Query("UPDATE accounts SET balanceMinorUnits = balanceMinorUnits + :deltaMinorUnits WHERE id = :accountId")
     suspend fun addToBalance(accountId: Long, deltaMinorUnits: Long)
 
+    @Query("UPDATE accounts SET balanceMinorUnits = :balanceMinorUnits WHERE id = :accountId")
+    suspend fun updateBalance(accountId: Long, balanceMinorUnits: Long)
+
     @Query("SELECT COUNT(*) FROM accounts")
     suspend fun count(): Int
 

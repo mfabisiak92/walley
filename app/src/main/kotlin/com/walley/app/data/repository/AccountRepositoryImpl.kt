@@ -99,6 +99,10 @@ class AccountRepositoryImpl @Inject constructor(
         accountDao.addToBalance(accountId, delta.toMinorUnits())
     }
 
+    override suspend fun updateBalance(accountId: Long, newBalance: BigDecimal) {
+        accountDao.updateBalance(accountId, newBalance.toMinorUnits())
+    }
+
     override suspend fun setDefaultAccount(accountId: Long) {
         accountDao.setDefaultAccount(accountId)
     }

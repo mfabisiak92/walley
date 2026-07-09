@@ -29,6 +29,11 @@ interface AccountRepository {
     suspend fun deleteAccount(accountId: Long)
     /** Adds (or subtracts, for a negative delta) an amount to an account's stored balance. */
     suspend fun addToBalance(accountId: Long, delta: BigDecimal)
+    /**
+     * Overwrites an account's raw stored balance directly, leaving every other field untouched.
+     * For an Investment account this sets its **uninvested cash**, same as [updateAccount]'s newBalance.
+     */
+    suspend fun updateBalance(accountId: Long, newBalance: BigDecimal)
     /** Makes this the one default account; every other account becomes non-default. */
     suspend fun setDefaultAccount(accountId: Long)
 }

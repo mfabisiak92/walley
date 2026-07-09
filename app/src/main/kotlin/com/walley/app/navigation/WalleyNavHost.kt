@@ -6,6 +6,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.walley.app.domain.model.AccountBalanceGroup
+import com.walley.app.feature.accounts.UpdateBalancesScreen
 import com.walley.app.feature.analytics.AnalyticsScreen
 import com.walley.app.feature.budget.AdHocBudgetDetailScreen
 import com.walley.app.feature.budget.AdHocWizardScreen
@@ -29,9 +31,11 @@ private object WalleyDestinations {
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
     const val UPDATE_PRICES = "update_prices"
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
+    const val UPDATE_BALANCES = "update_balances/{group}"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetSettings(budgetId: Long) = "budget_settings/$budgetId"
+    fun updateBalances(group: AccountBalanceGroup) = "update_balances/${group.name}"
     fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
         val params = listOfNotNull(
             cloneFromBudgetId?.let { "cloneFrom=$it" },
@@ -67,7 +71,10 @@ fun WalleyNavHost() {
                 onOpenAdHocBudget = { adHocBudgetId ->
                     navController.navigate(WalleyDestinations.adHocDetail(adHocBudgetId))
                 },
-                onOpenUpdatePrices = { navController.navigate(WalleyDestinations.UPDATE_PRICES) }
+                onOpenUpdatePrices = { navController.navigate(WalleyDestinations.UPDATE_PRICES) },
+                onOpenUpdateBalances = { group ->
+                    navController.navigate(WalleyDestinations.updateBalances(group))
+                }
             )
         }
         composable(WalleyDestinations.NET_WORTH_DETAIL) {
@@ -143,6 +150,12 @@ fun WalleyNavHost() {
         }
         composable(WalleyDestinations.UPDATE_PRICES) {
             UpdatePricesScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(
+            WalleyDestinations.UPDATE_BALANCES,
+            arguments = listOf(navArgument("group") { type = NavType.StringType })
+        ) {
+            UpdateBalancesScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

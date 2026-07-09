@@ -39,6 +39,8 @@ Exactly one account is the **default account** at a time (regardless of tab) —
 
 Accounts can be deleted by swiping a row left and tapping the red trash icon (or via the edit dialog), after confirming in a dialog. **An account with linked investments can't be deleted** until those investments are unlinked or deleted first.
 
+- **Update balances** — a small floating action button stacked above each tab's "Add account" FAB opens a single screen listing every account in that tab (Cash & Checking, Savings, or Investments) as a compact row (name · type, with its balance prefilled in an editable field), so you can update several at once instead of one edit dialog at a time. One "Save all" button writes only the balances you actually changed. On the Investments tab this edits each account's **uninvested cash** specifically (a hint at the top of the screen calls this out), same as the single-account edit dialog — the rest of an Investment account's total balance comes from its linked positions' market value, updated from the Investments tab's own "Update prices" screen instead. Absent (FAB hidden) on a tab with no accounts yet.
+
 ## Investments
 
 Split into two tabs.

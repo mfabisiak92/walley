@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
@@ -31,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -52,25 +55,22 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.domain.model.AccountType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import kotlinx.coroutines.launch
-
-private val ACCOUNTS_TABS = listOf(
-    "Cash & Checking" to listOf(AccountType.CHECKING, AccountType.CASH),
-    "Savings" to listOf(AccountType.SAVING),
-    "Investments" to listOf(AccountType.INVESTMENT)
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
+    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
 ) {
-    val pagerState = rememberPagerState(pageCount = { ACCOUNTS_TABS.size })
+    val tabs = AccountBalanceGroup.entries
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
     Scaffold(
@@ -84,11 +84,11 @@ fun AccountsScreen(
                 .fillMaxSize()
         ) {
             TabRow(selectedTabIndex = pagerState.currentPage) {
-                ACCOUNTS_TABS.forEachIndexed { index, (label, _) ->
+                tabs.forEachIndexed { index, group ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(label) }
+                        text = { Text(group.label) }
                     )
                 }
             }
@@ -96,8 +96,11 @@ fun AccountsScreen(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                val (label, allowedTypes) = ACCOUNTS_TABS[page]
-                AccountsListPage(viewModel = viewModel, allowedTypes = allowedTypes, tabLabel = label)
+                AccountsListPage(
+                    viewModel = viewModel,
+                    group = tabs[page],
+                    onOpenUpdateBalances = onOpenUpdateBalances
+                )
             }
         }
     }
@@ -106,9 +109,11 @@ fun AccountsScreen(
 @Composable
 private fun AccountsListPage(
     viewModel: AccountsViewModel,
-    allowedTypes: List<AccountType>,
-    tabLabel: String
+    group: AccountBalanceGroup,
+    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit
 ) {
+    val allowedTypes = group.types
+    val tabLabel = group.label
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
@@ -118,8 +123,16 @@ private fun AccountsListPage(
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add account")
+            Column(horizontalAlignment = Alignment.End) {
+                if (filteredAccounts.isNotEmpty()) {
+                    SmallFloatingActionButton(onClick = { onOpenUpdateBalances(group) }) {
+                        Icon(Icons.Default.EditNote, contentDescription = "Update balances")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add account")
+                }
             }
         }
     ) { innerPadding ->
