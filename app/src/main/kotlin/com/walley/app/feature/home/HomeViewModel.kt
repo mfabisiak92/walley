@@ -6,6 +6,7 @@ import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
@@ -18,9 +19,11 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.Liability
+import com.walley.app.domain.model.estimatedTaxByYear
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
+import com.walley.app.feature.budget.convertToCurrency
 import com.walley.app.feature.budget.projectedNetWorthDelta
 import com.walley.app.feature.budget.unallocatedAmount
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -35,7 +38,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
 data class HomeBalances(
@@ -103,7 +108,8 @@ class HomeViewModel @Inject constructor(
     liabilityRepository: LiabilityRepository,
     budgetRepository: BudgetRepository,
     settingsRepository: SettingsRepository,
-    exchangeRateRepository: ExchangeRateRepository
+    exchangeRateRepository: ExchangeRateRepository,
+    investmentRepository: InvestmentRepository
 ) : ViewModel() {
 
     val homeBalances: StateFlow<HomeBalances> = accountRepository.observeAccounts()
@@ -123,6 +129,26 @@ class HomeViewModel @Inject constructor(
         .flatMapLatest { base ->
             exchangeRateRepository.observeRates(base).map { rates -> base to rates }
         }
+
+    private val investmentsByAccount = investmentRepository.observeInvestments()
+        .map { investments -> investments.filter { it.investment.accountId != null }.groupBy { it.investment.accountId!! } }
+
+    init {
+        // Keeps an "Estimated Tax for {year}" liability in sync with the live realized-gain estimate
+        // for every year that owes anything, so it's automatically part of net worth everywhere.
+        combine(
+            accountRepository.observeAccounts(),
+            investmentsByAccount,
+            baseCurrencyRates
+        ) { accounts, byAccount, (base, rates) ->
+            val amountsByYear = estimatedTaxByYear(accounts, byAccount) { amount, currency ->
+                convertToCurrency(amount, currency, base, rates) ?: BigDecimal.ZERO
+            }
+            base to amountsByYear
+        }
+            .onEach { (base, amountsByYear) -> liabilityRepository.syncEstimatedTaxLiabilities(amountsByYear, base) }
+            .launchIn(viewModelScope)
+    }
 
     private val currentMonthBudget = LocalDate.now().let { today ->
         budgetRepository.observeBudgetForMonth(today.year, today.monthValue)

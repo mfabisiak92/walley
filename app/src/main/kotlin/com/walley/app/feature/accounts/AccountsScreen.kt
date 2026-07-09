@@ -57,8 +57,13 @@ import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.InvestmentWithTransactions
+import com.walley.app.domain.model.PortfolioTaxEstimate
+import com.walley.app.domain.model.estimatedTaxForYear
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -116,6 +121,9 @@ private fun AccountsListPage(
     val tabLabel = group.label
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
+    val investmentsByAccount by viewModel.investmentsByAccount.collectAsStateWithLifecycle()
+    val portfolioTaxEstimate by viewModel.portfolioTaxEstimate.collectAsStateWithLifecycle()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<Account?>(null) }
@@ -165,6 +173,15 @@ private fun AccountsListPage(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (group == AccountBalanceGroup.INVESTMENTS) {
+                    item {
+                        TaxCalculatorCard(
+                            estimate = portfolioTaxEstimate,
+                            currency = baseCurrency,
+                            year = LocalDate.now().year
+                        )
+                    }
+                }
                 items(filteredAccounts, key = { it.id }) { account ->
                     SwipeToDeleteBox(
                         onDelete = { pendingDeleteAccount = account },
@@ -172,6 +189,7 @@ private fun AccountsListPage(
                     ) {
                         AccountRow(
                             account = account,
+                            investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
                             onClick = { editingAccount = account },
                             onSetDefault = { viewModel.setDefaultAccount(account.id) }
                         )
@@ -185,8 +203,8 @@ private fun AccountsListPage(
         AddAccountDialog(
             allowedTypes = allowedTypes,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, type, currency, balance, taxRate, targetAmount ->
-                viewModel.addAccount(name, type, currency, balance, taxRate, targetAmount)
+            onConfirm = { name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent ->
+                viewModel.addAccount(name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent)
                 showAddDialog = false
             }
         )
@@ -197,8 +215,8 @@ private fun AccountsListPage(
             account = account,
             allowedTypes = allowedTypes,
             onDismiss = { editingAccount = null },
-            onSave = { name, type, taxRate, newBalance, targetAmount ->
-                viewModel.updateAccount(account.id, name, type, taxRate, newBalance, targetAmount)
+            onSave = { name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent ->
+                viewModel.updateAccount(account.id, name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent)
                 editingAccount = null
             },
             onDelete = {
@@ -241,7 +259,12 @@ private fun AccountsListPage(
 }
 
 @Composable
-private fun AccountRow(account: Account, onClick: () -> Unit, onSetDefault: () -> Unit) {
+private fun AccountRow(
+    account: Account,
+    investmentsInAccount: List<InvestmentWithTransactions>,
+    onClick: () -> Unit,
+    onSetDefault: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -304,7 +327,7 @@ private fun AccountRow(account: Account, onClick: () -> Unit, onSetDefault: () -
                         )
                         account.investmentTaxAmount?.let { tax ->
                             Text(
-                                text = "Tax (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
+                                text = "If sold today (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF1565C0)
                             )
@@ -317,11 +340,68 @@ private fun AccountRow(account: Account, onClick: () -> Unit, onSetDefault: () -
                             )
                         }
                     }
+                    account.estimatedTaxForYear(investmentsInAccount, LocalDate.now().year)?.let { estimatedTax ->
+                        Text(
+                            text = "Est. tax next year (${LocalDate.now().year} sales, ${account.taxRate.label}): " +
+                                formatMoney(estimatedTax, account.currency),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF1565C0)
+                        )
+                    }
                 }
                 val progressPercent = account.targetProgressPercent
                 if (progressPercent != null) {
                     SavingsGoalProgress(account = account, progressPercent = progressPercent)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Combined tax estimate across every taxable investment account, netting realized gains and losses
+ * within the same tax rate before applying it — unlike each account's own standalone figure, a loss
+ * here can offset a gain elsewhere. Tax-free accounts never contribute to this number.
+ */
+@Composable
+private fun TaxCalculatorCard(estimate: PortfolioTaxEstimate, currency: Currency, year: Int) {
+    val netIsGain = estimate.netRealizedGainLoss.signum() >= 0
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Tax calculator — $year sales", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Nets gains and losses across every taxable account (tax-free accounts excluded).",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    if (netIsGain) "Net realized gain" else "Net realized loss",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    formatMoney(estimate.netRealizedGainLoss.abs(), currency),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (netIsGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Estimated tax owed", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    formatMoney(estimate.taxOwed, currency),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF1565C0)
+                )
             }
         }
     }

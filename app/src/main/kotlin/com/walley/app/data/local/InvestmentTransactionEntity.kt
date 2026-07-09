@@ -13,5 +13,6 @@ data class InvestmentTransactionEntity(
     val type: InvestmentTransactionType,
     val date: LocalDate,
     val quantity: BigDecimal,
-    val pricePerUnit: BigDecimal
+    val pricePerUnit: BigDecimal,
+    val commission: BigDecimal = BigDecimal.ZERO
 )

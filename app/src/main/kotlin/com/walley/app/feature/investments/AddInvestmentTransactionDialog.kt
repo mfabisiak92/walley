@@ -52,7 +52,13 @@ fun AddInvestmentTransactionDialog(
     defaultType: InvestmentTransactionType = InvestmentTransactionType.BUY,
     initial: InvestmentTransaction? = null,
     onDismiss: () -> Unit,
-    onConfirm: (type: InvestmentTransactionType, date: LocalDate, quantity: BigDecimal, pricePerUnit: BigDecimal) -> Unit
+    onConfirm: (
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
+    ) -> Unit
 ) {
     val currency = data.investment.currency
     var type by remember { mutableStateOf(initial?.type ?: defaultType) }
@@ -61,10 +67,17 @@ fun AddInvestmentTransactionDialog(
     var showDatePicker by remember { mutableStateOf(false) }
     var quantityText by remember { mutableStateOf(initial?.quantity?.toPlainString() ?: "") }
     var priceText by remember { mutableStateOf(initial?.pricePerUnit?.toPlainString() ?: "") }
+    var commissionText by remember { mutableStateOf(initial?.commission?.toPlainString() ?: "") }
 
     val parsedQuantity = quantityText.toBigDecimalOrNull()
     val parsedPrice = priceText.toBigDecimalOrNull()
     val isEditing = initial != null
+
+    val tradeValue = if (parsedQuantity != null && parsedPrice != null) parsedQuantity * parsedPrice else BigDecimal.ZERO
+    val suggestedCommission = account?.defaultCommission(tradeValue)
+    val parsedCommission = commissionText.toBigDecimalOrNull()
+    val effectiveCommission = parsedCommission ?: suggestedCommission ?: BigDecimal.ZERO
+    val commissionInvalid = commissionText.isNotBlank() && (parsedCommission == null || parsedCommission.signum() < 0)
 
     val availableToSell = if (type == InvestmentTransactionType.SELL) {
         data.quantityAvailableOn(date, excludingTransactionId = initial?.id)
@@ -78,11 +91,11 @@ fun AddInvestmentTransactionDialog(
     } else {
         null
     }
-    val totalCost = if (parsedQuantity != null && parsedPrice != null) parsedQuantity * parsedPrice else null
+    val totalCost = if (parsedQuantity != null && parsedPrice != null) tradeValue + effectiveCommission else null
     val exceedsCash = availableCash != null && totalCost != null && totalCost > availableCash
 
     val isValid = parsedQuantity != null && parsedQuantity.signum() > 0 &&
-        parsedPrice != null && parsedPrice.signum() > 0 && !exceedsHoldings && !exceedsCash
+        parsedPrice != null && parsedPrice.signum() > 0 && !commissionInvalid && !exceedsHoldings && !exceedsCash
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -156,11 +169,28 @@ fun AddInvestmentTransactionDialog(
                         null
                     }
                 )
+                OutlinedTextField(
+                    value = commissionText,
+                    onValueChange = { commissionText = it },
+                    label = { Text("Commission (${currency.symbol})") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = commissionInvalid,
+                    supportingText = {
+                        Text(
+                            if (commissionText.isBlank() && suggestedCommission != null) {
+                                "Defaults to ${suggestedCommission.toPlainString()} ${currency.symbol} from account settings"
+                            } else {
+                                "Optional — leave blank to use the account's default"
+                            }
+                        )
+                    }
+                )
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(type, date, parsedQuantity!!, parsedPrice!!) },
+                onClick = { onConfirm(type, date, parsedQuantity!!, parsedPrice!!, effectiveCommission) },
                 enabled = isValid
             ) { Text(if (isEditing) "Save" else "Add") }
         },

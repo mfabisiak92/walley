@@ -411,8 +411,8 @@ class BudgetRepositoryImpl @Inject constructor(
                 .filter { !it.date.isBefore(start) && !it.date.isAfter(end) }
                 .fold(BigDecimal.ZERO) { sum, transaction ->
                     when (transaction.type) {
-                        InvestmentTransactionType.BUY -> sum + transaction.total
-                        InvestmentTransactionType.SELL -> sum - transaction.total
+                        InvestmentTransactionType.BUY -> sum + transaction.netAmount
+                        InvestmentTransactionType.SELL -> sum - transaction.netAmount
                     }
                 }
             acc + convert(net, data.investment.currency, base, rates)

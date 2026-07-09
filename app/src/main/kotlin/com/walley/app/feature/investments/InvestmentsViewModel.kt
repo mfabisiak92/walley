@@ -41,10 +41,22 @@ class InvestmentsViewModel @Inject constructor(
         currency: Currency,
         price: BigDecimal,
         currentPrice: BigDecimal,
-        accountId: Long
+        accountId: Long,
+        commission: BigDecimal = BigDecimal.ZERO
     ) {
         viewModelScope.launch {
-            repository.addInvestment(name, ticker, category, currency, currentPrice, accountId, purchaseDate, quantity, price)
+            repository.addInvestment(
+                name,
+                ticker,
+                category,
+                currency,
+                currentPrice,
+                accountId,
+                purchaseDate,
+                quantity,
+                price,
+                commission
+            )
         }
     }
 

@@ -19,5 +19,6 @@ fun InvestmentTransactionEntity.toDomain(): InvestmentTransaction = InvestmentTr
     type = type,
     date = date,
     quantity = quantity,
-    pricePerUnit = pricePerUnit
+    pricePerUnit = pricePerUnit,
+    commission = commission
 )

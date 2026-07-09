@@ -21,7 +21,8 @@ interface InvestmentRepository {
         accountId: Long,
         firstPurchaseDate: LocalDate,
         initialQuantity: BigDecimal,
-        initialPrice: BigDecimal
+        initialPrice: BigDecimal,
+        initialCommission: BigDecimal = BigDecimal.ZERO
     )
 
     suspend fun updateInvestmentDetails(
@@ -40,7 +41,8 @@ interface InvestmentRepository {
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal = BigDecimal.ZERO
     )
 
     suspend fun updateTransaction(
@@ -48,7 +50,8 @@ interface InvestmentRepository {
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal = BigDecimal.ZERO
     )
 
     suspend fun deleteTransaction(transactionId: Long)

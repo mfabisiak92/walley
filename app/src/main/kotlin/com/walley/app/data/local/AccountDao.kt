@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
+import java.math.BigDecimal
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -19,7 +20,8 @@ interface AccountDao {
         """
         UPDATE accounts
         SET name = :name, type = :type, taxRate = :taxRate, balanceMinorUnits = :balanceMinorUnits,
-            targetAmountMinorUnits = :targetAmountMinorUnits
+            targetAmountMinorUnits = :targetAmountMinorUnits, commissionFlatMinorUnits = :commissionFlatMinorUnits,
+            commissionPercent = :commissionPercent
         WHERE id = :accountId
         """
     )
@@ -29,7 +31,9 @@ interface AccountDao {
         type: AccountType,
         taxRate: AccountTaxRate,
         balanceMinorUnits: Long,
-        targetAmountMinorUnits: Long?
+        targetAmountMinorUnits: Long?,
+        commissionFlatMinorUnits: Long,
+        commissionPercent: BigDecimal
     )
 
     @Query("DELETE FROM accounts WHERE id = :accountId")

@@ -45,8 +45,14 @@ class InvestmentDetailViewModel @Inject constructor(
         if (accountId == null) emptyList() else all.filter { it.investment.accountId == accountId }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    fun addTransaction(type: InvestmentTransactionType, date: LocalDate, quantity: BigDecimal, pricePerUnit: BigDecimal) {
-        viewModelScope.launch { repository.addTransaction(investmentId, type, date, quantity, pricePerUnit) }
+    fun addTransaction(
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
+    ) {
+        viewModelScope.launch { repository.addTransaction(investmentId, type, date, quantity, pricePerUnit, commission) }
     }
 
     fun updateTransaction(
@@ -54,9 +60,10 @@ class InvestmentDetailViewModel @Inject constructor(
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
     ) {
-        viewModelScope.launch { repository.updateTransaction(transactionId, type, date, quantity, pricePerUnit) }
+        viewModelScope.launch { repository.updateTransaction(transactionId, type, date, quantity, pricePerUnit, commission) }
     }
 
     fun deleteTransaction(transactionId: Long) {

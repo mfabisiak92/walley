@@ -16,27 +16,41 @@ class InvestmentTest {
         currentPrice = BigDecimal(currentPrice)
     )
 
-    private fun buy(date: String, quantity: String, price: String, id: Long = 0) = InvestmentTransaction(
+    private fun buy(date: String, quantity: String, price: String, id: Long = 0, commission: String = "0") = InvestmentTransaction(
         id = id,
         type = InvestmentTransactionType.BUY,
         date = LocalDate.parse(date),
         quantity = BigDecimal(quantity),
-        pricePerUnit = BigDecimal(price)
+        pricePerUnit = BigDecimal(price),
+        commission = BigDecimal(commission)
     )
 
-    private fun sell(date: String, quantity: String, price: String, id: Long = 0) = InvestmentTransaction(
+    private fun sell(date: String, quantity: String, price: String, id: Long = 0, commission: String = "0") = InvestmentTransaction(
         id = id,
         type = InvestmentTransactionType.SELL,
         date = LocalDate.parse(date),
         quantity = BigDecimal(quantity),
-        pricePerUnit = BigDecimal(price)
+        pricePerUnit = BigDecimal(price),
+        commission = BigDecimal(commission)
     )
 
-    private fun account(uninvestedCash: String) = Account(
+    private fun account(
+        uninvestedCash: String,
+        commissionFlat: String = "0",
+        commissionPercent: String = "0",
+        id: Long = 0,
+        taxRate: AccountTaxRate = AccountTaxRate.STANDARD_19,
+        currency: Currency = Currency.PLN
+    ) = Account(
+        id = id,
         name = "Brokerage",
-        currency = Currency.PLN,
+        type = AccountType.INVESTMENT,
+        currency = currency,
         balance = BigDecimal(uninvestedCash),
-        uninvestedCash = BigDecimal(uninvestedCash)
+        uninvestedCash = BigDecimal(uninvestedCash),
+        commissionFlat = BigDecimal(commissionFlat),
+        commissionPercent = BigDecimal(commissionPercent),
+        taxRate = taxRate
     )
 
     @Test
@@ -196,5 +210,41 @@ class InvestmentTest {
         val data = InvestmentWithTransactions(investment("25"), listOf(buy("2026-01-01", "100", "20")))
         val cash = availableCashToBuy(account("1000"), listOf(data), LocalDate.parse("2026-02-01"))
         assertEquals(0, BigDecimal.ZERO.compareTo(cash))
+    }
+
+    @Test
+    fun `defaultCommission picks whichever of flat or percent is higher`() {
+        val acc = account("1000", commissionFlat = "5", commissionPercent = "1")
+        // 1% of 200 = 2, less than the 5 flat fee -> flat wins.
+        assertEquals(0, BigDecimal("5.00").compareTo(acc.defaultCommission(BigDecimal("200"))))
+        // 1% of 1000 = 10, more than the 5 flat fee -> percent wins.
+        assertEquals(0, BigDecimal("10.00").compareTo(acc.defaultCommission(BigDecimal("1000"))))
+    }
+
+    @Test
+    fun `a buy's commission is folded into average cost`() {
+        // 10 units @ 20 = 200, plus 10 commission -> 210 for 10 units = 21 average cost.
+        val data = InvestmentWithTransactions(investment("25"), listOf(buy("2026-01-01", "10", "20", commission = "10")))
+        assertEquals(0, BigDecimal("21").compareTo(data.averageCost))
+        assertEquals(0, BigDecimal("10").compareTo(data.totalCommissionPaid))
+    }
+
+    @Test
+    fun `a sell's commission reduces realized gain`() {
+        // Buy 10 @ 20 (cost 20/unit). Sell 10 @ 30 with 20 commission -> net proceeds 280, i.e. 28/unit.
+        // Realized gain = (28 - 20) * 10 = 80, instead of 100 without commission.
+        val data = InvestmentWithTransactions(
+            investment("25"),
+            listOf(buy("2026-01-01", "10", "20"), sell("2026-02-01", "10", "30", commission = "20"))
+        )
+        assertEquals(0, BigDecimal("80").compareTo(data.realizedGainLoss))
+    }
+
+    @Test
+    fun `availableCashToBuy nets out commission on top of trade value`() {
+        // Buy 10 @ 20 = 200, plus 10 commission -> 210 spent from a 1000 pool.
+        val data = InvestmentWithTransactions(investment("25"), listOf(buy("2026-01-01", "10", "20", commission = "10")))
+        val cash = availableCashToBuy(account("1000"), listOf(data), LocalDate.parse("2026-02-01"))
+        assertEquals(0, BigDecimal("790").compareTo(cash))
     }
 }

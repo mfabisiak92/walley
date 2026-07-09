@@ -7,9 +7,11 @@ import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.Liability
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class LiabilityRepositoryImpl @Inject constructor(
@@ -43,5 +45,42 @@ class LiabilityRepositoryImpl @Inject constructor(
 
     override suspend fun deleteLiability(liabilityId: Long) {
         liabilityDao.delete(liabilityId)
+    }
+
+    override suspend fun syncEstimatedTaxLiabilities(amountsByYear: Map<Int, BigDecimal>, currency: Currency) {
+        val existingByYear = liabilityDao.observeAll().first()
+            .map { it.toDomain() }
+            .mapNotNull { liability ->
+                ESTIMATED_TAX_NAME.matchEntire(liability.name)
+                    ?.groupValues?.get(1)?.toIntOrNull()
+                    ?.let { year -> year to liability }
+            }
+            .toMap()
+
+        for ((year, amount) in amountsByYear) {
+            val rounded = amount.setScale(2, RoundingMode.HALF_UP)
+            val existing = existingByYear[year]
+            when {
+                existing == null -> addLiability(
+                    name = "Estimated Tax for $year",
+                    currency = currency,
+                    originalAmount = rounded,
+                    currentBalance = rounded,
+                    startDate = LocalDate.of(year, 1, 1)
+                )
+                existing.currentBalance.compareTo(rounded) != 0 -> updateCurrentBalance(existing.id, rounded)
+            }
+        }
+
+        // A year that no longer owes anything (e.g. its sells were removed) shouldn't keep a stale liability around.
+        for ((year, liability) in existingByYear) {
+            if (year !in amountsByYear) {
+                deleteLiability(liability.id)
+            }
+        }
+    }
+
+    private companion object {
+        val ESTIMATED_TAX_NAME = Regex("""^Estimated Tax for (\d{4})$""")
     }
 }

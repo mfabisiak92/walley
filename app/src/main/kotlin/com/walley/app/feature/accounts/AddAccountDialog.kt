@@ -37,7 +37,9 @@ fun AddAccountDialog(
         currency: Currency,
         initialBalance: BigDecimal,
         taxRate: AccountTaxRate,
-        targetAmount: BigDecimal?
+        targetAmount: BigDecimal?,
+        commissionFlat: BigDecimal,
+        commissionPercent: BigDecimal
     ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
@@ -46,6 +48,8 @@ fun AddAccountDialog(
     var balanceText by remember { mutableStateOf("0") }
     var taxRate by remember { mutableStateOf(AccountTaxRate.STANDARD_19) }
     var targetAmountText by remember { mutableStateOf("") }
+    var commissionFlatText by remember { mutableStateOf("") }
+    var commissionPercentText by remember { mutableStateOf("") }
     var typeMenuExpanded by remember { mutableStateOf(false) }
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
@@ -55,7 +59,12 @@ fun AddAccountDialog(
     val isSaving = type == AccountType.SAVING
     val parsedTargetAmount = targetAmountText.toBigDecimalOrNull()
     val targetAmountValid = targetAmountText.isBlank() || parsedTargetAmount != null
-    val isValid = name.isNotBlank() && parsedBalance != null && targetAmountValid
+    val parsedCommissionFlat = commissionFlatText.toBigDecimalOrNull()
+    val commissionFlatValid = commissionFlatText.isBlank() || parsedCommissionFlat != null
+    val parsedCommissionPercent = commissionPercentText.toBigDecimalOrNull()
+    val commissionPercentValid = commissionPercentText.isBlank() || parsedCommissionPercent != null
+    val isValid = name.isNotBlank() && parsedBalance != null && targetAmountValid &&
+        commissionFlatValid && commissionPercentValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -166,6 +175,28 @@ fun AddAccountDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedBalance == null
                     )
+                    Text(
+                        "Commission charged per buy/sell trade — whichever of the two is higher. " +
+                            "Used as the default when logging an event, but you can override it per trade.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = commissionFlatText,
+                        onValueChange = { commissionFlatText = it },
+                        label = { Text("Flat commission (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = !commissionFlatValid
+                    )
+                    OutlinedTextField(
+                        value = commissionPercentText,
+                        onValueChange = { commissionPercentText = it },
+                        label = { Text("Commission % of trade value (optional)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = !commissionPercentValid
+                    )
                 } else {
                     OutlinedTextField(
                         value = balanceText,
@@ -197,7 +228,9 @@ fun AddAccountDialog(
                         currency,
                         parsedBalance!!,
                         taxRate,
-                        if (isSaving) parsedTargetAmount else null
+                        if (isSaving) parsedTargetAmount else null,
+                        if (isInvestment) parsedCommissionFlat ?: BigDecimal.ZERO else BigDecimal.ZERO,
+                        if (isInvestment) parsedCommissionPercent ?: BigDecimal.ZERO else BigDecimal.ZERO
                     )
                 },
                 enabled = isValid

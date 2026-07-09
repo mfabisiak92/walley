@@ -47,7 +47,8 @@ class InvestmentRepositoryImpl @Inject constructor(
         accountId: Long,
         firstPurchaseDate: LocalDate,
         initialQuantity: BigDecimal,
-        initialPrice: BigDecimal
+        initialPrice: BigDecimal,
+        initialCommission: BigDecimal
     ) {
         val investmentId = investmentDao.insert(
             InvestmentEntity(
@@ -65,7 +66,8 @@ class InvestmentRepositoryImpl @Inject constructor(
                 type = InvestmentTransactionType.BUY,
                 date = firstPurchaseDate,
                 quantity = initialQuantity,
-                pricePerUnit = initialPrice
+                pricePerUnit = initialPrice,
+                commission = initialCommission
             )
         )
     }
@@ -93,7 +95,8 @@ class InvestmentRepositoryImpl @Inject constructor(
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
     ) {
         investmentDao.insertTransaction(
             InvestmentTransactionEntity(
@@ -101,7 +104,8 @@ class InvestmentRepositoryImpl @Inject constructor(
                 type = type,
                 date = date,
                 quantity = quantity,
-                pricePerUnit = pricePerUnit
+                pricePerUnit = pricePerUnit,
+                commission = commission
             )
         )
     }
@@ -111,9 +115,10 @@ class InvestmentRepositoryImpl @Inject constructor(
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
     ) {
-        investmentDao.updateTransaction(transactionId, type, date, quantity, pricePerUnit)
+        investmentDao.updateTransaction(transactionId, type, date, quantity, pricePerUnit, commission)
     }
 
     override suspend fun deleteTransaction(transactionId: Long) {

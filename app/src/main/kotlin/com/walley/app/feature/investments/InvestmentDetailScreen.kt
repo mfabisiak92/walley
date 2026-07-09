@@ -162,11 +162,11 @@ fun InvestmentDetailScreen(
                     pendingTransactionType = null
                     editingTransaction = null
                 },
-                onConfirm = { type, date, quantity, pricePerUnit ->
+                onConfirm = { type, date, quantity, pricePerUnit, commission ->
                     if (initial != null) {
-                        viewModel.updateTransaction(initial.id, type, date, quantity, pricePerUnit)
+                        viewModel.updateTransaction(initial.id, type, date, quantity, pricePerUnit, commission)
                     } else {
-                        viewModel.addTransaction(type, date, quantity, pricePerUnit)
+                        viewModel.addTransaction(type, date, quantity, pricePerUnit, commission)
                     }
                     pendingTransactionType = null
                     editingTransaction = null
@@ -258,6 +258,7 @@ private fun OverviewTab(data: InvestmentWithTransactions, onClickCurrentPrice: (
                 "First purchase",
                 data.firstPurchaseDate?.format(DATE_FORMATTER) ?: "—"
             )
+            StatRow("Commission paid", formatMoney(data.totalCommissionPaid, investment.currency))
         }
         StatCard {
             GainLossRow("Unrealized gain/loss", data.unrealizedGainLoss, data.unrealizedGainLossPercent, investment.currency)
@@ -385,6 +386,13 @@ private fun TransactionRow(transaction: InvestmentTransaction, currency: Currenc
                 )
                 Text(
                     "${transaction.quantity.toPlainString()} @ ${formatMoney(transaction.pricePerUnit, currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (transaction.commission.signum() > 0) {
+                Text(
+                    "Commission: ${formatMoney(transaction.commission, currency)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -48,7 +48,7 @@ interface InvestmentDao {
     @Query(
         """
         UPDATE investment_transactions
-        SET type = :type, date = :date, quantity = :quantity, pricePerUnit = :pricePerUnit
+        SET type = :type, date = :date, quantity = :quantity, pricePerUnit = :pricePerUnit, commission = :commission
         WHERE id = :transactionId
         """
     )
@@ -57,7 +57,8 @@ interface InvestmentDao {
         type: InvestmentTransactionType,
         date: LocalDate,
         quantity: BigDecimal,
-        pricePerUnit: BigDecimal
+        pricePerUnit: BigDecimal,
+        commission: BigDecimal
     )
 
     @Query("UPDATE investments SET currentPrice = :currentPrice WHERE id = :investmentId")

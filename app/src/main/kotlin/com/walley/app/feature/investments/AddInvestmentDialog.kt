@@ -51,7 +51,8 @@ fun AddInvestmentDialog(
         currency: Currency,
         price: BigDecimal,
         currentPrice: BigDecimal,
-        accountId: Long
+        accountId: Long,
+        commission: BigDecimal
     ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
@@ -63,6 +64,7 @@ fun AddInvestmentDialog(
     var quantityText by remember { mutableStateOf("") }
     var priceText by remember { mutableStateOf("") }
     var currentPriceText by remember { mutableStateOf("") }
+    var commissionText by remember { mutableStateOf("") }
     var accountId by remember { mutableStateOf<Long?>(null) }
     var accountTouched by remember { mutableStateOf(false) }
 
@@ -70,8 +72,12 @@ fun AddInvestmentDialog(
     val parsedQuantity = quantityText.toBigDecimalOrNull()
     val parsedPrice = priceText.toBigDecimalOrNull()
     val parsedCurrentPrice = currentPriceText.toBigDecimalOrNull() ?: parsedPrice
+    val tradeValue = if (parsedQuantity != null && parsedPrice != null) parsedQuantity * parsedPrice else BigDecimal.ZERO
+    val suggestedCommission = selectedAccount?.defaultCommission(tradeValue)
+    val parsedCommission = commissionText.toBigDecimalOrNull()
+    val commissionValid = commissionText.isBlank() || (parsedCommission != null && parsedCommission.signum() >= 0)
     val isValid = name.isNotBlank() && ticker.isNotBlank() &&
-        parsedQuantity != null && parsedPrice != null && selectedAccount != null
+        parsedQuantity != null && parsedPrice != null && selectedAccount != null && commissionValid
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -170,6 +176,23 @@ fun AddInvestmentDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = currentPriceText.isNotBlank() && currentPriceText.toBigDecimalOrNull() == null
                 )
+                OutlinedTextField(
+                    value = commissionText,
+                    onValueChange = { commissionText = it },
+                    label = { Text("Commission" + (selectedAccount?.let { " (${it.currency.symbol})" } ?: "")) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = !commissionValid,
+                    supportingText = {
+                        Text(
+                            if (commissionText.isBlank() && suggestedCommission != null) {
+                                "Defaults to ${suggestedCommission.toPlainString()} from account settings"
+                            } else {
+                                "Optional — leave blank to use the account's default"
+                            }
+                        )
+                    }
+                )
             }
         },
         confirmButton = {
@@ -184,7 +207,8 @@ fun AddInvestmentDialog(
                         selectedAccount!!.currency,
                         parsedPrice!!,
                         parsedCurrentPrice!!,
-                        selectedAccount.id
+                        selectedAccount.id,
+                        parsedCommission ?: suggestedCommission ?: BigDecimal.ZERO
                     )
                 },
                 enabled = isValid

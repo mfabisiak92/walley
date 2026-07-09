@@ -20,7 +20,11 @@ data class Account(
     /** Sum of what was paid for the positions linked to this [AccountType.INVESTMENT] account. */
     val investmentCostBasis: BigDecimal = BigDecimal.ZERO,
     /** Exactly one account is default at a time; the first account created becomes default automatically. */
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    /** Flat broker fee charged per buy/sell trade on this [AccountType.INVESTMENT] account. */
+    val commissionFlat: BigDecimal = BigDecimal.ZERO,
+    /** Broker fee as a whole-number percentage of trade value (e.g. 0.5 means 0.5%). */
+    val commissionPercent: BigDecimal = BigDecimal.ZERO
 ) {
     val targetProgressPercent: BigDecimal?
         get() = targetAmount?.takeIf { it.signum() > 0 }
@@ -45,4 +49,10 @@ data class Account(
     /** [balance] minus tax owed on unrealized investment gains — what this account actually contributes to net worth. */
     val netWorthValue: BigDecimal
         get() = balance - (investmentTaxAmount ?: BigDecimal.ZERO)
+
+    /** Commission for a trade worth [tradeValue] — whichever of [commissionFlat] or [commissionPercent] is higher, matching how many brokers price it. */
+    fun defaultCommission(tradeValue: BigDecimal): BigDecimal {
+        val percentAmount = (tradeValue * commissionPercent).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)
+        return commissionFlat.max(percentAmount)
+    }
 }

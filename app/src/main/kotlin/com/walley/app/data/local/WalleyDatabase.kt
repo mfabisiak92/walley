@@ -22,7 +22,7 @@ import java.time.LocalDate
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -419,5 +419,15 @@ val MIGRATION_21_22 = object : Migration(21, 22) {
         )
         db.execSQL("DROP TABLE investments")
         db.execSQL("ALTER TABLE investments_new RENAME TO investments")
+    }
+}
+
+val MIGRATION_22_23 = object : Migration(22, 23) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Per-account default commission (flat fee or % of trade value, whichever is higher), plus the
+        // actual commission charged on each buy/sell event, defaulted from the account's rate but editable.
+        db.execSQL("ALTER TABLE accounts ADD COLUMN commissionFlatMinorUnits INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE accounts ADD COLUMN commissionPercent TEXT NOT NULL DEFAULT '0'")
+        db.execSQL("ALTER TABLE investment_transactions ADD COLUMN commission TEXT NOT NULL DEFAULT '0'")
     }
 }

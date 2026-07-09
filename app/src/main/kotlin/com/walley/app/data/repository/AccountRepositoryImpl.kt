@@ -68,7 +68,9 @@ class AccountRepositoryImpl @Inject constructor(
         currency: Currency,
         initialBalance: BigDecimal,
         taxRate: AccountTaxRate,
-        targetAmount: BigDecimal?
+        targetAmount: BigDecimal?,
+        commissionFlat: BigDecimal,
+        commissionPercent: BigDecimal
     ) {
         val isFirstAccount = accountDao.count() == 0
         accountDao.insert(
@@ -79,7 +81,9 @@ class AccountRepositoryImpl @Inject constructor(
                 balanceMinorUnits = initialBalance.toMinorUnits(),
                 taxRate = taxRate,
                 targetAmountMinorUnits = targetAmount?.toMinorUnits(),
-                isDefault = isFirstAccount
+                isDefault = isFirstAccount,
+                commissionFlatMinorUnits = commissionFlat.toMinorUnits(),
+                commissionPercent = commissionPercent
             )
         )
     }
@@ -90,9 +94,20 @@ class AccountRepositoryImpl @Inject constructor(
         type: AccountType,
         taxRate: AccountTaxRate,
         newBalance: BigDecimal,
-        targetAmount: BigDecimal?
+        targetAmount: BigDecimal?,
+        commissionFlat: BigDecimal,
+        commissionPercent: BigDecimal
     ) {
-        accountDao.update(accountId, name, type, taxRate, newBalance.toMinorUnits(), targetAmount?.toMinorUnits())
+        accountDao.update(
+            accountId,
+            name,
+            type,
+            taxRate,
+            newBalance.toMinorUnits(),
+            targetAmount?.toMinorUnits(),
+            commissionFlat.toMinorUnits(),
+            commissionPercent
+        )
     }
 
     override suspend fun deleteAccount(accountId: Long) {
