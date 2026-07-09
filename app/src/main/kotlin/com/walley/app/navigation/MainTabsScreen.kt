@@ -54,6 +54,7 @@ fun MainTabsScreen(
     onNavigateToNetWorthDetail: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
     onOpenEquity: (Long) -> Unit,
+    onOpenInvestment: (Long) -> Unit,
     onNavigateToAdHocWizard: () -> Unit,
     onOpenAdHocBudget: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit,
@@ -111,6 +112,7 @@ fun MainTabsScreen(
                 3 -> InvestmentsScreen(
                     onNavigateHome = goHome,
                     onOpenEquity = onOpenEquity,
+                    onOpenInvestment = onOpenInvestment,
                     onOpenUpdatePrices = onOpenUpdatePrices
                 )
                 4 -> AssetsScreen(onNavigateHome = goHome)

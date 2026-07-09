@@ -26,7 +26,12 @@ data class FinancialSnapshot(
     val dividendsIncome: BigDecimal,
     val interestIncome: BigDecimal,
     val otherIncome: BigDecimal,
-    /** Investment value change this month, net of new contributions; null when there's no prior month to diff against. */
+    /**
+     * Investment value change this month, net of new contributions — both budgeted transfers into
+     * investment accounts and actual buy/sell events. [investments] is still the raw total value,
+     * so it stays available to sanity-check this figure against money that entered outside either
+     * of those two channels (e.g. a manual balance edit). Null when there's no prior month to diff against.
+     */
     val investmentGrowth: BigDecimal?
 ) {
     val yearMonth: YearMonth get() = YearMonth.of(year, month)

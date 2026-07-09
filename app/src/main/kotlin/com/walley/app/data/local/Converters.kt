@@ -10,6 +10,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.EquityStatus
 import com.walley.app.domain.model.IncomeCategory
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentTransactionType
 import java.math.BigDecimal
 import java.time.LocalDate
 
@@ -79,4 +80,10 @@ class Converters {
 
     @TypeConverter
     fun toInvestmentCategory(value: String): InvestmentCategory = InvestmentCategory.valueOf(value)
+
+    @TypeConverter
+    fun fromInvestmentTransactionType(type: InvestmentTransactionType): String = type.name
+
+    @TypeConverter
+    fun toInvestmentTransactionType(value: String): InvestmentTransactionType = InvestmentTransactionType.valueOf(value)
 }

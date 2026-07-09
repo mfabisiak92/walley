@@ -1,36 +1,55 @@
 package com.walley.app.data.repository
 
 import com.walley.app.domain.model.Currency
-import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentTransactionType
+import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface InvestmentRepository {
-    fun observeInvestments(): Flow<List<Investment>>
+    fun observeInvestments(): Flow<List<InvestmentWithTransactions>>
+    fun observeInvestment(investmentId: Long): Flow<InvestmentWithTransactions?>
+
     suspend fun addInvestment(
         name: String,
         ticker: String,
         category: InvestmentCategory,
-        purchaseDate: LocalDate,
-        quantity: BigDecimal,
         currency: Currency,
-        price: BigDecimal,
         currentPrice: BigDecimal,
-        accountId: Long
+        accountId: Long,
+        firstPurchaseDate: LocalDate,
+        initialQuantity: BigDecimal,
+        initialPrice: BigDecimal
     )
-    suspend fun updateInvestment(
+
+    suspend fun updateInvestmentDetails(
         investmentId: Long,
         name: String,
         ticker: String,
         category: InvestmentCategory,
-        purchaseDate: LocalDate,
-        quantity: BigDecimal,
-        price: BigDecimal,
-        currentPrice: BigDecimal,
         accountId: Long
     )
+
     suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal)
     suspend fun deleteInvestment(investmentId: Long)
+
+    suspend fun addTransaction(
+        investmentId: Long,
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal
+    )
+
+    suspend fun updateTransaction(
+        transactionId: Long,
+        type: InvestmentTransactionType,
+        date: LocalDate,
+        quantity: BigDecimal,
+        pricePerUnit: BigDecimal
+    )
+
+    suspend fun deleteTransaction(transactionId: Long)
 }

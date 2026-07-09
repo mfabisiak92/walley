@@ -7,8 +7,8 @@ import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
-import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentWithTransactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -25,7 +25,7 @@ class InvestmentsViewModel @Inject constructor(
     accountRepository: AccountRepository
 ) : ViewModel() {
 
-    val investments: StateFlow<List<Investment>> = repository.observeInvestments()
+    val investments: StateFlow<List<InvestmentWithTransactions>> = repository.observeInvestments()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val investmentAccounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
@@ -44,28 +44,18 @@ class InvestmentsViewModel @Inject constructor(
         accountId: Long
     ) {
         viewModelScope.launch {
-            repository.addInvestment(name, ticker, category, purchaseDate, quantity, currency, price, currentPrice, accountId)
+            repository.addInvestment(name, ticker, category, currency, currentPrice, accountId, purchaseDate, quantity, price)
         }
     }
 
-    fun updateInvestment(
+    fun updateInvestmentDetails(
         investmentId: Long,
         name: String,
         ticker: String,
         category: InvestmentCategory,
-        purchaseDate: LocalDate,
-        quantity: BigDecimal,
-        price: BigDecimal,
-        currentPrice: BigDecimal,
         accountId: Long
     ) {
-        viewModelScope.launch {
-            repository.updateInvestment(investmentId, name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId)
-        }
-    }
-
-    fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal) {
-        viewModelScope.launch { repository.updateCurrentPrice(investmentId, currentPrice) }
+        viewModelScope.launch { repository.updateInvestmentDetails(investmentId, name, ticker, category, accountId) }
     }
 
     fun deleteInvestment(investmentId: Long) {

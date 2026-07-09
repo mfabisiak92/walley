@@ -102,9 +102,9 @@ class AnalyticsViewModel @Inject constructor(
     ) { investments, (base, rates) ->
         val totalsByCategory = InvestmentCategory.entries.associateWith { category ->
             investments
-                .filter { it.category == category }
+                .filter { it.investment.category == category }
                 .fold(BigDecimal.ZERO) { acc, investment ->
-                    acc + (convertToCurrency(investment.currentValue, investment.currency, base, rates) ?: BigDecimal.ZERO)
+                    acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)
                 }
         }
         val total = totalsByCategory.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }

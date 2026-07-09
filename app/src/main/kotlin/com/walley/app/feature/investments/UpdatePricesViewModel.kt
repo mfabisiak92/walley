@@ -9,6 +9,7 @@ import java.math.BigDecimal
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
@@ -17,6 +18,7 @@ class UpdatePricesViewModel @Inject constructor(
 ) : ViewModel() {
 
     val investments: StateFlow<List<Investment>> = repository.observeInvestments()
+        .map { list -> list.map { it.investment } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     suspend fun saveAll(updates: Map<Long, BigDecimal>) {

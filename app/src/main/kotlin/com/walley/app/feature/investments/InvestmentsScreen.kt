@@ -51,6 +51,7 @@ import com.walley.app.core.ui.InvestmentCategoryChip
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
+import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
@@ -63,6 +64,7 @@ fun InvestmentsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
     onOpenEquity: (Long) -> Unit,
+    onOpenInvestment: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
@@ -92,7 +94,7 @@ fun InvestmentsScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> PortfolioListPage(onOpenUpdatePrices = onOpenUpdatePrices)
+                    0 -> PortfolioListPage(onOpenInvestment = onOpenInvestment, onOpenUpdatePrices = onOpenUpdatePrices)
                     else -> StrategiesListPage(onOpenEquity = onOpenEquity)
                 }
             }
@@ -102,6 +104,7 @@ fun InvestmentsScreen(
 
 @Composable
 private fun PortfolioListPage(
+    onOpenInvestment: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit,
     viewModel: InvestmentsViewModel = hiltViewModel()
 ) {
@@ -109,8 +112,7 @@ private fun PortfolioListPage(
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
-    var priceUpdateInvestment by remember { mutableStateOf<Investment?>(null) }
-    var pendingDeleteInvestment by remember { mutableStateOf<Investment?>(null) }
+    var pendingDeleteInvestment by remember { mutableStateOf<InvestmentWithTransactions?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -154,18 +156,18 @@ private fun PortfolioListPage(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(investments, key = { it.id }) { investment ->
+                items(investments, key = { it.investment.id }) { investment ->
                     SwipeToDeleteBox(
                         onDelete = { pendingDeleteInvestment = investment },
                         dismissOnDelete = false
                     ) {
                         InvestmentRow(
-                            investment = investment,
-                            accountName = investment.accountId?.let { id ->
+                            data = investment,
+                            accountName = investment.investment.accountId?.let { id ->
                                 investmentAccounts.find { it.id == id }?.name
                             },
-                            onClick = { priceUpdateInvestment = investment },
-                            onLongClick = { editingInvestment = investment }
+                            onClick = { onOpenInvestment(investment.investment.id) },
+                            onLongClick = { editingInvestment = investment.investment }
                         )
                     }
                 }
@@ -189,8 +191,8 @@ private fun PortfolioListPage(
             investment = investment,
             investmentAccounts = investmentAccounts,
             onDismiss = { editingInvestment = null },
-            onSave = { name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId ->
-                viewModel.updateInvestment(investment.id, name, ticker, category, purchaseDate, quantity, price, currentPrice, accountId)
+            onSave = { name, ticker, category, accountId ->
+                viewModel.updateInvestmentDetails(investment.id, name, ticker, category, accountId)
                 editingInvestment = null
             },
             onDelete = {
@@ -200,26 +202,15 @@ private fun PortfolioListPage(
         )
     }
 
-    priceUpdateInvestment?.let { investment ->
-        UpdateCurrentPriceDialog(
-            investment = investment,
-            onDismiss = { priceUpdateInvestment = null },
-            onSave = { currentPrice ->
-                viewModel.updateCurrentPrice(investment.id, currentPrice)
-                priceUpdateInvestment = null
-            }
-        )
-    }
-
-    pendingDeleteInvestment?.let { investment ->
+    pendingDeleteInvestment?.let { data ->
         AlertDialog(
             onDismissRequest = { pendingDeleteInvestment = null },
             title = { Text("Delete investment?") },
-            text = { Text("This will permanently delete \"${investment.name}\". This cannot be undone.") },
+            text = { Text("This will permanently delete \"${data.investment.name}\". This cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.deleteInvestment(investment.id)
+                        viewModel.deleteInvestment(data.investment.id)
                         pendingDeleteInvestment = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
@@ -235,11 +226,12 @@ private fun PortfolioListPage(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun InvestmentRow(
-    investment: Investment,
+    data: InvestmentWithTransactions,
     accountName: String?,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
+    val investment = data.investment
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -263,12 +255,12 @@ private fun InvestmentRow(
                     )
                 }
                 Text(
-                    formatMoney(investment.currentValue, investment.currency),
+                    formatMoney(data.currentValue, investment.currency),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
             Text(
-                text = investment.purchaseDate.format(PURCHASE_DATE_FORMATTER),
+                text = data.firstPurchaseDate?.format(PURCHASE_DATE_FORMATTER) ?: "—",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -277,26 +269,26 @@ private fun InvestmentRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${investment.quantity.toPlainString()} @ ${formatMoney(investment.currentPrice, investment.currency)}",
+                    text = "${data.quantity.toPlainString()} @ ${formatMoney(investment.currentPrice, investment.currency)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                GainLossText(investment)
+                GainLossText(data)
             }
         }
     }
 }
 
 @Composable
-private fun GainLossText(investment: Investment) {
-    val gainLoss = investment.gainLoss
+private fun GainLossText(data: InvestmentWithTransactions) {
+    val gainLoss = data.unrealizedGainLoss
     val isGain = gainLoss.signum() >= 0
     val color = if (isGain) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
     val sign = if (isGain) "+" else ""
-    val percent = investment.gainLossPercent?.setScale(1, RoundingMode.HALF_UP)
+    val percent = data.unrealizedGainLossPercent?.setScale(1, RoundingMode.HALF_UP)
 
     Text(
-        text = "$sign${formatMoney(gainLoss, investment.currency)}" +
+        text = "$sign${formatMoney(gainLoss, data.investment.currency)}" +
             (percent?.let { " ($sign${it.toPlainString()}%)" } ?: ""),
         style = MaterialTheme.typography.bodySmall,
         color = color

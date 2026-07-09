@@ -15,6 +15,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.accountEffectsGroup
 import com.walley.app.domain.model.isAccountWithdrawal
 import java.math.BigDecimal
@@ -34,7 +35,8 @@ class BudgetRepositoryImpl @Inject constructor(
     private val liabilityRepository: LiabilityRepository,
     private val settingsRepository: SettingsRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
-    private val snapshotRepository: SnapshotRepository
+    private val snapshotRepository: SnapshotRepository,
+    private val investmentRepository: InvestmentRepository
 ) : BudgetRepository {
 
     override fun observeBudgetsWithItems(): Flow<List<BudgetWithItems>> =
@@ -359,9 +361,16 @@ class BudgetRepositoryImpl @Inject constructor(
         // Covers items explicitly tagged OTHER, plus any legacy items with no category at all.
         val otherIncome = income - salaryIncome - dividendsIncome - interestIncome
 
+        // Money that entered investments this month, from two distinct sources that both inflate
+        // the total value without being market growth: budgeted transfers into the account (cash
+        // that may still be sitting uninvested) and actual buy/sell events (which move a position's
+        // value directly, regardless of how the account was funded).
         val investmentContributions = sectionTotal(BudgetSectionType.INVESTMENTS)
+        val investmentTransactionContributions = investmentTransactionNetContributions(budgetEntity.year, budgetEntity.month, base, rates)
         val previous = snapshotRepository.previousSnapshot(budgetEntity.year, budgetEntity.month)
-        val investmentGrowth = previous?.let { investments - it.investments - investmentContributions }
+        val investmentGrowth = previous?.let {
+            investments - it.investments - investmentContributions - investmentTransactionContributions
+        }
 
         snapshotRepository.addSnapshot(
             FinancialSnapshot(
@@ -385,5 +394,28 @@ class BudgetRepositoryImpl @Inject constructor(
                 investmentGrowth = investmentGrowth?.setScale(2, RoundingMode.HALF_UP)
             )
         )
+    }
+
+    /** Net of this calendar month's buy/sell events across every investment, converted to [base]. */
+    private suspend fun investmentTransactionNetContributions(
+        year: Int,
+        month: Int,
+        base: Currency,
+        rates: ExchangeRates?
+    ): BigDecimal {
+        val yearMonth = YearMonth.of(year, month)
+        val start = yearMonth.atDay(1)
+        val end = yearMonth.atEndOfMonth()
+        return investmentRepository.observeInvestments().first().fold(BigDecimal.ZERO) { acc, data ->
+            val net = data.transactions
+                .filter { !it.date.isBefore(start) && !it.date.isAfter(end) }
+                .fold(BigDecimal.ZERO) { sum, transaction ->
+                    when (transaction.type) {
+                        InvestmentTransactionType.BUY -> sum + transaction.total
+                        InvestmentTransactionType.SELL -> sum - transaction.total
+                    }
+                }
+            acc + convert(net, data.investment.currency, base, rates)
+        }
     }
 }

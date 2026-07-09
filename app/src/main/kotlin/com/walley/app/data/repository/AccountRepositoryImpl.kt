@@ -3,13 +3,13 @@ package com.walley.app.data.repository
 import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AccountEntity
 import com.walley.app.data.local.InvestmentDao
-import com.walley.app.data.local.InvestmentEntity
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -24,12 +24,23 @@ class AccountRepositoryImpl @Inject constructor(
     // Investment accounts' displayed balance is uninvested cash (the stored balance column)
     // plus the current market value of the investments associated with them.
     override fun observeAccounts(): Flow<List<Account>> =
-        combine(accountDao.observeAll(), investmentDao.observeAll()) { accounts, investments ->
+        combine(
+            accountDao.observeAll(),
+            investmentDao.observeAll(),
+            investmentDao.observeAllTransactions()
+        ) { accounts, investments, transactions ->
             accounts
                 .map { entity ->
                     val account = entity.toDomain()
                     if (account.type == AccountType.INVESTMENT) {
-                        val linked = investments.filter { it.accountId == entity.id }
+                        val linked = investments.filter { it.accountId == entity.id }.map { investmentEntity ->
+                            InvestmentWithTransactions(
+                                investment = investmentEntity.toDomain(),
+                                transactions = transactions
+                                    .filter { it.investmentId == investmentEntity.id }
+                                    .map { it.toDomain() }
+                            )
+                        }
                         account.copy(
                             balance = account.balance + investmentsValue(linked),
                             investmentCostBasis = investmentsCostBasis(linked)
@@ -41,14 +52,14 @@ class AccountRepositoryImpl @Inject constructor(
                 .sortedWith(compareBy({ ACCOUNT_TYPE_ORDER[it.type] ?: Int.MAX_VALUE }, { it.name }))
         }
 
-    private fun investmentsValue(investments: List<InvestmentEntity>): BigDecimal =
+    private fun investmentsValue(investments: List<InvestmentWithTransactions>): BigDecimal =
         investments
-            .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.quantity * investment.currentPrice }
+            .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.currentValue }
             .setScale(2, RoundingMode.HALF_UP)
 
-    private fun investmentsCostBasis(investments: List<InvestmentEntity>): BigDecimal =
+    private fun investmentsCostBasis(investments: List<InvestmentWithTransactions>): BigDecimal =
         investments
-            .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.quantity * investment.price }
+            .fold(BigDecimal.ZERO) { acc, investment -> acc + investment.costBasis }
             .setScale(2, RoundingMode.HALF_UP)
 
     override suspend fun addAccount(

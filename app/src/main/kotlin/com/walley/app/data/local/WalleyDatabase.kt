@@ -11,6 +11,7 @@ import java.time.LocalDate
     entities = [
         AccountEntity::class,
         InvestmentEntity::class,
+        InvestmentTransactionEntity::class,
         AssetEntity::class,
         BudgetEntity::class,
         BudgetItemEntity::class,
@@ -21,7 +22,7 @@ import java.time.LocalDate
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class
     ],
-    version = 21,
+    version = 22,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -371,5 +372,52 @@ val MIGRATION_20_21 = object : Migration(20, 21) {
         )
         db.execSQL("DROP TABLE adhoc_budgets")
         db.execSQL("ALTER TABLE adhoc_budgets_new RENAME TO adhoc_budgets")
+    }
+}
+
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Buy/sell events replace the single quantity/price/purchaseDate fields, so multiple
+        // purchases of the same ticker accumulate into one position instead of duplicate rows.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `investment_transactions` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `investmentId` INTEGER NOT NULL,
+                `type` TEXT NOT NULL,
+                `date` TEXT NOT NULL,
+                `quantity` TEXT NOT NULL,
+                `pricePerUnit` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        // Seed each existing investment's history with a single BUY transaction from its current fields.
+        db.execSQL(
+            """
+            INSERT INTO investment_transactions (investmentId, type, date, quantity, pricePerUnit)
+            SELECT id, 'BUY', purchaseDate, quantity, price FROM investments
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `investments_new` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `ticker` TEXT NOT NULL,
+                `category` TEXT NOT NULL DEFAULT 'STOCK',
+                `currency` TEXT NOT NULL,
+                `currentPrice` TEXT NOT NULL,
+                `accountId` INTEGER
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT INTO investments_new (id, name, ticker, category, currency, currentPrice, accountId)
+            SELECT id, name, ticker, category, currency, currentPrice, accountId FROM investments
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE investments")
+        db.execSQL("ALTER TABLE investments_new RENAME TO investments")
     }
 }

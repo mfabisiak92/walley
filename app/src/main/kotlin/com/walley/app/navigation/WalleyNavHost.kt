@@ -16,6 +16,7 @@ import com.walley.app.feature.budget.BudgetSettingsScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.investments.EquityDetailScreen
+import com.walley.app.feature.investments.InvestmentDetailScreen
 import com.walley.app.feature.investments.UpdatePricesScreen
 import com.walley.app.feature.settings.SettingsScreen
 
@@ -27,6 +28,7 @@ private object WalleyDestinations {
     const val NET_WORTH_DETAIL = "net_worth_detail"
     const val ANALYTICS = "analytics"
     const val EQUITY_DETAIL = "equity_detail/{equityId}"
+    const val INVESTMENT_DETAIL = "investment_detail/{investmentId}"
     const val AD_HOC_WIZARD = "ad_hoc_wizard"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
     const val UPDATE_PRICES = "update_prices"
@@ -44,6 +46,7 @@ private object WalleyDestinations {
         return if (params.isEmpty()) "budget_wizard" else "budget_wizard?" + params.joinToString("&")
     }
     fun equityDetail(equityId: Long) = "equity_detail/$equityId"
+    fun investmentDetail(investmentId: Long) = "investment_detail/$investmentId"
     fun adHocDetail(adHocBudgetId: Long) = "ad_hoc_detail/$adHocBudgetId"
 }
 
@@ -66,6 +69,9 @@ fun WalleyNavHost() {
                 onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) },
                 onOpenEquity = { equityId ->
                     navController.navigate(WalleyDestinations.equityDetail(equityId))
+                },
+                onOpenInvestment = { investmentId ->
+                    navController.navigate(WalleyDestinations.investmentDetail(investmentId))
                 },
                 onNavigateToAdHocWizard = { navController.navigate(WalleyDestinations.AD_HOC_WIZARD) },
                 onOpenAdHocBudget = { adHocBudgetId ->
@@ -131,6 +137,12 @@ fun WalleyNavHost() {
             arguments = listOf(navArgument("equityId") { type = NavType.LongType })
         ) {
             EquityDetailScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(
+            WalleyDestinations.INVESTMENT_DETAIL,
+            arguments = listOf(navArgument("investmentId") { type = NavType.LongType })
+        ) {
+            InvestmentDetailScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(WalleyDestinations.AD_HOC_WIZARD) {
             AdHocWizardScreen(
