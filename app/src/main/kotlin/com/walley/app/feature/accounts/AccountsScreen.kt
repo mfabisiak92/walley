@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
-import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
@@ -135,7 +133,6 @@ private fun AccountsListPage(
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<Account?>(null) }
-    var pendingDeleteAccount by remember { mutableStateOf<Account?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -191,18 +188,13 @@ private fun AccountsListPage(
                     )
                 }
                 items(filteredAccounts, key = { it.id }) { account ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteAccount = account },
-                        dismissOnDelete = false
-                    ) {
-                        AccountRow(
-                            account = account,
-                            investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
-                            onOpenCashOperations = { onOpenCashOperations(account.id) },
-                            onEditAccount = { editingAccount = account },
-                            onSetDefault = { viewModel.setDefaultAccount(account.id) }
-                        )
-                    }
+                    AccountRow(
+                        account = account,
+                        investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
+                        onOpenCashOperations = { onOpenCashOperations(account.id) },
+                        onEditAccount = { editingAccount = account },
+                        onSetDefault = { viewModel.setDefaultAccount(account.id) }
+                    )
                 }
             }
         }
@@ -231,26 +223,6 @@ private fun AccountsListPage(
             onDelete = {
                 viewModel.deleteAccount(account.id)
                 editingAccount = null
-            }
-        )
-    }
-
-    pendingDeleteAccount?.let { account ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteAccount = null },
-            title = { Text("Delete account?") },
-            text = { Text("This will permanently delete \"${account.name}\". This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteAccount(account.id)
-                        pendingDeleteAccount = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteAccount = null }) { Text("Cancel") }
             }
         )
     }

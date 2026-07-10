@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -54,6 +55,7 @@ import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -66,9 +68,11 @@ fun AdHocBudgetDetailScreen(
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
     val account by viewModel.account.collectAsStateWithLifecycle()
+    val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
     var itemForEditDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -91,19 +95,37 @@ fun AdHocBudgetDetailScreen(
         }
     }
 
+    val isCompleted = budgetWithItems?.isCompleted == true
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(budgetWithItems?.budget?.name ?: "Ad-hoc budget") },
+                title = {
+                    Column {
+                        Text(budgetWithItems?.budget?.name ?: "Ad-hoc budget")
+                        if (isCompleted) {
+                            Text(
+                                "Completed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
+                    if (!isCompleted) {
+                        IconButton(onClick = { showCompleteConfirm = true }) {
+                            Icon(Icons.Filled.CheckCircle, contentDescription = "Mark as completed")
+                        }
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
+                        }
                     }
                 }
             )
@@ -176,11 +198,11 @@ fun AdHocBudgetDetailScreen(
                             AdHocBudgetItemRow(
                                 item = item,
                                 currency = currentAccount.currency,
-                                onClick = { itemForPaidDialog = item },
-                                onLongClick = { itemForEditDialog = item }
+                                onClick = if (isCompleted) null else ({ itemForPaidDialog = item }),
+                                onLongClick = if (isCompleted) null else ({ itemForEditDialog = item })
                             )
                         }
-                        if (!item.isCompleted) {
+                        if (!isCompleted && !item.isCompleted) {
                             SwipeToCompleteBox(onComplete = {
                                 val previousPaidAmount = item.paidAmount
                                 viewModel.markPaid(item.id)
@@ -268,6 +290,49 @@ fun AdHocBudgetDetailScreen(
             }
         )
     }
+
+    deleteBlockedMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissDeleteBlockedMessage,
+            title = { Text("Can't delete budget") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+            }
+        )
+    }
+
+    if (showCompleteConfirm) {
+        val isEarly = budgetWithItems?.budget?.endDate?.let { LocalDate.now().isBefore(it) } == true
+        AlertDialog(
+            onDismissRequest = { showCompleteConfirm = false },
+            title = { Text("Mark budget as completed?") },
+            text = {
+                Text(
+                    (if (isEarly) {
+                        "This budget's end date hasn't passed yet — anything you haven't paid will just stop " +
+                            "being tracked. "
+                    } else {
+                        ""
+                    }) +
+                        "This is a one-way change. Once completed, this budget and its items become read-only " +
+                        "— nothing can be paid, deleted, or otherwise changed, and the budget itself can no " +
+                        "longer be deleted."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showCompleteConfirm = false
+                        viewModel.markCompleted()
+                    }
+                ) { Text("Mark completed") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -275,8 +340,8 @@ fun AdHocBudgetDetailScreen(
 private fun AdHocBudgetItemRow(
     item: AdHocBudgetItem,
     currency: Currency,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onClick: (() -> Unit)?,
+    onLongClick: (() -> Unit)?
 ) {
     val progress = if (item.amount.signum() > 0) {
         item.paidAmount.divide(item.amount, 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
@@ -284,10 +349,16 @@ private fun AdHocBudgetItemRow(
         0f
     }
 
-    Card(
-        modifier = Modifier
+    val cardModifier = if (onClick != null || onLongClick != null) {
+        Modifier
             .fillMaxWidth()
-            .combinedClickable(onLongClick = onLongClick, onClick = onClick),
+            .combinedClickable(onLongClick = onLongClick, onClick = { onClick?.invoke() })
+    } else {
+        Modifier.fillMaxWidth()
+    }
+
+    Card(
+        modifier = cardModifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(

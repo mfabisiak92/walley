@@ -34,5 +34,9 @@ interface AdHocBudgetRepository {
     /** Re-inserts a previously deleted item (used to support "undo"), preserving its original id. */
     suspend fun restoreBudgetItem(item: AdHocBudgetItem)
 
+    /** @throws BudgetIsCompletedException if the budget is already marked completed. */
     suspend fun deleteAdHocBudget(budgetId: Long)
+
+    /** One-way: marks the budget completed, same as [BudgetRepository.markBudgetCompleted] does for monthly budgets. */
+    suspend fun markCompleted(budgetId: Long)
 }

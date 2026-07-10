@@ -19,8 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
-import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Asset
 import com.walley.app.domain.model.Liability
@@ -103,7 +99,6 @@ private fun AssetsListPage(viewModel: AssetsViewModel = hiltViewModel()) {
     val assets by viewModel.assets.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAsset by remember { mutableStateOf<Asset?>(null) }
-    var pendingDeleteAsset by remember { mutableStateOf<Asset?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -142,12 +137,7 @@ private fun AssetsListPage(viewModel: AssetsViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(assets, key = { it.id }) { asset ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteAsset = asset },
-                        dismissOnDelete = false
-                    ) {
-                        AssetRow(asset = asset, onClick = { editingAsset = asset })
-                    }
+                    AssetRow(asset = asset, onClick = { editingAsset = asset })
                 }
             }
         }
@@ -174,26 +164,6 @@ private fun AssetsListPage(viewModel: AssetsViewModel = hiltViewModel()) {
             onDelete = {
                 viewModel.deleteAsset(asset.id)
                 editingAsset = null
-            }
-        )
-    }
-
-    pendingDeleteAsset?.let { asset ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteAsset = null },
-            title = { Text("Delete asset?") },
-            text = { Text("This will permanently delete \"${asset.name}\". This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteAsset(asset.id)
-                        pendingDeleteAsset = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteAsset = null }) { Text("Cancel") }
             }
         )
     }
@@ -267,7 +237,6 @@ private fun LiabilitiesListPage(viewModel: LiabilitiesViewModel = hiltViewModel(
     val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingLiability by remember { mutableStateOf<Liability?>(null) }
-    var pendingDeleteLiability by remember { mutableStateOf<Liability?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -306,12 +275,7 @@ private fun LiabilitiesListPage(viewModel: LiabilitiesViewModel = hiltViewModel(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(liabilities, key = { it.id }) { liability ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteLiability = liability },
-                        dismissOnDelete = false
-                    ) {
-                        LiabilityRow(liability = liability, onClick = { editingLiability = liability })
-                    }
+                    LiabilityRow(liability = liability, onClick = { editingLiability = liability })
                 }
             }
         }
@@ -338,26 +302,6 @@ private fun LiabilitiesListPage(viewModel: LiabilitiesViewModel = hiltViewModel(
             onDelete = {
                 viewModel.deleteLiability(liability.id)
                 editingLiability = null
-            }
-        )
-    }
-
-    pendingDeleteLiability?.let { liability ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteLiability = null },
-            title = { Text("Delete liability?") },
-            text = { Text("This will permanently delete \"${liability.name}\". This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteLiability(liability.id)
-                        pendingDeleteLiability = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteLiability = null }) { Text("Cancel") }
             }
         )
     }

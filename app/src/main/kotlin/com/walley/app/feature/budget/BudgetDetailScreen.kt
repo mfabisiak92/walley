@@ -70,6 +70,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -293,12 +294,19 @@ fun BudgetDetailScreen(
     }
 
     if (showCompleteConfirm) {
+        val isEarly = budgetWithItems?.budget?.yearMonth?.atEndOfMonth()?.let { LocalDate.now().isBefore(it) } == true
         AlertDialog(
             onDismissRequest = { showCompleteConfirm = false },
             title = { Text("Mark budget as completed?") },
             text = {
                 Text(
-                    "This is a one-way change. Once completed, this budget and its items become read-only " +
+                    (if (isEarly) {
+                        "This month isn't over yet — anything you haven't paid by the end of it will just stop " +
+                            "being tracked. "
+                    } else {
+                        ""
+                    }) +
+                        "This is a one-way change. Once completed, this budget and its items become read-only " +
                         "— nothing can be paid, deleted, or otherwise changed, and the budget itself can no " +
                         "longer be deleted."
                 )

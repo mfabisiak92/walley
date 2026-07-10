@@ -69,8 +69,4 @@ class InvestmentsViewModel @Inject constructor(
     ) {
         viewModelScope.launch { repository.updateInvestmentDetails(investmentId, name, ticker, category, accountId) }
     }
-
-    fun deleteInvestment(investmentId: Long) {
-        viewModelScope.launch { repository.deleteInvestment(investmentId) }
-    }
 }

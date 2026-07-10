@@ -18,8 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Calculate
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -30,11 +28,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,7 +39,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
-import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetStatus
@@ -115,8 +109,6 @@ private fun MonthlyBudgetsPage(
     viewModel: BudgetsViewModel = hiltViewModel()
 ) {
     val budgets by viewModel.budgets.collectAsStateWithLifecycle()
-    val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
-    var pendingDeleteBudget by remember { mutableStateOf<BudgetRowData?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -156,67 +148,19 @@ private fun MonthlyBudgetsPage(
             ) {
                 items(budgets, key = { it.budgetWithItems.budget.id }) { row ->
                     val isDraft = row.budgetWithItems.budget.status == BudgetStatus.DRAFT
-                    val budgetRow: @Composable () -> Unit = {
-                        BudgetRow(
-                            row = row,
-                            onClick = {
-                                if (isDraft) {
-                                    onResumeDraft(row.budgetWithItems.budget.id)
-                                } else {
-                                    onOpenBudget(row.budgetWithItems.budget.id)
-                                }
+                    BudgetRow(
+                        row = row,
+                        onClick = {
+                            if (isDraft) {
+                                onResumeDraft(row.budgetWithItems.budget.id)
+                            } else {
+                                onOpenBudget(row.budgetWithItems.budget.id)
                             }
-                        )
-                    }
-                    if (row.budgetWithItems.budget.status == BudgetStatus.COMPLETED) {
-                        budgetRow()
-                    } else {
-                        SwipeToDeleteBox(
-                            onDelete = { pendingDeleteBudget = row },
-                            dismissOnDelete = false
-                        ) {
-                            budgetRow()
                         }
-                    }
+                    )
                 }
             }
         }
-    }
-
-    pendingDeleteBudget?.let { row ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteBudget = null },
-            title = { Text("Delete budget?") },
-            text = {
-                Text(
-                    "This will permanently delete \"${row.budgetWithItems.budget.displayName}\" and all its items. " +
-                        "This cannot be undone."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteBudget(row.budgetWithItems.budget.id)
-                        pendingDeleteBudget = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteBudget = null }) { Text("Cancel") }
-            }
-        )
-    }
-
-    deleteBlockedMessage?.let { message ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissDeleteBlockedMessage,
-            title = { Text("Can't delete budget") },
-            text = { Text(message) },
-            confirmButton = {
-                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
-            }
-        )
     }
 }
 
@@ -327,7 +271,6 @@ private fun AdHocBudgetsPage(
     viewModel: AdHocBudgetsViewModel = hiltViewModel()
 ) {
     val budgets by viewModel.budgets.collectAsStateWithLifecycle()
-    var pendingDeleteBudget by remember { mutableStateOf<AdHocBudgetWithItems?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -366,37 +309,10 @@ private fun AdHocBudgetsPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(budgets, key = { it.budget.id }) { row ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteBudget = row },
-                        dismissOnDelete = false
-                    ) {
-                        AdHocBudgetRow(row = row, onClick = { onOpenBudget(row.budget.id) })
-                    }
+                    AdHocBudgetRow(row = row, onClick = { onOpenBudget(row.budget.id) })
                 }
             }
         }
-    }
-
-    pendingDeleteBudget?.let { row ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteBudget = null },
-            title = { Text("Delete budget?") },
-            text = {
-                Text("This will permanently delete \"${row.budget.name}\" and all its items. This cannot be undone.")
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteBudget(row.budget.id)
-                        pendingDeleteBudget = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteBudget = null }) { Text("Cancel") }
-            }
-        )
     }
 }
 

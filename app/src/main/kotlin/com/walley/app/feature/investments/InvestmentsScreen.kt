@@ -25,8 +25,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PriceCheck
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -37,7 +35,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +50,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.InvestmentCategoryChip
-import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentWithTransactions
@@ -120,7 +116,6 @@ private fun PortfolioListPage(
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
-    var pendingDeleteInvestment by remember { mutableStateOf<InvestmentWithTransactions?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         pendingImportUri = uri
@@ -173,19 +168,14 @@ private fun PortfolioListPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(investments, key = { it.investment.id }) { investment ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteInvestment = investment },
-                        dismissOnDelete = false
-                    ) {
-                        InvestmentRow(
-                            data = investment,
-                            accountName = investment.investment.accountId?.let { id ->
-                                investmentAccounts.find { it.id == id }?.name
-                            },
-                            onClick = { onOpenInvestment(investment.investment.id) },
-                            onLongClick = { editingInvestment = investment.investment }
-                        )
-                    }
+                    InvestmentRow(
+                        data = investment,
+                        accountName = investment.investment.accountId?.let { id ->
+                            investmentAccounts.find { it.id == id }?.name
+                        },
+                        onClick = { onOpenInvestment(investment.investment.id) },
+                        onLongClick = { editingInvestment = investment.investment }
+                    )
                 }
             }
         }
@@ -221,30 +211,6 @@ private fun PortfolioListPage(
             onSave = { name, ticker, category, accountId ->
                 viewModel.updateInvestmentDetails(investment.id, name, ticker, category, accountId)
                 editingInvestment = null
-            },
-            onDelete = {
-                viewModel.deleteInvestment(investment.id)
-                editingInvestment = null
-            }
-        )
-    }
-
-    pendingDeleteInvestment?.let { data ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteInvestment = null },
-            title = { Text("Delete investment?") },
-            text = { Text("This will permanently delete \"${data.investment.name}\". This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteInvestment(data.investment.id)
-                        pendingDeleteInvestment = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteInvestment = null }) { Text("Cancel") }
             }
         )
     }

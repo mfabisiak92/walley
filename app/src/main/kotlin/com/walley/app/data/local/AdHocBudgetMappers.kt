@@ -10,7 +10,8 @@ fun AdHocBudgetEntity.toDomain(): AdHocBudget = AdHocBudget(
     startDate = startDate,
     endDate = endDate,
     accountId = accountId,
-    currency = currency
+    currency = currency,
+    isCompleted = isCompleted
 )
 
 fun AdHocBudgetItemEntity.toDomain(): AdHocBudgetItem = AdHocBudgetItem(

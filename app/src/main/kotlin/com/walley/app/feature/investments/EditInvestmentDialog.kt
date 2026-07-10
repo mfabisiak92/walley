@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -38,8 +37,7 @@ fun EditInvestmentDialog(
         ticker: String,
         category: InvestmentCategory,
         accountId: Long
-    ) -> Unit,
-    onDelete: () -> Unit
+    ) -> Unit
 ) {
     var name by remember { mutableStateOf(investment.name) }
     var ticker by remember { mutableStateOf(investment.ticker) }
@@ -47,7 +45,6 @@ fun EditInvestmentDialog(
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var accountId by remember { mutableStateOf(investment.accountId) }
     var accountTouched by remember { mutableStateOf(false) }
-    var showDeleteConfirm by remember { mutableStateOf(false) }
 
     // Currency is fixed after creation, so valid targets are same-currency investment accounts.
     val selectableAccounts = investmentAccounts.filter { it.currency == investment.currency }
@@ -119,12 +116,6 @@ fun EditInvestmentDialog(
                     },
                     isError = accountTouched && selectedAccount == null
                 )
-                TextButton(
-                    onClick = { showDeleteConfirm = true },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete investment")
-                }
             }
         },
         confirmButton = {
@@ -139,21 +130,4 @@ fun EditInvestmentDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
-
-    if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete investment?") },
-            text = { Text("This will permanently delete \"${investment.name}\" and all its buy/sell events. This cannot be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = onDelete,
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
-            }
-        )
-    }
 }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AdHocBudgetRepository
+import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.AdHocBudgetWithItems
@@ -12,8 +13,10 @@ import com.walley.app.domain.model.BudgetItemIcon
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -35,23 +38,30 @@ class AdHocBudgetDetailViewModel @Inject constructor(
         budgetWithItems?.let { accounts.find { account -> account.id == it.budget.accountId } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    private val isEditable: Boolean get() = budget.value?.isCompleted != true
+
     fun markPaid(itemId: Long) {
+        if (!isEditable) return
         viewModelScope.launch { repository.markItemPaid(itemId) }
     }
 
     fun markPartiallyPaid(itemId: Long, amount: BigDecimal) {
+        if (!isEditable) return
         viewModelScope.launch { repository.markItemPartiallyPaid(itemId, amount) }
     }
 
     fun updateItemAmount(itemId: Long, amount: BigDecimal) {
+        if (!isEditable) return
         viewModelScope.launch { repository.updateItemAmount(itemId, amount) }
     }
 
     fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
+        if (!isEditable) return
         viewModelScope.launch { repository.updateItemIcon(itemId, icon) }
     }
 
     fun deleteItem(itemId: Long) {
+        if (!isEditable) return
         viewModelScope.launch { repository.deleteBudgetItem(itemId) }
     }
 
@@ -59,10 +69,25 @@ class AdHocBudgetDetailViewModel @Inject constructor(
         viewModelScope.launch { repository.restoreBudgetItem(item) }
     }
 
+    private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
+    val deleteBlockedMessage: StateFlow<String?> = _deleteBlockedMessage.asStateFlow()
+
+    fun dismissDeleteBlockedMessage() {
+        _deleteBlockedMessage.value = null
+    }
+
     fun deleteBudget(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            repository.deleteAdHocBudget(budgetId)
-            onDeleted()
+            try {
+                repository.deleteAdHocBudget(budgetId)
+                onDeleted()
+            } catch (e: BudgetIsCompletedException) {
+                _deleteBlockedMessage.value = "This budget is marked as completed and can't be deleted."
+            }
         }
+    }
+
+    fun markCompleted() {
+        viewModelScope.launch { repository.markCompleted(budgetId) }
     }
 }

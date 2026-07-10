@@ -11,7 +11,9 @@ data class AdHocBudget(
     val endDate: LocalDate,
     /** The Saving account every item's cost is withdrawn from. */
     val accountId: Long,
-    val currency: Currency
+    val currency: Currency,
+    /** Set only by explicit user action — never derived from payment progress or [endDate] passing. */
+    val isCompleted: Boolean = false
 )
 
 data class AdHocBudgetItem(
@@ -31,4 +33,6 @@ data class AdHocBudgetWithItems(
 ) {
     val totalPlanned: BigDecimal get() = items.fold(BigDecimal.ZERO) { acc, item -> acc + item.amount }
     val totalPaid: BigDecimal get() = items.fold(BigDecimal.ZERO) { acc, item -> acc + item.paidAmount }
+
+    val isCompleted: Boolean get() = budget.isCompleted
 }

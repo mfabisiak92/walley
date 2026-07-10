@@ -112,8 +112,16 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteAdHocBudget(budgetId: Long) {
+        val budget = dao.observeBudgetById(budgetId).first()
+        if (budget?.isCompleted == true) {
+            throw BudgetIsCompletedException()
+        }
         dao.deleteItemsForBudget(budgetId)
         dao.deleteBudget(budgetId)
+    }
+
+    override suspend fun markCompleted(budgetId: Long) {
+        dao.markCompleted(budgetId)
     }
 
     /** Paying an ad-hoc item always withdraws from its single linked account. */

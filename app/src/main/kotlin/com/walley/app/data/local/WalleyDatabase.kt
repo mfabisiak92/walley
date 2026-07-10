@@ -23,7 +23,7 @@ import java.time.LocalDate
         AdHocBudgetItemEntity::class,
         AccountOperationEntity::class
     ],
-    version = 24,
+    version = 25,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -450,5 +450,13 @@ val MIGRATION_23_24 = object : Migration(23, 24) {
             )
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_24_25 = object : Migration(24, 25) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Ad-hoc budgets previously had no explicit "done" state (the UI derived it from every item
+        // being paid off); completion is now an explicit, user-triggered action, same as monthly budgets.
+        db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")
     }
 }

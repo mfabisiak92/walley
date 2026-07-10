@@ -9,17 +9,12 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 @HiltViewModel
 class AdHocBudgetsViewModel @Inject constructor(
-    private val repository: AdHocBudgetRepository
+    repository: AdHocBudgetRepository
 ) : ViewModel() {
 
     val budgets: StateFlow<List<AdHocBudgetWithItems>> = repository.observeAdHocBudgetsWithItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun deleteBudget(budgetId: Long) {
-        viewModelScope.launch { repository.deleteAdHocBudget(budgetId) }
-    }
 }

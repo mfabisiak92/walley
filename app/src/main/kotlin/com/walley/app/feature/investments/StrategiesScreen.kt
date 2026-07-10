@@ -13,8 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -22,7 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,7 +32,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.ui.EquityStatusIconBadge
-import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.WatchedEquityWithNotes
 
 @Composable
@@ -45,7 +41,6 @@ fun StrategiesListPage(
 ) {
     val equities by viewModel.equities.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
-    var pendingDeleteEquity by remember { mutableStateOf<WatchedEquityWithNotes?>(null) }
 
     Scaffold(
         floatingActionButton = {
@@ -84,12 +79,7 @@ fun StrategiesListPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(equities, key = { it.equity.id }) { item ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteEquity = item },
-                        dismissOnDelete = false
-                    ) {
-                        EquityRow(item = item, onClick = { onOpenEquity(item.equity.id) })
-                    }
+                    EquityRow(item = item, onClick = { onOpenEquity(item.equity.id) })
                 }
             }
         }
@@ -105,29 +95,6 @@ fun StrategiesListPage(
         )
     }
 
-    pendingDeleteEquity?.let { item ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteEquity = null },
-            title = { Text("Delete equity?") },
-            text = {
-                Text(
-                    "This will permanently delete \"${item.equity.name}\" and all its notes. This cannot be undone."
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.deleteEquity(item.equity.id)
-                        pendingDeleteEquity = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteEquity = null }) { Text("Cancel") }
-            }
-        )
-    }
 }
 
 @Composable

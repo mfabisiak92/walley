@@ -49,4 +49,7 @@ interface AdHocBudgetDao {
 
     @Query("DELETE FROM adhoc_budgets WHERE id = :budgetId")
     suspend fun deleteBudget(budgetId: Long)
+
+    @Query("UPDATE adhoc_budgets SET isCompleted = 1 WHERE id = :budgetId")
+    suspend fun markCompleted(budgetId: Long)
 }

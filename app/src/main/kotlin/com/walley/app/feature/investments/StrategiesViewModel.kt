@@ -24,8 +24,4 @@ class StrategiesViewModel @Inject constructor(
     fun addEquity(name: String, ticker: String?, date: LocalDate, status: EquityStatus, note: String) {
         viewModelScope.launch { repository.addEquity(name, ticker, date, status, note) }
     }
-
-    fun deleteEquity(equityId: Long) {
-        viewModelScope.launch { repository.deleteEquity(equityId) }
-    }
 }
