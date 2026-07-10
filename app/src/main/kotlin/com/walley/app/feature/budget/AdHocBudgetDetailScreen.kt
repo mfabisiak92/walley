@@ -53,6 +53,7 @@ import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.SwipeToCompleteBox
 import com.walley.app.core.ui.paidProgressColor
 import com.walley.app.domain.model.AdHocBudgetItem
+import com.walley.app.domain.model.AdHocCurrencyTotal
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -150,43 +151,17 @@ fun AdHocBudgetDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Paying from: ${currentAccount.name} (${formatMoney(currentAccount.balance, currentAccount.currency)} left)",
+                        "Default account: ${currentAccount.name} (${formatMoney(currentAccount.balance, currentAccount.currency)} left)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    val planned = budget.totalPlanned
-                    val paid = budget.totalPaid
-                    val percent = if (planned.signum() == 0) {
-                        BigDecimal.ZERO
-                    } else {
-                        (paid.divide(planned, 6, RoundingMode.HALF_UP) * BigDecimal(100))
-                            .coerceIn(BigDecimal.ZERO, BigDecimal(100))
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            "${formatMoney(paid, currentAccount.currency)} / ${formatMoney(planned, currentAccount.currency)}",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            "${percent.setScale(0, RoundingMode.HALF_UP)}%",
-                            style = MaterialTheme.typography.bodyMedium
+                    val currencyTotals = budget.totalsByCurrency(viewModel::currencyFor)
+                    currencyTotals.forEach { total ->
+                        AdHocProgressSection(
+                            total = total,
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
-                    LinearProgressIndicator(
-                        progress = {
-                            percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 4.dp)
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                    )
                 }
                 HorizontalDivider()
                 LazyColumn(
@@ -195,10 +170,12 @@ fun AdHocBudgetDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     items(budget.items, key = { it.id }) { item ->
+                        val itemAccount = viewModel.accountFor(item) ?: currentAccount
                         val row: @Composable () -> Unit = {
                             AdHocBudgetItemRow(
                                 item = item,
-                                currency = currentAccount.currency,
+                                currency = itemAccount.currency,
+                                accountName = itemAccount.name.takeIf { itemAccount.id != currentAccount.id },
                                 onClick = if (isCompleted) null else ({ itemForPaidDialog = item }),
                                 onLongClick = if (isCompleted) null else ({ itemForEditDialog = item })
                             )
@@ -233,10 +210,10 @@ fun AdHocBudgetDetailScreen(
     }
 
     itemForPaidDialog?.let { item ->
-        account?.let { currentAccount ->
+        viewModel.accountFor(item)?.let { itemAccount ->
             MarkAdHocItemPaidDialog(
                 item = item,
-                currency = currentAccount.currency,
+                currency = itemAccount.currency,
                 onDismiss = { itemForPaidDialog = null },
                 onMarkFullyPaid = {
                     viewModel.markPaid(item.id)
@@ -251,11 +228,11 @@ fun AdHocBudgetDetailScreen(
     }
 
     itemForEditDialog?.let { item ->
-        account?.let { currentAccount ->
+        viewModel.accountFor(item)?.let { itemAccount ->
             EditAdHocItemAmountDialog(
                 item = item,
-                accountBalance = currentAccount.balance,
-                currency = currentAccount.currency,
+                accountBalance = itemAccount.balance,
+                currency = itemAccount.currency,
                 onDismiss = { itemForEditDialog = null },
                 onSave = { amount, icon ->
                     viewModel.updateItemAmount(item.id, amount)
@@ -336,11 +313,48 @@ fun AdHocBudgetDetailScreen(
     }
 }
 
+@Composable
+private fun AdHocProgressSection(total: AdHocCurrencyTotal, modifier: Modifier = Modifier) {
+    val percent = if (total.planned.signum() == 0) {
+        BigDecimal.ZERO
+    } else {
+        (total.paid.divide(total.planned, 6, RoundingMode.HALF_UP) * BigDecimal(100))
+            .coerceIn(BigDecimal.ZERO, BigDecimal(100))
+    }
+
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "${formatMoney(total.paid, total.currency)} / ${formatMoney(total.planned, total.currency)}",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Text(
+                "${percent.setScale(0, RoundingMode.HALF_UP)}%",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        LinearProgressIndicator(
+            progress = {
+                percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp)
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AdHocBudgetItemRow(
     item: AdHocBudgetItem,
     currency: Currency,
+    accountName: String?,
     onClick: (() -> Unit)?,
     onLongClick: (() -> Unit)?
 ) {
@@ -377,13 +391,23 @@ private fun AdHocBudgetItemRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     BudgetItemIconBadge(icon = item.icon, size = 28.dp)
-                    Text(
-                        item.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(
+                            item.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (accountName != null) {
+                            Text(
+                                "From $accountName",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
                 Text(
                     "${formatMoney(item.paidAmount, currency)} / ${formatMoney(item.amount, currency)}",

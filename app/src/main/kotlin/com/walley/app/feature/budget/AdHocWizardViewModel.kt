@@ -60,10 +60,23 @@ class AdHocWizardViewModel @Inject constructor(
     val detailsValid: Boolean
         get() = name.isNotBlank() && accountId != null && !endDate.isBefore(startDate)
 
+    /** The account a given item draft actually draws from: its own override, or the budget's default. */
+    fun accountFor(draft: AdHocItemDraft): Account? =
+        (draft.accountId ?: accountId)?.let { id -> savingAccounts.value.find { it.id == id } }
+
     val totalPlanned: BigDecimal get() = itemDrafts.fold(BigDecimal.ZERO) { acc, item -> acc + item.amount }
 
+    /** Planned totals grouped by the account each item actually draws from. */
+    val totalsByAccount: Map<Account, BigDecimal>
+        get() = itemDrafts
+            .groupBy { accountFor(it) }
+            .mapNotNull { (account, drafts) ->
+                account?.let { it to drafts.fold(BigDecimal.ZERO) { acc, draft -> acc + draft.amount } }
+            }
+            .toMap()
+
     val exceedsAccountBalance: Boolean
-        get() = selectedAccount?.let { totalPlanned > it.balance } ?: false
+        get() = totalsByAccount.any { (account, planned) -> planned > account.balance }
 
     fun goNext() {
         if (currentStep < AD_HOC_STEP_SUMMARY) currentStep++
@@ -93,7 +106,9 @@ class AdHocWizardViewModel @Inject constructor(
             startDate = startDate,
             endDate = endDate,
             accountId = account,
-            items = itemDrafts.map { draft -> AdHocBudgetItem(name = draft.name, amount = draft.amount, icon = draft.icon) }
+            items = itemDrafts.map { draft ->
+                AdHocBudgetItem(name = draft.name, amount = draft.amount, icon = draft.icon, accountId = draft.accountId)
+            }
         )
     }
 }

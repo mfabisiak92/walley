@@ -8,6 +8,7 @@ import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.effectiveAccountId
 import java.math.BigDecimal
 import java.time.LocalDate
 import javax.inject.Inject
@@ -58,7 +59,8 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
                     budgetId = budgetId,
                     name = item.name,
                     amountMinorUnits = item.amount.toMinorUnits(),
-                    icon = item.icon
+                    icon = item.icon,
+                    accountId = item.accountId
                 )
             }
         )
@@ -106,7 +108,8 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
                 name = item.name,
                 amountMinorUnits = item.amount.toMinorUnits(),
                 paidAmountMinorUnits = item.paidAmount.toMinorUnits(),
-                icon = item.icon
+                icon = item.icon,
+                accountId = item.accountId
             )
         )
     }
@@ -124,10 +127,10 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         dao.markCompleted(budgetId)
     }
 
-    /** Paying an ad-hoc item always withdraws from its single linked account. */
+    /** Paying an ad-hoc item withdraws from its own account override, or the budget's default account. */
     private suspend fun applyAccountDelta(item: AdHocBudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val budget = dao.observeBudgetById(item.budgetId).first() ?: return
-        accountRepository.addToBalance(budget.accountId, delta.negate())
+        accountRepository.addToBalance(item.effectiveAccountId(budget.toDomain()), delta.negate())
     }
 }

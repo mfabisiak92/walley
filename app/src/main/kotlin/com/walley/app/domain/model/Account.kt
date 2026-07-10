@@ -24,7 +24,13 @@ data class Account(
     /** Flat broker fee charged per buy/sell trade on this [AccountType.INVESTMENT] account. */
     val commissionFlat: BigDecimal = BigDecimal.ZERO,
     /** Broker fee as a whole-number percentage of trade value (e.g. 0.5 means 0.5%). */
-    val commissionPercent: BigDecimal = BigDecimal.ZERO
+    val commissionPercent: BigDecimal = BigDecimal.ZERO,
+    /**
+     * True if this account doesn't exist in the real world — its balance is really just an
+     * earmarked slice of another account's money (e.g. a "Vacation fund" envelope inside Checking).
+     * Excluded from net worth and other cross-account totals to avoid double-counting.
+     */
+    val isVirtual: Boolean = false
 ) {
     val targetProgressPercent: BigDecimal?
         get() = targetAmount?.takeIf { it.signum() > 0 }

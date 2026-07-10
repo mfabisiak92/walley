@@ -25,8 +25,9 @@ import com.walley.app.domain.model.EXPENSE_ICONS
 import java.math.BigDecimal
 
 /**
- * Long-press edit dialog for an Ad-hoc item. [accountBalance]/[currency] are the single linked
- * account's — there's no account picker since it's fixed for the whole budget.
+ * Long-press edit dialog for an Ad-hoc item. [accountBalance]/[currency] are the item's own
+ * effective account's (its override, or the budget's default) — there's no account picker here,
+ * since which account an item draws from is set once, in the wizard.
  */
 @Composable
 fun EditAdHocItemAmountDialog(

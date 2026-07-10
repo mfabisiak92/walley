@@ -11,5 +11,6 @@ data class AdHocBudgetItemEntity(
     val name: String,
     val amountMinorUnits: Long,
     val paidAmountMinorUnits: Long = 0,
-    val icon: BudgetItemIcon? = null
+    val icon: BudgetItemIcon? = null,
+    val accountId: Long? = null
 )

@@ -20,5 +20,6 @@ fun AdHocBudgetItemEntity.toDomain(): AdHocBudgetItem = AdHocBudgetItem(
     name = name,
     amount = BigDecimal(amountMinorUnits).movePointLeft(2),
     paidAmount = BigDecimal(paidAmountMinorUnits).movePointLeft(2),
-    icon = icon
+    icon = icon,
+    accountId = accountId
 )

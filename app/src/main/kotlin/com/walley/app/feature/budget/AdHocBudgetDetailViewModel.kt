@@ -10,6 +10,8 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.effectiveAccountId
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -33,10 +35,21 @@ class AdHocBudgetDetailViewModel @Inject constructor(
     val budget: StateFlow<AdHocBudgetWithItems?> = repository.observeAdHocBudget(budgetId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    /** The single account this budget's items are withdrawn from. */
-    val account: StateFlow<Account?> = combine(budget, accountRepository.observeAccounts()) { budgetWithItems, accounts ->
-        budgetWithItems?.let { accounts.find { account -> account.id == it.budget.accountId } }
+    private val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** The budget's default account — what items draw from unless they override it. */
+    val account: StateFlow<Account?> = combine(budget, accounts) { budgetWithItems, accountList ->
+        budgetWithItems?.let { accountList.find { account -> account.id == it.budget.accountId } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** The account a given item actually draws from: its own override, or the budget's default. */
+    fun accountFor(item: AdHocBudgetItem): Account? {
+        val currentBudget = budget.value?.budget ?: return null
+        return accounts.value.find { it.id == item.effectiveAccountId(currentBudget) }
+    }
+
+    fun currencyFor(accountId: Long): Currency? = accounts.value.find { it.id == accountId }?.currency
 
     private val isEditable: Boolean get() = budget.value?.isCompleted != true
 

@@ -290,6 +290,7 @@ private fun millisToLocalDate(millis: Long): LocalDate =
 private fun ItemsStep(viewModel: AdHocWizardViewModel) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingDraft by remember { mutableStateOf<AdHocItemDraft?>(null) }
+    val savingAccounts by viewModel.savingAccounts.collectAsStateWithLifecycle()
     val account = viewModel.selectedAccount
 
     Column(modifier = Modifier.fillMaxSize()) {
@@ -300,9 +301,11 @@ private fun ItemsStep(viewModel: AdHocWizardViewModel) {
         ) {
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(viewModel.items, key = { it.localId }) { draft ->
+                    val itemAccount = viewModel.accountFor(draft)
                     AdHocWizardItemRow(
                         draft = draft,
-                        currency = account?.currency,
+                        currency = itemAccount?.currency,
+                        accountName = itemAccount?.takeIf { it.id != account?.id }?.name,
                         onClick = { editingDraft = draft },
                         onRemove = { viewModel.removeItem(draft.localId) }
                     )
@@ -320,15 +323,17 @@ private fun ItemsStep(viewModel: AdHocWizardViewModel) {
         }
         if (account != null) {
             HorizontalDivider()
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Total: ${formatMoney(viewModel.totalPlanned, account.currency)} · " +
-                        "In ${account.name}: ${formatMoney(account.balance, account.currency)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                viewModel.totalsByAccount.forEach { (itemAccount, planned) ->
+                    Text(
+                        "Total in ${itemAccount.name}: ${formatMoney(planned, itemAccount.currency)} · " +
+                            "has ${formatMoney(itemAccount.balance, itemAccount.currency)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
                 if (viewModel.exceedsAccountBalance) {
                     Text(
-                        "This is more than ${account.name} currently holds.",
+                        "This is more than what's currently available in one or more accounts.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -340,18 +345,20 @@ private fun ItemsStep(viewModel: AdHocWizardViewModel) {
     if ((showAddDialog || editingDraft != null) && account != null) {
         val initial = editingDraft
         AddAdHocItemDialog(
-            currency = account.currency,
+            defaultAccount = account,
+            accounts = savingAccounts,
             initial = initial,
             onDismiss = {
                 showAddDialog = false
                 editingDraft = null
             },
-            onConfirm = { name, amount, icon ->
+            onConfirm = { name, amount, icon, itemAccountId ->
                 val draft = AdHocItemDraft(
                     localId = initial?.localId ?: System.nanoTime(),
                     name = name,
                     amount = amount,
-                    icon = icon
+                    icon = icon,
+                    accountId = itemAccountId
                 )
                 if (initial != null) {
                     viewModel.updateItem(initial.localId, draft)
@@ -369,6 +376,7 @@ private fun ItemsStep(viewModel: AdHocWizardViewModel) {
 private fun AdHocWizardItemRow(
     draft: AdHocItemDraft,
     currency: Currency?,
+    accountName: String?,
     onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -380,9 +388,22 @@ private fun AdHocWizardItemRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.weight(1f, fill = false)
+        ) {
             BudgetItemIconBadge(icon = draft.icon)
-            Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+            Column {
+                Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+                if (accountName != null) {
+                    Text(
+                        "From $accountName",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (currency != null) {
@@ -415,36 +436,51 @@ private fun AdHocSummaryStep(viewModel: AdHocWizardViewModel) {
         )
         if (account != null) {
             Text(
-                "Drawing from: ${account.name}",
+                "Default account: ${account.name}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
             viewModel.items.forEach { draft ->
+                val itemAccount = viewModel.accountFor(draft) ?: account
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(draft.name, style = MaterialTheme.typography.bodyLarge)
-                    Text(formatMoney(draft.amount, account.currency), style = MaterialTheme.typography.bodyLarge)
+                    Column {
+                        Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+                        if (itemAccount.id != account.id) {
+                            Text(
+                                "From ${itemAccount.name}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Text(formatMoney(draft.amount, itemAccount.currency), style = MaterialTheme.typography.bodyLarge)
                 }
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Total", style = MaterialTheme.typography.titleMedium)
-                Text(formatMoney(viewModel.totalPlanned, account.currency), style = MaterialTheme.typography.titleMedium)
+            viewModel.totalsByAccount.forEach { (itemAccount, planned) ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        if (viewModel.totalsByAccount.size > 1) "Total (${itemAccount.name})" else "Total",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(formatMoney(planned, itemAccount.currency), style = MaterialTheme.typography.titleMedium)
+                }
+                Text(
+                    "Currently in ${itemAccount.name}: ${formatMoney(itemAccount.balance, itemAccount.currency)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Text(
-                "Currently in ${account.name}: ${formatMoney(account.balance, account.currency)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             if (viewModel.exceedsAccountBalance) {
                 Text(
-                    "This budget's total exceeds what's currently in ${account.name}.",
+                    "This budget's total exceeds what's currently available in one or more accounts.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )

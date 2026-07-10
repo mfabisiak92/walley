@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 27,
+    version = 28,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -489,5 +489,13 @@ val MIGRATION_26_27 = object : Migration(26, 27) {
             WHERE name LIKE 'Estimated Tax for ____'
             """.trimIndent()
         )
+    }
+}
+
+val MIGRATION_27_28 = object : Migration(27, 28) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Ad-hoc budget items can now each draw from a different account than the budget's default,
+        // to support ad-hoc budgets that span multiple currencies.
+        db.execSQL("ALTER TABLE adhoc_budget_items ADD COLUMN accountId INTEGER")
     }
 }

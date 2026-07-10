@@ -122,7 +122,8 @@ class AccountRepositoryImpl @Inject constructor(
             throw AccountHasLinkedInvestmentsException()
         }
         if (budgetDao.countItemsForAccountWithStatus(accountId, BudgetStatus.ACTIVE) > 0 ||
-            adHocBudgetDao.countActiveForAccount(accountId) > 0
+            adHocBudgetDao.countActiveForAccount(accountId) > 0 ||
+            adHocBudgetDao.countActiveItemsForAccount(accountId) > 0
         ) {
             throw AccountHasLinkedActiveBudgetException()
         }

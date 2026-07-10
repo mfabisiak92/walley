@@ -8,5 +8,7 @@ data class AdHocItemDraft(
     val localId: Long,
     val name: String,
     val amount: BigDecimal,
-    val icon: BudgetItemIcon? = null
+    val icon: BudgetItemIcon? = null,
+    /** Overrides the budget's default account for this item; null means it uses the default. */
+    val accountId: Long? = null
 )

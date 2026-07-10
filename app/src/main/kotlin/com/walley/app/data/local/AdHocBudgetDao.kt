@@ -55,4 +55,11 @@ interface AdHocBudgetDao {
 
     @Query("SELECT COUNT(*) FROM adhoc_budgets WHERE accountId = :accountId AND isCompleted = 0")
     suspend fun countActiveForAccount(accountId: Long): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM adhoc_budget_items " +
+            "INNER JOIN adhoc_budgets ON adhoc_budget_items.budgetId = adhoc_budgets.id " +
+            "WHERE adhoc_budget_items.accountId = :accountId AND adhoc_budgets.isCompleted = 0"
+    )
+    suspend fun countActiveItemsForAccount(accountId: Long): Int
 }

@@ -42,6 +42,7 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetStatus
+import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
@@ -309,7 +310,11 @@ private fun AdHocBudgetsPage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(budgets, key = { it.budget.id }) { row ->
-                    AdHocBudgetRow(row = row, onClick = { onOpenBudget(row.budget.id) })
+                    AdHocBudgetRow(
+                        row = row,
+                        currencyFor = viewModel::currencyFor,
+                        onClick = { onOpenBudget(row.budget.id) }
+                    )
                 }
             }
         }
@@ -317,15 +322,11 @@ private fun AdHocBudgetsPage(
 }
 
 @Composable
-private fun AdHocBudgetRow(row: AdHocBudgetWithItems, onClick: () -> Unit) {
-    val planned = row.totalPlanned
-    val paid = row.totalPaid
-    val percent = if (planned.signum() == 0) {
-        BigDecimal.ZERO
-    } else {
-        (paid.divide(planned, 6, RoundingMode.HALF_UP) * BigDecimal(100)).coerceIn(BigDecimal.ZERO, BigDecimal(100))
-    }
-
+private fun AdHocBudgetRow(
+    row: AdHocBudgetWithItems,
+    currencyFor: (Long) -> Currency?,
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -339,32 +340,40 @@ private fun AdHocBudgetRow(row: AdHocBudgetWithItems, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "${formatMoney(paid, row.budget.currency)} / ${formatMoney(planned, row.budget.currency)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "${percent.setScale(0, RoundingMode.HALF_UP)}%",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            row.totalsByCurrency(currencyFor).forEach { total ->
+                val percent = if (total.planned.signum() == 0) {
+                    BigDecimal.ZERO
+                } else {
+                    (total.paid.divide(total.planned, 6, RoundingMode.HALF_UP) * BigDecimal(100))
+                        .coerceIn(BigDecimal.ZERO, BigDecimal(100))
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "${formatMoney(total.paid, total.currency)} / ${formatMoney(total.planned, total.currency)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "${percent.setScale(0, RoundingMode.HALF_UP)}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = {
+                        percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
                 )
             }
-            LinearProgressIndicator(
-                progress = {
-                    percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp))
-            )
         }
     }
 }

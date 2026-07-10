@@ -6,7 +6,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,26 +24,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.ui.BudgetItemIconPicker
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItemIcon
-import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.EXPENSE_ICONS
 import com.walley.app.domain.model.suggestIconForName
 import java.math.BigDecimal
 
-/** Add/edit dialog for an Ad-hoc budget item — same fields as [AddBudgetItemDialog] minus account/payment day/category, since those don't apply to Ad-hoc items. */
+/**
+ * Add/edit dialog for an Ad-hoc budget item — same fields as [AddBudgetItemDialog] minus payment
+ * day/category, since those don't apply to Ad-hoc items. The account picker only appears when
+ * [accounts] has more than one option; a single-account budget stays exactly as before.
+ */
 @Composable
 fun AddAdHocItemDialog(
-    currency: Currency,
+    defaultAccount: Account,
+    accounts: List<Account>,
     initial: AdHocItemDraft? = null,
     onDismiss: () -> Unit,
-    onConfirm: (name: String, amount: BigDecimal, icon: BudgetItemIcon?) -> Unit
+    onConfirm: (name: String, amount: BigDecimal, icon: BudgetItemIcon?, accountId: Long?) -> Unit
 ) {
     var name by remember { mutableStateOf(initial?.name ?: "") }
     var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
     var icon by remember { mutableStateOf(initial?.icon) }
+    var selectedAccountId by remember { mutableStateOf(initial?.accountId) }
     // Once the user manually picks an icon, stop overriding it as they keep editing the name.
     var iconAutoAssigned by remember { mutableStateOf(initial?.icon == null) }
 
+    val selectedAccount = accounts.find { it.id == selectedAccountId } ?: defaultAccount
     val parsedAmount = amountText.toBigDecimalOrNull()
     val isValid = name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0
 
@@ -61,10 +73,18 @@ fun AddAdHocItemDialog(
                     label = { Text("Name") },
                     singleLine = true
                 )
+                if (accounts.size > 1) {
+                    AccountPicker(
+                        accounts = accounts,
+                        defaultAccount = defaultAccount,
+                        selectedAccountId = selectedAccountId,
+                        onSelect = { selectedAccountId = it }
+                    )
+                }
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount (${currency.symbol})") },
+                    label = { Text("Amount (${selectedAccount.currency.symbol})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && parsedAmount == null
@@ -82,7 +102,7 @@ fun AddAdHocItemDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(name.trim(), parsedAmount!!, icon) },
+                onClick = { onConfirm(name.trim(), parsedAmount!!, icon, selectedAccountId) },
                 enabled = isValid
             ) { Text(if (initial != null) "Save" else "Add") }
         },
@@ -90,4 +110,44 @@ fun AddAdHocItemDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AccountPicker(
+    accounts: List<Account>,
+    defaultAccount: Account,
+    selectedAccountId: Long?,
+    onSelect: (Long?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedAccount = accounts.find { it.id == selectedAccountId } ?: defaultAccount
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it }
+    ) {
+        OutlinedTextField(
+            value = selectedAccount.name + if (selectedAccount.id == defaultAccount.id) " (default)" else "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Draw from") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            accounts.forEach { account ->
+                DropdownMenuItem(
+                    text = { Text(account.name + if (account.id == defaultAccount.id) " (default)" else "") },
+                    onClick = {
+                        onSelect(if (account.id == defaultAccount.id) null else account.id)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
 }
