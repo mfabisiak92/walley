@@ -51,7 +51,7 @@ class LiabilityRepositoryImpl @Inject constructor(
         for ((year, amount) in amountsByYear) {
             val rounded = amount.setScale(2, RoundingMode.HALF_UP)
             liabilityDao.upsertEstimatedTaxLiability(
-                name = "Estimated Tax for $year",
+                name = "Tax $year",
                 currency = currency,
                 amountMinorUnits = rounded.toMinorUnits(),
                 startDate = LocalDate.of(year, 1, 1)
@@ -76,6 +76,6 @@ class LiabilityRepositoryImpl @Inject constructor(
     }
 
     private companion object {
-        val ESTIMATED_TAX_NAME = Regex("""^Estimated Tax for (\d{4})$""")
+        val ESTIMATED_TAX_NAME = Regex("""^Tax (\d{4})$""")
     }
 }

@@ -23,7 +23,8 @@ fun calculateNetWorth(
     for (asset in assets) {
         total += convertToCurrency(asset.currentValue, asset.currency, targetCurrency, rates) ?: return null
     }
-    for (liability in liabilities) {
+    // A fully paid-off liability owes nothing, so it no longer counts against net worth.
+    for (liability in liabilities.filter { it.currentBalance.signum() != 0 }) {
         total -= convertToCurrency(liability.currentBalance, liability.currency, targetCurrency, rates) ?: return null
     }
     return total

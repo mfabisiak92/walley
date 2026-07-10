@@ -134,7 +134,7 @@ class HomeViewModel @Inject constructor(
         .map { investments -> investments.filter { it.investment.accountId != null }.groupBy { it.investment.accountId!! } }
 
     init {
-        // Keeps an "Estimated Tax for {year}" liability in sync with the live realized-gain estimate
+        // Keeps a "Tax {year}" liability in sync with the live realized-gain estimate
         // for every year that owes anything, so it's automatically part of net worth everywhere.
         combine(
             accountRepository.observeAccounts(),
@@ -257,7 +257,8 @@ class HomeViewModel @Inject constructor(
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
             )
         }
-        for (liability in liabilities) {
+        // A fully paid-off liability owes nothing, so it no longer counts against net worth.
+        for (liability in liabilities.filter { it.currentBalance.signum() != 0 }) {
             val amountInBase = convertToBase(liability.currentBalance, liability.currency)
                 ?: return NetWorthState(currency = base, amount = null, rateDate = null)
             byCurrency[liability.currency] = (byCurrency[liability.currency] ?: BigDecimal.ZERO) - amountInBase

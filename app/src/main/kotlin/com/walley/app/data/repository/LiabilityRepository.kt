@@ -19,10 +19,11 @@ interface LiabilityRepository {
     suspend fun deleteLiability(liabilityId: Long)
 
     /**
-     * Keeps one "Estimated Tax for {year}" liability per entry in [amountsByYear] (amounts already
-     * in [currency]) in sync with the live estimate: creates missing ones, and for changed amounts
-     * resets both originalAmount and currentBalance to the new estimate (never just currentBalance),
-     * since this tracks a re-estimate, not money actually paid — so it must never show as "paid off".
+     * Keeps one "Tax {year}" liability per entry in [amountsByYear] (amounts already
+     * in [currency]) in sync with the live estimate: creates missing ones, and resets both
+     * originalAmount and currentBalance only when the estimate itself has moved since last sync —
+     * an unchanged estimate leaves currentBalance alone so a manual payment or "mark as fully paid"
+     * sticks instead of being overwritten on the next sync.
      * Removes any auto-tax liability for a year no longer in the map (nothing owed anymore).
      */
     suspend fun syncEstimatedTaxLiabilities(amountsByYear: Map<Int, BigDecimal>, currency: Currency)

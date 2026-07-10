@@ -307,52 +307,65 @@ private fun InvestmentRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = investment.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                        InvestmentCategoryChip(category = investment.category)
-                        strategy?.latestStatus?.let { status ->
-                            EquityStatusChip(
-                                status = status,
-                                modifier = Modifier.combinedClickable(onClick = { onClickStrategy(strategy.equity.id) })
-                            )
-                        }
-                        if (isClosed) {
-                            Text(
-                                "Closed",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Text(
-                        text = listOfNotNull(investment.ticker, accountName).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = investment.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
                 Text(
                     formatMoney(data.currentValue, investment.currency),
                     style = MaterialTheme.typography.titleMedium
                 )
             }
-            Text(
-                text = data.firstPurchaseDate?.format(PURCHASE_DATE_FORMATTER) ?: "—",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = listOfNotNull(investment.ticker, accountName).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    InvestmentCategoryChip(category = investment.category)
+                    strategy?.latestStatus?.let { status ->
+                        EquityStatusChip(
+                            status = status,
+                            modifier = Modifier.combinedClickable(onClick = { onClickStrategy(strategy.equity.id) })
+                        )
+                    }
+                    if (isClosed) {
+                        Text(
+                            "Closed",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "${data.quantity.toPlainString()} @ ${formatMoney(investment.currentPrice, investment.currency)}",
+                    text = buildString {
+                        append(data.quantity.toPlainString())
+                        append(" @ ")
+                        append(formatMoney(investment.currentPrice, investment.currency))
+                        data.firstPurchaseDate?.let {
+                            append(" · since ")
+                            append(it.format(PURCHASE_DATE_FORMATTER))
+                        }
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

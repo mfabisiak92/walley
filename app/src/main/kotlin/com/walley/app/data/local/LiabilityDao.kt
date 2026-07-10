@@ -52,7 +52,10 @@ interface LiabilityDao {
                     startDate = startDate
                 )
             )
-            existing.currentBalanceMinorUnits != amountMinorUnits ->
+            // Only reset the balance when the estimate itself moved — comparing against
+            // currentBalance would stomp a manual payment/"mark as fully paid" back to the
+            // unchanged estimate on the very next sync.
+            existing.originalAmountMinorUnits != amountMinorUnits ->
                 resyncOriginalAndCurrentAmount(existing.id, amountMinorUnits)
         }
     }

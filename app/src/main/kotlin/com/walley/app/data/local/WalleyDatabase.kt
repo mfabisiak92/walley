@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 26,
+    version = 27,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -472,6 +472,21 @@ val MIGRATION_25_26 = object : Migration(25, 26) {
                 `investmentId` INTEGER NOT NULL,
                 PRIMARY KEY(`equityId`, `investmentId`)
             )
+            """.trimIndent()
+        )
+    }
+}
+
+val MIGRATION_26_27 = object : Migration(26, 27) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // The auto-synced estimated-tax liability is now labeled "Tax {year}" instead of
+        // "Estimated Tax for {year}"; rename existing ones so they keep being recognized by
+        // syncEstimatedTaxLiabilities instead of becoming orphaned duplicates.
+        db.execSQL(
+            """
+            UPDATE liabilities
+            SET name = 'Tax ' || substr(name, -4)
+            WHERE name LIKE 'Estimated Tax for ____'
             """.trimIndent()
         )
     }
