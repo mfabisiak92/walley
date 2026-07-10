@@ -1,5 +1,7 @@
 package com.walley.app.feature.accounts
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,6 +76,7 @@ fun AccountsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
     onOpenUpdateBalances: (AccountBalanceGroup) -> Unit,
+    onOpenCashOperations: (Long) -> Unit,
     viewModel: AccountsViewModel = hiltViewModel()
 ) {
     val tabs = AccountBalanceGroup.entries
@@ -106,7 +109,8 @@ fun AccountsScreen(
                 AccountsListPage(
                     viewModel = viewModel,
                     group = tabs[page],
-                    onOpenUpdateBalances = onOpenUpdateBalances
+                    onOpenUpdateBalances = onOpenUpdateBalances,
+                    onOpenCashOperations = onOpenCashOperations
                 )
             }
         }
@@ -117,7 +121,8 @@ fun AccountsScreen(
 private fun AccountsListPage(
     viewModel: AccountsViewModel,
     group: AccountBalanceGroup,
-    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit
+    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit,
+    onOpenCashOperations: (Long) -> Unit
 ) {
     val allowedTypes = group.types
     val tabLabel = group.label
@@ -193,7 +198,8 @@ private fun AccountsListPage(
                         AccountRow(
                             account = account,
                             investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
-                            onClick = { editingAccount = account },
+                            onOpenCashOperations = { onOpenCashOperations(account.id) },
+                            onEditAccount = { editingAccount = account },
                             onSetDefault = { viewModel.setDefaultAccount(account.id) }
                         )
                     }
@@ -261,55 +267,47 @@ private fun AccountsListPage(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun AccountRow(
     account: Account,
     investmentsInAccount: List<InvestmentWithTransactions>,
-    onClick: () -> Unit,
+    onOpenCashOperations: () -> Unit,
+    onEditAccount: () -> Unit,
     onSetDefault: () -> Unit
 ) {
     Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .combinedClickable(onLongClick = onEditAccount, onClick = onOpenCashOperations),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
+        val canBeDefault = account.type == AccountType.CHECKING || account.type == AccountType.CASH
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onSetDefault, modifier = Modifier.size(32.dp)) {
-                        if (account.isDefault) {
-                            Icon(
-                                Icons.Filled.Star,
-                                contentDescription = "Default account",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
+                Column {
+                    Text(account.name, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = if (account.type == AccountType.INVESTMENT) {
+                            "${account.type.label} · ${account.taxRate.label}"
                         } else {
-                            Icon(
-                                Icons.Outlined.StarOutline,
-                                contentDescription = "Set as default account",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    Column {
-                        Text(account.name, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = if (account.type == AccountType.INVESTMENT) {
-                                "${account.type.label} · ${account.taxRate.label}"
-                            } else {
-                                account.type.label
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                            account.type.label
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
+                    if (canBeDefault) {
+                        DefaultAccountButton(isDefault = account.isDefault, onClick = onSetDefault)
                     }
                 }
-                Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
             }
-            Column(modifier = Modifier.padding(start = 32.dp)) {
+            Column {
                 if (account.type == AccountType.INVESTMENT) {
                     Text(
                         text = "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
@@ -355,6 +353,26 @@ private fun AccountRow(
                     SavingsGoalProgress(account = account, progressPercent = progressPercent)
                 }
             }
+        }
+    }
+}
+
+/** Marks/unmarks this [AccountType.CHECKING]/[AccountType.CASH] account as the one used by default — a concept that only makes sense for everyday spending accounts, not savings goals or investment accounts. */
+@Composable
+private fun DefaultAccountButton(isDefault: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+        if (isDefault) {
+            Icon(
+                Icons.Filled.Star,
+                contentDescription = "Default account",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        } else {
+            Icon(
+                Icons.Outlined.StarOutline,
+                contentDescription = "Set as default account",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

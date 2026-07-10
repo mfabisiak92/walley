@@ -15,6 +15,7 @@ import com.walley.app.feature.budget.BudgetDetailScreen
 import com.walley.app.feature.budget.BudgetSettingsScreen
 import com.walley.app.feature.budget.BudgetWizardScreen
 import com.walley.app.feature.home.NetWorthDetailScreen
+import com.walley.app.feature.investments.CashOperationsScreen
 import com.walley.app.feature.investments.EquityDetailScreen
 import com.walley.app.feature.investments.InvestmentDetailScreen
 import com.walley.app.feature.investments.UpdatePricesScreen
@@ -34,10 +35,12 @@ private object WalleyDestinations {
     const val UPDATE_PRICES = "update_prices"
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
     const val UPDATE_BALANCES = "update_balances/{group}"
+    const val CASH_OPERATIONS = "cash_operations/{accountId}"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetSettings(budgetId: Long) = "budget_settings/$budgetId"
     fun updateBalances(group: AccountBalanceGroup) = "update_balances/${group.name}"
+    fun cashOperations(accountId: Long) = "cash_operations/$accountId"
     fun budgetWizard(cloneFromBudgetId: Long? = null, resumeBudgetId: Long? = null): String {
         val params = listOfNotNull(
             cloneFromBudgetId?.let { "cloneFrom=$it" },
@@ -80,6 +83,9 @@ fun WalleyNavHost() {
                 onOpenUpdatePrices = { navController.navigate(WalleyDestinations.UPDATE_PRICES) },
                 onOpenUpdateBalances = { group ->
                     navController.navigate(WalleyDestinations.updateBalances(group))
+                },
+                onOpenCashOperations = { accountId ->
+                    navController.navigate(WalleyDestinations.cashOperations(accountId))
                 }
             )
         }
@@ -168,6 +174,12 @@ fun WalleyNavHost() {
             arguments = listOf(navArgument("group") { type = NavType.StringType })
         ) {
             UpdateBalancesScreen(onNavigateBack = { navController.popBackStack() })
+        }
+        composable(
+            WalleyDestinations.CASH_OPERATIONS,
+            arguments = listOf(navArgument("accountId") { type = NavType.LongType })
+        ) {
+            CashOperationsScreen(onNavigateBack = { navController.popBackStack() })
         }
     }
 }

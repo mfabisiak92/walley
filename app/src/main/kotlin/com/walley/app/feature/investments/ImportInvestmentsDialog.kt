@@ -1,6 +1,7 @@
 package com.walley.app.feature.investments
 
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -26,12 +28,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -84,6 +90,7 @@ fun ImportInvestmentsDialog(
                         is ImportUiState.Done -> DoneContent(current.importedCount, onDismiss)
                         is ImportUiState.SelectAccount -> SelectAccountContent(
                             accounts = current.accounts,
+                            showAccountOperationsToggle = current.showAccountOperationsToggle,
                             onSelect = viewModel::selectAccountForImport
                         )
                         is ImportUiState.Preview -> PreviewContent(
@@ -147,13 +154,38 @@ private fun DoneContent(importedCount: Int, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun SelectAccountContent(accounts: List<Account>, onSelect: (Account) -> Unit) {
+private fun SelectAccountContent(
+    accounts: List<Account>,
+    showAccountOperationsToggle: Boolean,
+    onSelect: (Account, Boolean) -> Unit
+) {
+    var includeAccountOperations by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             "This file doesn't say which account it's for. Which investment account should these events be added to?",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(16.dp)
         )
+        if (showAccountOperationsToggle) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .clickable { includeAccountOperations = !includeAccountOperations },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                    Text("Include deposits, transfers & interest", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "Adjusts this account's balance by each deposit/transfer/interest amount and by what's spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Switch(checked = includeAccountOperations, onCheckedChange = { includeAccountOperations = it })
+            }
+        }
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -163,7 +195,7 @@ private fun SelectAccountContent(accounts: List<Account>, onSelect: (Account) ->
         ) {
             items(accounts, key = { it.id }) { account ->
                 Card(
-                    onClick = { onSelect(account) },
+                    onClick = { onSelect(account, includeAccountOperations) },
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {
@@ -225,6 +257,8 @@ private fun PreviewContent(
 
 @Composable
 private fun OutcomeRow(outcome: ImportRowOutcome) {
+    val row = outcome.row
+    val cashOperation = outcome.cashOperation
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -235,20 +269,25 @@ private fun OutcomeRow(outcome: ImportRowOutcome) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val row = outcome.row
                 Text(
-                    if (row != null) {
-                        "Row ${outcome.rowNumber} · ${row.type.label} ${row.ticker}"
-                    } else {
-                        "Row ${outcome.rowNumber}"
+                    when {
+                        row != null -> "Row ${outcome.rowNumber} · ${row.type.label} ${row.ticker}"
+                        cashOperation != null -> "Row ${outcome.rowNumber} · ${cashOperation.description}"
+                        else -> "Row ${outcome.rowNumber}"
                     },
                     style = MaterialTheme.typography.bodyMedium
                 )
-                StatusIndicator(outcome.status)
+                StatusIndicator(outcome.status, isCashOperation = cashOperation != null)
             }
-            if (outcome.row != null) {
+            if (row != null) {
                 Text(
-                    "${outcome.row.accountName} · ${outcome.row.date} · ${outcome.row.quantity.toPlainString()} @ ${outcome.row.price.toPlainString()}",
+                    "${row.accountName} · ${row.date} · ${row.quantity.toPlainString()} @ ${row.price.toPlainString()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else if (cashOperation != null) {
+                Text(
+                    "${cashOperation.accountName} · ${cashOperation.date} · ${cashOperation.amount.toPlainString()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -262,14 +301,23 @@ private fun OutcomeRow(outcome: ImportRowOutcome) {
 }
 
 @Composable
-private fun StatusIndicator(status: ImportRowStatus) {
+private fun StatusIndicator(status: ImportRowStatus, isCashOperation: Boolean) {
     when (status) {
-        is ImportRowStatus.ToImport -> Icon(
-            Icons.Filled.CheckCircle,
-            contentDescription = "Will import",
-            tint = Color(0xFF2E7D32),
-            modifier = Modifier.size(20.dp)
-        )
+        is ImportRowStatus.ToImport -> if (isCashOperation) {
+            Icon(
+                Icons.Filled.Paid,
+                contentDescription = "Will import as a cash operation",
+                tint = Color(0xFF2E7D32),
+                modifier = Modifier.size(20.dp)
+            )
+        } else {
+            Icon(
+                Icons.Filled.CheckCircle,
+                contentDescription = "Will import",
+                tint = Color(0xFF2E7D32),
+                modifier = Modifier.size(20.dp)
+            )
+        }
         is ImportRowStatus.Rejected -> Icon(
             Icons.Filled.Warning,
             contentDescription = "Rejected",

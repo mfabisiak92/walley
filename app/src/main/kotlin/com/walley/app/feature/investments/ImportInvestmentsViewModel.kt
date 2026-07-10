@@ -5,11 +5,14 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.csv.decodeCsvBytes
+import com.walley.app.data.csv.looksLikeBossaCashOperationsExport
 import com.walley.app.data.csv.looksLikeBossaExport
 import com.walley.app.data.csv.looksLikeXtbCashOperationsExport
+import com.walley.app.data.csv.parseBossaCashOperationsCsv
 import com.walley.app.data.csv.parseBossaExportCsv
 import com.walley.app.data.csv.parseInvestmentImportCsv
 import com.walley.app.data.csv.parseXtbCashOperationsCsv
+import com.walley.app.data.repository.AccountOperationRepository
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.domain.model.Account
@@ -17,6 +20,7 @@ import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.CsvRowParseResult
 import com.walley.app.domain.model.ImportRowOutcome
 import com.walley.app.domain.model.ImportRowStatus
+import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.validateImportRows
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -32,20 +36,25 @@ sealed interface ImportUiState {
     data object Loading : ImportUiState
     data class Error(val message: String) : ImportUiState
     /** BOSSA/XTB (and similar) exports don't carry an account column — the whole file is one account's history. */
-    data class SelectAccount(val accounts: List<Account>) : ImportUiState
+    data class SelectAccount(
+        val accounts: List<Account>,
+        /** Only XTB's cash-ledger export has deposit/transfer/interest rows to offer importing. */
+        val showAccountOperationsToggle: Boolean
+    ) : ImportUiState
     data class Preview(val outcomes: List<ImportRowOutcome>) : ImportUiState
     data object Committing : ImportUiState
     data class Done(val importedCount: Int) : ImportUiState
 }
 
 /** File formats that don't carry their own account column, so the user picks one account for the whole file. */
-private enum class SingleAccountFormat { BOSSA, XTB }
+private enum class SingleAccountFormat { BOSSA, BOSSA_CASH_OPERATIONS, XTB }
 
 @HiltViewModel
 class ImportInvestmentsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val accountRepository: AccountRepository,
-    private val investmentRepository: InvestmentRepository
+    private val investmentRepository: InvestmentRepository,
+    private val accountOperationRepository: AccountOperationRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ImportUiState>(ImportUiState.Loading)
@@ -53,6 +62,14 @@ class ImportInvestmentsViewModel @Inject constructor(
 
     private var pendingText: String? = null
     private var pendingFormat: SingleAccountFormat? = null
+
+    /**
+     * True when the user turned on "include account operations" for this import: besides the cash
+     * operations themselves, every trade's cost/proceeds (including commission) is also debited/credited
+     * against the account's balance on commit, so the ending balance matches the source statement
+     * instead of only reflecting deposits/interest/transfers.
+     */
+    private var pendingIncludeAccountOperations = false
 
     fun load(uri: Uri) {
         viewModelScope.launch {
@@ -69,6 +86,7 @@ class ImportInvestmentsViewModel @Inject constructor(
 
             val singleAccountFormat = when {
                 looksLikeBossaExport(text) -> SingleAccountFormat.BOSSA
+                looksLikeBossaCashOperationsExport(text) -> SingleAccountFormat.BOSSA_CASH_OPERATIONS
                 looksLikeXtbCashOperationsExport(text) -> SingleAccountFormat.XTB
                 else -> null
             }
@@ -81,7 +99,10 @@ class ImportInvestmentsViewModel @Inject constructor(
                 }
                 pendingText = text
                 pendingFormat = singleAccountFormat
-                _uiState.value = ImportUiState.SelectAccount(investmentAccounts)
+                _uiState.value = ImportUiState.SelectAccount(
+                    accounts = investmentAccounts,
+                    showAccountOperationsToggle = singleAccountFormat != SingleAccountFormat.BOSSA
+                )
                 return@launch
             }
 
@@ -95,14 +116,26 @@ class ImportInvestmentsViewModel @Inject constructor(
         }
     }
 
-    fun selectAccountForImport(account: Account) {
+    fun selectAccountForImport(account: Account, includeAccountOperations: Boolean = false) {
         val text = pendingText ?: return
         val format = pendingFormat ?: return
+        pendingIncludeAccountOperations = includeAccountOperations
         viewModelScope.launch {
             _uiState.value = ImportUiState.Loading
             val parseResults = when (format) {
                 SingleAccountFormat.BOSSA -> parseBossaExportCsv(text, accountId = account.id, accountName = account.name)
-                SingleAccountFormat.XTB -> parseXtbCashOperationsCsv(text, accountId = account.id, accountName = account.name)
+                SingleAccountFormat.BOSSA_CASH_OPERATIONS -> parseBossaCashOperationsCsv(
+                    text,
+                    accountId = account.id,
+                    accountName = account.name,
+                    includeAccountOperations = includeAccountOperations
+                )
+                SingleAccountFormat.XTB -> parseXtbCashOperationsCsv(
+                    text,
+                    accountId = account.id,
+                    accountName = account.name,
+                    includeAccountOperations = includeAccountOperations
+                )
             }
             validateAndShowPreview(parseResults)
         }
@@ -113,7 +146,8 @@ class ImportInvestmentsViewModel @Inject constructor(
         val investmentsByAccount: Map<Long, List<InvestmentWithTransactions>> = investmentRepository.observeInvestments().first()
             .filter { it.investment.accountId != null }
             .groupBy { it.investment.accountId!! }
-        val outcomes = validateImportRows(parseResults, accounts, investmentsByAccount)
+        val accountOperationsByAccount = accountOperationRepository.observeAll().first().groupBy { it.accountId }
+        val outcomes = validateImportRows(parseResults, accounts, investmentsByAccount, accountOperationsByAccount)
         _uiState.value = ImportUiState.Preview(outcomes)
     }
 
@@ -126,6 +160,16 @@ class ImportInvestmentsViewModel @Inject constructor(
             _uiState.value = ImportUiState.Committing
             val accountsById = accountRepository.observeAccounts().first().associateBy { it.id }
             toImport.forEach { outcome ->
+                val cashOperation = outcome.cashOperation
+                if (cashOperation != null) {
+                    accountOperationRepository.recordAndApply(
+                        accountId = cashOperation.accountId,
+                        date = cashOperation.date,
+                        description = cashOperation.description,
+                        amount = cashOperation.amount
+                    )
+                    return@forEach
+                }
                 val row = checkNotNull(outcome.row)
                 val currency = accountsById.getValue(row.accountId).currency
                 investmentRepository.importTransaction(
@@ -140,6 +184,14 @@ class ImportInvestmentsViewModel @Inject constructor(
                     pricePerUnit = row.price,
                     commission = row.commission
                 )
+                if (pendingIncludeAccountOperations) {
+                    val tradeValue = row.quantity * row.price
+                    val cashDelta = when (row.type) {
+                        InvestmentTransactionType.BUY -> -(tradeValue + row.commission)
+                        InvestmentTransactionType.SELL -> tradeValue - row.commission
+                    }
+                    accountRepository.addToBalance(row.accountId, cashDelta)
+                }
             }
             _uiState.value = ImportUiState.Done(toImport.size)
         }

@@ -58,7 +58,8 @@ fun MainTabsScreen(
     onNavigateToAdHocWizard: () -> Unit,
     onOpenAdHocBudget: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit,
-    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit
+    onOpenUpdateBalances: (AccountBalanceGroup) -> Unit,
+    onOpenCashOperations: (Long) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
@@ -99,7 +100,8 @@ fun MainTabsScreen(
                 )
                 1 -> AccountsScreen(
                     onNavigateHome = goHome,
-                    onOpenUpdateBalances = onOpenUpdateBalances
+                    onOpenUpdateBalances = onOpenUpdateBalances,
+                    onOpenCashOperations = onOpenCashOperations
                 )
                 2 -> BudgetsScreen(
                     onNavigateHome = goHome,

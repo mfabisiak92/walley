@@ -99,7 +99,10 @@ fun InvestmentsScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> PortfolioListPage(onOpenInvestment = onOpenInvestment, onOpenUpdatePrices = onOpenUpdatePrices)
+                    0 -> PortfolioListPage(
+                        onOpenInvestment = onOpenInvestment,
+                        onOpenUpdatePrices = onOpenUpdatePrices
+                    )
                     else -> StrategiesListPage(onOpenEquity = onOpenEquity)
                 }
             }

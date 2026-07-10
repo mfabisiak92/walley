@@ -48,6 +48,16 @@ class LiabilityRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncEstimatedTaxLiabilities(amountsByYear: Map<Int, BigDecimal>, currency: Currency) {
+        for ((year, amount) in amountsByYear) {
+            val rounded = amount.setScale(2, RoundingMode.HALF_UP)
+            liabilityDao.upsertEstimatedTaxLiability(
+                name = "Estimated Tax for $year",
+                currency = currency,
+                amountMinorUnits = rounded.toMinorUnits(),
+                startDate = LocalDate.of(year, 1, 1)
+            )
+        }
+
         val existingByYear = liabilityDao.observeAll().first()
             .map { it.toDomain() }
             .mapNotNull { liability ->
@@ -56,24 +66,6 @@ class LiabilityRepositoryImpl @Inject constructor(
                     ?.let { year -> year to liability }
             }
             .toMap()
-
-        for ((year, amount) in amountsByYear) {
-            val rounded = amount.setScale(2, RoundingMode.HALF_UP)
-            val existing = existingByYear[year]
-            when {
-                existing == null -> addLiability(
-                    name = "Estimated Tax for $year",
-                    currency = currency,
-                    originalAmount = rounded,
-                    currentBalance = rounded,
-                    startDate = LocalDate.of(year, 1, 1)
-                )
-                // Both originalAmount and currentBalance track the live estimate, not an amount actually
-                // paid, so a shrinking estimate must not show up as "paid off" — reset both together.
-                existing.currentBalance.compareTo(rounded) != 0 ->
-                    liabilityDao.resyncOriginalAndCurrentAmount(existing.id, rounded.toMinorUnits())
-            }
-        }
 
         // A year that no longer owes anything (e.g. its sells were removed) shouldn't keep a stale liability around.
         for ((year, liability) in existingByYear) {

@@ -20,9 +20,10 @@ import java.time.LocalDate
         WatchedEquityEntity::class,
         EquityNoteEntity::class,
         AdHocBudgetEntity::class,
-        AdHocBudgetItemEntity::class
+        AdHocBudgetItemEntity::class,
+        AccountOperationEntity::class
     ],
-    version = 23,
+    version = 24,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -35,6 +36,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun financialSnapshotDao(): FinancialSnapshotDao
     abstract fun watchedEquityDao(): WatchedEquityDao
     abstract fun adHocBudgetDao(): AdHocBudgetDao
+    abstract fun accountOperationDao(): AccountOperationDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -429,5 +431,24 @@ val MIGRATION_22_23 = object : Migration(22, 23) {
         db.execSQL("ALTER TABLE accounts ADD COLUMN commissionFlatMinorUnits INTEGER NOT NULL DEFAULT 0")
         db.execSQL("ALTER TABLE accounts ADD COLUMN commissionPercent TEXT NOT NULL DEFAULT '0'")
         db.execSQL("ALTER TABLE investment_transactions ADD COLUMN commission TEXT NOT NULL DEFAULT '0'")
+    }
+}
+
+val MIGRATION_23_24 = object : Migration(23, 24) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Ledger of deposits/withdrawals/transfers/interest applied directly to an investment account's
+        // uninvested cash during CSV import — lets a re-imported file recognize an operation it already
+        // applied (by account+date+description+amount) instead of double-counting it.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `account_operations` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `accountId` INTEGER NOT NULL,
+                `date` TEXT NOT NULL,
+                `description` TEXT NOT NULL,
+                `amount` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
     }
 }

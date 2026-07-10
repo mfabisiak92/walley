@@ -1,5 +1,7 @@
 package com.walley.app.di
 
+import com.walley.app.data.repository.AccountOperationRepository
+import com.walley.app.data.repository.AccountOperationRepositoryImpl
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AccountRepositoryImpl
 import com.walley.app.data.repository.AdHocBudgetRepository
@@ -63,4 +65,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindAdHocBudgetRepository(impl: AdHocBudgetRepositoryImpl): AdHocBudgetRepository
+
+    @Binds
+    abstract fun bindAccountOperationRepository(impl: AccountOperationRepositoryImpl): AccountOperationRepository
 }

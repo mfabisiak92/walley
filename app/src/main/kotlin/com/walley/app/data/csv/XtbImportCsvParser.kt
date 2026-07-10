@@ -3,6 +3,7 @@ package com.walley.app.data.csv
 import com.walley.app.domain.model.CsvRowParseResult
 import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.domain.model.InvestmentTransactionType
+import com.walley.app.domain.model.ParsedCashOperationRow
 import com.walley.app.domain.model.ParsedImportRow
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -38,8 +39,19 @@ fun looksLikeXtbCashOperationsExport(text: String): Boolean {
  * instrument's own trading currency (USD/GBP/EUR) while `Amount` is already in the account's
  * currency — dividing gives the real price paid per unit in that currency. XTB doesn't break out a
  * separate commission in this report, so it's always 0 here.
+ *
+ * When [includeAccountOperations] is true, every other row (deposits, withdrawals, internal transfers,
+ * interest and its tax) is also parsed, as a [com.walley.app.domain.model.ParsedCashOperationRow]
+ * instead of a trade — that's what lets a buy pass validation even when the account's stored balance
+ * is 0, since the deposit that funded it is replayed first. The trailing `Total` row is still skipped:
+ * it's a running balance, not a discrete operation.
  */
-fun parseXtbCashOperationsCsv(text: String, accountId: Long, accountName: String): List<CsvRowParseResult> {
+fun parseXtbCashOperationsCsv(
+    text: String,
+    accountId: Long,
+    accountName: String,
+    includeAccountOperations: Boolean = false
+): List<CsvRowParseResult> {
     val lines = parseCsvLines(text)
     val headerIndex = lines.indexOfFirst { it.firstOrNull()?.trim().equals("Type", ignoreCase = true) }
     if (headerIndex == -1) {
@@ -54,6 +66,9 @@ fun parseXtbCashOperationsCsv(text: String, accountId: Long, accountName: String
 
         val type = field(0)
         if (!type.equals("Stock purchase", ignoreCase = true) && !type.equals("Stock sale", ignoreCase = true)) {
+            if (includeAccountOperations && type.isNotBlank() && !type.equals("Total", ignoreCase = true)) {
+                results += parseXtbCashOperationRow(rowNumber, ::field, accountId, accountName, type)
+            }
             return@forEachIndexed
         }
 
@@ -124,4 +139,38 @@ fun parseXtbCashOperationsCsv(text: String, accountId: Long, accountName: String
         )
     }
     return results
+}
+
+/** Parses one non-trade row (deposit, transfer, interest, etc.) into a cash operation, or an [CsvRowParseResult.Invalid]. */
+private fun parseXtbCashOperationRow(
+    rowNumber: Int,
+    field: (Int) -> String,
+    accountId: Long,
+    accountName: String,
+    type: String
+): CsvRowParseResult {
+    val timeText = field(3)
+    val date = try {
+        LocalDateTime.parse(timeText, XTB_DATE_FORMATTER).toLocalDate()
+    } catch (e: DateTimeParseException) {
+        return CsvRowParseResult.Invalid(rowNumber, "Couldn't parse date \"$timeText\"")
+    }
+
+    val amountText = field(4)
+    val amount = parsePolishDecimal(amountText)
+        ?: return CsvRowParseResult.Invalid(rowNumber, "Invalid amount \"$amountText\"")
+
+    val comment = field(6)
+    val description = if (comment.isNotBlank()) "$type — $comment" else type
+
+    return CsvRowParseResult.ParsedCashOperation(
+        ParsedCashOperationRow(
+            rowNumber = rowNumber,
+            accountId = accountId,
+            accountName = accountName,
+            date = date,
+            description = description,
+            amount = amount
+        )
+    )
 }

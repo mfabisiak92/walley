@@ -2,6 +2,7 @@ package com.walley.app.data.repository
 
 import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AccountEntity
+import com.walley.app.data.local.AccountOperationDao
 import com.walley.app.data.local.InvestmentDao
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
@@ -18,7 +19,8 @@ import kotlinx.coroutines.flow.combine
 
 class AccountRepositoryImpl @Inject constructor(
     private val accountDao: AccountDao,
-    private val investmentDao: InvestmentDao
+    private val investmentDao: InvestmentDao,
+    private val accountOperationDao: AccountOperationDao
 ) : AccountRepository {
 
     // Investment accounts' displayed balance is uninvested cash (the stored balance column)
@@ -114,6 +116,7 @@ class AccountRepositoryImpl @Inject constructor(
         if (investmentDao.countForAccount(accountId) > 0) {
             throw AccountHasLinkedInvestmentsException()
         }
+        accountOperationDao.deleteForAccount(accountId)
         accountDao.delete(accountId)
         // Maintain the invariant that an account is default whenever any accounts remain.
         if (accountDao.countDefault() == 0) {

@@ -99,4 +99,43 @@ class XtbImportCsvParserTest {
             assertEquals("My XTB", row.accountName)
         }
     }
+
+    @Test
+    fun `account operations are still skipped when includeAccountOperations is false`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB", includeAccountOperations = false)
+        assertEquals(2, results.size)
+        results.forEach { assertTrue(it is CsvRowParseResult.Parsed) }
+    }
+
+    @Test
+    fun `deposits, transfers and interest become cash operations when includeAccountOperations is true`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB", includeAccountOperations = true)
+        // 2 trades + interest + interest tax + transfer + deposit = 6; the trailing Total row is still skipped.
+        assertEquals(6, results.size)
+        val cashOps = results.filterIsInstance<CsvRowParseResult.ParsedCashOperation>().map { it.row }
+        assertEquals(4, cashOps.size)
+        assertTrue(cashOps.none { it.description.startsWith("Total", ignoreCase = true) })
+    }
+
+    @Test
+    fun `cash operation amount is signed and matches the CSV's Amount column`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB", includeAccountOperations = true)
+        val deposit = results.filterIsInstance<CsvRowParseResult.ParsedCashOperation>()
+            .map { it.row }
+            .single { it.description.startsWith("Deposit") }
+        assertEquals(0, BigDecimal("2000").compareTo(deposit.amount))
+        val interestTax = results.filterIsInstance<CsvRowParseResult.ParsedCashOperation>()
+            .map { it.row }
+            .single { it.description.startsWith("Free funds interest tax") }
+        assertEquals(0, BigDecimal("-0.55").compareTo(interestTax.amount))
+    }
+
+    @Test
+    fun `cash operation rows carry the caller's chosen account`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 99, accountName = "My XTB", includeAccountOperations = true)
+        results.filterIsInstance<CsvRowParseResult.ParsedCashOperation>().forEach {
+            assertEquals(99L, it.row.accountId)
+            assertEquals("My XTB", it.row.accountName)
+        }
+    }
 }
