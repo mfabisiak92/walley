@@ -13,7 +13,9 @@ data class AdHocBudget(
     val accountId: Long,
     val currency: Currency,
     /** Set only by explicit user action — never derived from payment progress or [endDate] passing. */
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    /** Being built in the creation wizard; not yet submitted, so it doesn't show as a resolved budget. */
+    val isDraft: Boolean = false
 )
 
 data class AdHocBudgetItem(

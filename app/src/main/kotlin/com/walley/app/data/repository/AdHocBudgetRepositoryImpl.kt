@@ -36,27 +36,54 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
             budgetEntity?.let { AdHocBudgetWithItems(it.toDomain(), items.map { item -> item.toDomain() }) }
         }
 
-    override suspend fun createAdHocBudget(
+    override suspend fun saveDraft(
+        budgetId: Long?,
         name: String,
         startDate: LocalDate,
         endDate: LocalDate,
         accountId: Long,
         items: List<AdHocBudgetItem>
+    ): Long = upsertAdHocBudget(budgetId, name, startDate, endDate, accountId, items, isDraft = true)
+
+    override suspend fun submitBudget(
+        budgetId: Long?,
+        name: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+        accountId: Long,
+        items: List<AdHocBudgetItem>
+    ): Long = upsertAdHocBudget(budgetId, name, startDate, endDate, accountId, items, isDraft = false)
+
+    private suspend fun upsertAdHocBudget(
+        budgetId: Long?,
+        name: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+        accountId: Long,
+        items: List<AdHocBudgetItem>,
+        isDraft: Boolean
     ): Long {
         val account = accountRepository.observeAccounts().first().first { it.id == accountId }
-        val budgetId = dao.insertBudget(
-            AdHocBudgetEntity(
-                name = name,
-                startDate = startDate,
-                endDate = endDate,
-                accountId = accountId,
-                currency = account.currency
+        val id = if (budgetId != null) {
+            dao.updateDetailsAndDraftStatus(budgetId, name, startDate, endDate, accountId, account.currency, isDraft)
+            budgetId
+        } else {
+            dao.insertBudget(
+                AdHocBudgetEntity(
+                    name = name,
+                    startDate = startDate,
+                    endDate = endDate,
+                    accountId = accountId,
+                    currency = account.currency,
+                    isDraft = isDraft
+                )
             )
-        )
-        dao.insertItems(
+        }
+        dao.replaceItems(
+            id,
             items.map { item ->
                 AdHocBudgetItemEntity(
-                    budgetId = budgetId,
+                    budgetId = id,
                     name = item.name,
                     amountMinorUnits = item.amount.toMinorUnits(),
                     icon = item.icon,
@@ -64,7 +91,7 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
                 )
             }
         )
-        return budgetId
+        return id
     }
 
     override suspend fun markItemPaid(itemId: Long) {

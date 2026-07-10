@@ -30,7 +30,7 @@ private object WalleyDestinations {
     const val ANALYTICS = "analytics"
     const val EQUITY_DETAIL = "equity_detail/{equityId}"
     const val INVESTMENT_DETAIL = "investment_detail/{investmentId}"
-    const val AD_HOC_WIZARD = "ad_hoc_wizard"
+    const val AD_HOC_WIZARD = "ad_hoc_wizard?resume={resumeBudgetId}"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
     const val UPDATE_PRICES = "update_prices"
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
@@ -48,6 +48,8 @@ private object WalleyDestinations {
         )
         return if (params.isEmpty()) "budget_wizard" else "budget_wizard?" + params.joinToString("&")
     }
+    fun adHocWizard(resumeBudgetId: Long? = null): String =
+        if (resumeBudgetId != null) "ad_hoc_wizard?resume=$resumeBudgetId" else "ad_hoc_wizard"
     fun equityDetail(equityId: Long) = "equity_detail/$equityId"
     fun investmentDetail(investmentId: Long) = "investment_detail/$investmentId"
     fun adHocDetail(adHocBudgetId: Long) = "ad_hoc_detail/$adHocBudgetId"
@@ -76,7 +78,10 @@ fun WalleyNavHost() {
                 onOpenInvestment = { investmentId ->
                     navController.navigate(WalleyDestinations.investmentDetail(investmentId))
                 },
-                onNavigateToAdHocWizard = { navController.navigate(WalleyDestinations.AD_HOC_WIZARD) },
+                onNavigateToAdHocWizard = { navController.navigate(WalleyDestinations.adHocWizard()) },
+                onResumeAdHocDraft = { budgetId ->
+                    navController.navigate(WalleyDestinations.adHocWizard(resumeBudgetId = budgetId))
+                },
                 onOpenAdHocBudget = { adHocBudgetId ->
                     navController.navigate(WalleyDestinations.adHocDetail(adHocBudgetId))
                 },
@@ -153,7 +158,10 @@ fun WalleyNavHost() {
                 onOpenEquity = { equityId -> navController.navigate(WalleyDestinations.equityDetail(equityId)) }
             )
         }
-        composable(WalleyDestinations.AD_HOC_WIZARD) {
+        composable(
+            WalleyDestinations.AD_HOC_WIZARD,
+            arguments = listOf(navArgument("resumeBudgetId") { type = NavType.LongType; defaultValue = -1L })
+        ) {
             AdHocWizardScreen(
                 onDone = { adHocBudgetId ->
                     navController.navigate(WalleyDestinations.adHocDetail(adHocBudgetId)) {

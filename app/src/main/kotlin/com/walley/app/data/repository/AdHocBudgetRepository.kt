@@ -11,8 +11,23 @@ interface AdHocBudgetRepository {
     fun observeAdHocBudgetsWithItems(): Flow<List<AdHocBudgetWithItems>>
     fun observeAdHocBudget(budgetId: Long): Flow<AdHocBudgetWithItems?>
 
-    /** Creates the budget and all its items in one go; [items]' id/budgetId are ignored. */
-    suspend fun createAdHocBudget(
+    /**
+     * Persists the wizard's current progress as a Draft (creating it if [budgetId] is null, replacing
+     * its items otherwise). Drafts aren't shown as resolved budgets and never withdraw from the
+     * account. [items]' id/budgetId are ignored.
+     */
+    suspend fun saveDraft(
+        budgetId: Long?,
+        name: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+        accountId: Long,
+        items: List<AdHocBudgetItem>
+    ): Long
+
+    /** Finalizes an ad-hoc budget (Draft -> resolved if [budgetId] is given, otherwise a brand-new one). */
+    suspend fun submitBudget(
+        budgetId: Long?,
         name: String,
         startDate: LocalDate,
         endDate: LocalDate,

@@ -13,5 +13,6 @@ data class AdHocBudgetEntity(
     val endDate: LocalDate,
     val accountId: Long,
     val currency: Currency,
-    val isCompleted: Boolean = false
+    val isCompleted: Boolean = false,
+    val isDraft: Boolean = false
 )

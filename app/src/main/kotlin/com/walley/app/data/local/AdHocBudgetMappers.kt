@@ -11,7 +11,8 @@ fun AdHocBudgetEntity.toDomain(): AdHocBudget = AdHocBudget(
     endDate = endDate,
     accountId = accountId,
     currency = currency,
-    isCompleted = isCompleted
+    isCompleted = isCompleted,
+    isDraft = isDraft
 )
 
 fun AdHocBudgetItemEntity.toDomain(): AdHocBudgetItem = AdHocBudgetItem(

@@ -58,6 +58,7 @@ fun BudgetsScreen(
     onOpenBudget: (Long) -> Unit,
     onResumeDraft: (Long) -> Unit,
     onCreateAdHocBudget: () -> Unit,
+    onResumeAdHocDraft: (Long) -> Unit,
     onOpenAdHocBudget: (Long) -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
@@ -94,7 +95,8 @@ fun BudgetsScreen(
                     )
                     else -> AdHocBudgetsPage(
                         onCreateBudget = onCreateAdHocBudget,
-                        onOpenBudget = onOpenAdHocBudget
+                        onOpenBudget = onOpenAdHocBudget,
+                        onResumeDraft = onResumeAdHocDraft
                     )
                 }
             }
@@ -269,6 +271,7 @@ private fun BudgetRow(row: BudgetRowData, onClick: () -> Unit) {
 private fun AdHocBudgetsPage(
     onCreateBudget: () -> Unit,
     onOpenBudget: (Long) -> Unit,
+    onResumeDraft: (Long) -> Unit,
     viewModel: AdHocBudgetsViewModel = hiltViewModel()
 ) {
     val budgets by viewModel.budgets.collectAsStateWithLifecycle()
@@ -313,7 +316,13 @@ private fun AdHocBudgetsPage(
                     AdHocBudgetRow(
                         row = row,
                         currencyFor = viewModel::currencyFor,
-                        onClick = { onOpenBudget(row.budget.id) }
+                        onClick = {
+                            if (row.budget.isDraft) {
+                                onResumeDraft(row.budget.id)
+                            } else {
+                                onOpenBudget(row.budget.id)
+                            }
+                        }
                     )
                 }
             }
@@ -327,52 +336,81 @@ private fun AdHocBudgetRow(
     currencyFor: (Long) -> Currency?,
     onClick: () -> Unit
 ) {
+    val isDraft = row.budget.isDraft
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        colors = if (isDraft) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            CardDefaults.cardColors()
+        },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(row.budget.name, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(row.budget.name, style = MaterialTheme.typography.titleMedium)
+                if (isDraft) {
+                    Text(
+                        "Draft",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             Text(
                 "${row.budget.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)} – " +
                     row.budget.endDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            row.totalsByCurrency(currencyFor).forEach { total ->
-                val percent = if (total.planned.signum() == 0) {
-                    BigDecimal.ZERO
-                } else {
-                    (total.paid.divide(total.planned, 6, RoundingMode.HALF_UP) * BigDecimal(100))
-                        .coerceIn(BigDecimal.ZERO, BigDecimal(100))
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        "${formatMoney(total.paid, total.currency)} / ${formatMoney(total.planned, total.currency)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "${percent.setScale(0, RoundingMode.HALF_UP)}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                LinearProgressIndicator(
-                    progress = {
-                        percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+            if (isDraft) {
+                Text(
+                    "Tap to continue setting up this budget.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            } else {
+                row.totalsByCurrency(currencyFor).forEach { total ->
+                    val percent = if (total.planned.signum() == 0) {
+                        BigDecimal.ZERO
+                    } else {
+                        (total.paid.divide(total.planned, 6, RoundingMode.HALF_UP) * BigDecimal(100))
+                            .coerceIn(BigDecimal.ZERO, BigDecimal(100))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            "${formatMoney(total.paid, total.currency)} / ${formatMoney(total.planned, total.currency)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "${percent.setScale(0, RoundingMode.HALF_UP)}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = {
+                            percent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                    )
+                }
             }
         }
     }

@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 29,
+    version = 30,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -505,5 +505,12 @@ val MIGRATION_28_29 = object : Migration(28, 29) {
         // A virtual account doesn't exist in the real world — its balance is really an earmarked
         // slice of another account's money — so it's excluded from net worth and other totals.
         db.execSQL("ALTER TABLE accounts ADD COLUMN isVirtual INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_29_30 = object : Migration(29, 30) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Ad-hoc budgets now autosave a Draft as the wizard progresses, same as monthly budgets.
+        db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN isDraft INTEGER NOT NULL DEFAULT 0")
     }
 }

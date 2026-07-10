@@ -56,6 +56,7 @@ fun MainTabsScreen(
     onOpenEquity: (Long) -> Unit,
     onOpenInvestment: (Long) -> Unit,
     onNavigateToAdHocWizard: () -> Unit,
+    onResumeAdHocDraft: (Long) -> Unit,
     onOpenAdHocBudget: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit,
     onOpenUpdateBalances: (AccountBalanceGroup) -> Unit,
@@ -109,6 +110,7 @@ fun MainTabsScreen(
                     onOpenBudget = onNavigateToBudgetDetail,
                     onResumeDraft = onResumeBudgetDraft,
                     onCreateAdHocBudget = onNavigateToAdHocWizard,
+                    onResumeAdHocDraft = onResumeAdHocDraft,
                     onOpenAdHocBudget = onOpenAdHocBudget
                 )
                 3 -> InvestmentsScreen(
