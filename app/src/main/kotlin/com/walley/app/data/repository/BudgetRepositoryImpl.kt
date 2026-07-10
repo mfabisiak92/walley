@@ -5,6 +5,7 @@ import com.walley.app.data.local.BudgetItemEntity
 import com.walley.app.data.local.BudgetEntity
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetItemIcon
@@ -36,7 +37,8 @@ class BudgetRepositoryImpl @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val exchangeRateRepository: ExchangeRateRepository,
     private val snapshotRepository: SnapshotRepository,
-    private val investmentRepository: InvestmentRepository
+    private val investmentRepository: InvestmentRepository,
+    private val accountOperationRepository: AccountOperationRepository
 ) : BudgetRepository {
 
     override fun observeBudgetsWithItems(): Flow<List<BudgetWithItems>> =
@@ -361,15 +363,20 @@ class BudgetRepositoryImpl @Inject constructor(
         // Covers items explicitly tagged OTHER, plus any legacy items with no category at all.
         val otherIncome = income - salaryIncome - dividendsIncome - interestIncome
 
-        // Money that entered investments this month, from two distinct sources that both inflate
+        // Money that entered investments this month, from three distinct sources that all inflate
         // the total value without being market growth: budgeted transfers into the account (cash
-        // that may still be sitting uninvested) and actual buy/sell events (which move a position's
-        // value directly, regardless of how the account was funded).
+        // that may still be sitting uninvested), actual buy/sell events (which move a position's
+        // value directly, regardless of how the account was funded), and imported cash operations
+        // (deposits/withdrawals/interest from a CSV import) — the only one of the three that already
+        // updates the account's stored balance directly, which is exactly why it has to be subtracted
+        // here too, or it would otherwise get counted as if it were market growth.
         val investmentContributions = sectionTotal(BudgetSectionType.INVESTMENTS)
         val investmentTransactionContributions = investmentTransactionNetContributions(budgetEntity.year, budgetEntity.month, base, rates)
+        val accountOperationContributions =
+            accountOperationNetContributions(budgetEntity.year, budgetEntity.month, accounts, base, rates)
         val previous = snapshotRepository.previousSnapshot(budgetEntity.year, budgetEntity.month)
         val investmentGrowth = previous?.let {
-            investments - it.investments - investmentContributions - investmentTransactionContributions
+            investments - it.investments - investmentContributions - investmentTransactionContributions - accountOperationContributions
         }
 
         snapshotRepository.addSnapshot(
@@ -417,5 +424,25 @@ class BudgetRepositoryImpl @Inject constructor(
                 }
             acc + convert(net, data.investment.currency, base, rates)
         }
+    }
+
+    /** Net of this calendar month's imported account operations across investment accounts, converted to [base]. */
+    private suspend fun accountOperationNetContributions(
+        year: Int,
+        month: Int,
+        accounts: List<Account>,
+        base: Currency,
+        rates: ExchangeRates?
+    ): BigDecimal {
+        val yearMonth = YearMonth.of(year, month)
+        val start = yearMonth.atDay(1)
+        val end = yearMonth.atEndOfMonth()
+        val currencyByAccountId = accounts.associate { it.id to it.currency }
+        return accountOperationRepository.observeAll().first()
+            .filter { !it.date.isBefore(start) && !it.date.isAfter(end) }
+            .fold(BigDecimal.ZERO) { acc, operation ->
+                val currency = currencyByAccountId[operation.accountId] ?: return@fold acc
+                acc + convert(operation.amount, currency, base, rates)
+            }
     }
 }

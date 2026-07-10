@@ -3,7 +3,9 @@ package com.walley.app.feature.analytics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.core.ui.InvestmentCategoryColors
+import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
+import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.InvestmentRepository
@@ -16,6 +18,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
@@ -46,6 +49,14 @@ data class BudgetHistoryPoint(
     val progress: BudgetProgress?
 )
 
+data class InvestmentYearPoint(
+    val year: Int,
+    /** Sum of [com.walley.app.domain.model.InvestmentWithTransactions.realizedGainLossInYear] across every investment, converted to base currency. */
+    val realizedGainLoss: BigDecimal,
+    /** Sum of BUY transactions' net amount dated in [year] across every investment, converted to base currency. */
+    val contributions: BigDecimal
+)
+
 data class SnapshotPoint(
     val label: String,
     val cashAndChecking: BigDecimal,
@@ -65,6 +76,7 @@ class AnalyticsViewModel @Inject constructor(
     budgetRepository: BudgetRepository,
     snapshotRepository: SnapshotRepository,
     investmentRepository: InvestmentRepository,
+    accountRepository: AccountRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -123,6 +135,80 @@ class AnalyticsViewModel @Inject constructor(
                 .sortedByDescending { it.percent }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Current value of every investment, grouped by its linked account (or "Unlinked") and converted to base currency. */
+    val investmentAccountBreakdown: StateFlow<List<PieSlice>> = combine(
+        investmentRepository.observeInvestments(),
+        accountRepository.observeAccounts(),
+        baseCurrencyRates
+    ) { investments, accounts, (base, rates) ->
+        val accountNamesById = accounts.associate { it.id to it.name }
+        val totalsByAccountName = investments
+            .groupBy { data -> data.investment.accountId?.let { accountNamesById[it] } ?: "Unlinked" }
+            .mapValues { (_, data) ->
+                data.fold(BigDecimal.ZERO) { acc, investment ->
+                    acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+            }
+        toPieSlices(totalsByAccountName)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Current value of every investment, grouped by its own currency and converted to base currency. */
+    val investmentCurrencyBreakdown: StateFlow<List<PieSlice>> = combine(
+        investmentRepository.observeInvestments(),
+        baseCurrencyRates
+    ) { investments, (base, rates) ->
+        val totalsByCurrency = investments
+            .groupBy { it.investment.currency.name }
+            .mapValues { (_, data) ->
+                data.fold(BigDecimal.ZERO) { acc, investment ->
+                    acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+            }
+        toPieSlices(totalsByCurrency)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** One point per calendar year spanned by the portfolio's transaction history, oldest first. */
+    val investmentYearlyHistory: StateFlow<List<InvestmentYearPoint>> = combine(
+        investmentRepository.observeInvestments(),
+        baseCurrencyRates
+    ) { investments, (base, rates) ->
+        val years = investments.flatMap { data -> data.transactions.map { it.date.year } }
+        if (years.isEmpty()) {
+            emptyList()
+        } else {
+            (years.min()..years.max()).map { year ->
+                val realized = investments.fold(BigDecimal.ZERO) { acc, data ->
+                    val gain = data.realizedGainLossInYear(year)
+                    acc + (convertToCurrency(gain, data.investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+                val contributions = investments.fold(BigDecimal.ZERO) { acc, data ->
+                    val investedInYear = data.transactions
+                        .filter { it.type == InvestmentTransactionType.BUY && it.date.year == year }
+                        .fold(BigDecimal.ZERO) { sum, t -> sum + t.netAmount }
+                    acc + (convertToCurrency(investedInYear, data.investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+                InvestmentYearPoint(year, realized, contributions)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Shares each key's value as a percent of the total, largest first; drops zero/negative entries. */
+    private fun toPieSlices(totalsByLabel: Map<String, BigDecimal>): List<PieSlice> {
+        val total = totalsByLabel.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
+        if (total.signum() <= 0) return emptyList()
+        return totalsByLabel
+            .filter { (_, value) -> value.signum() > 0 }
+            .entries
+            .sortedByDescending { it.value }
+            .mapIndexed { index, (label, value) ->
+                PieSlice(
+                    label = label,
+                    percent = (value.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)).toFloat(),
+                    color = PieChartColors[index % PieChartColors.size]
+                )
+            }
+    }
 
     private fun toHistoryPoint(budgetWithItems: BudgetWithItems, base: Currency, rates: ExchangeRates?): BudgetHistoryPoint {
         val items = budgetWithItems.items

@@ -251,9 +251,13 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
 
 @Composable
 private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
-    val breakdown by viewModel.investmentCategoryBreakdown.collectAsStateWithLifecycle()
+    val categoryBreakdown by viewModel.investmentCategoryBreakdown.collectAsStateWithLifecycle()
+    val accountBreakdown by viewModel.investmentAccountBreakdown.collectAsStateWithLifecycle()
+    val currencyBreakdown by viewModel.investmentCurrencyBreakdown.collectAsStateWithLifecycle()
+    val yearlyHistory by viewModel.investmentYearlyHistory.collectAsStateWithLifecycle()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
 
-    if (breakdown.isEmpty()) {
+    if (categoryBreakdown.isEmpty() && accountBreakdown.isEmpty() && currencyBreakdown.isEmpty() && yearlyHistory.isEmpty()) {
         EmptyState("No investments yet — add one from the Investments tab to see a breakdown.")
         return
     }
@@ -265,7 +269,34 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        PieChartCard(title = "Investments by category", slices = breakdown)
+        PieChartCard(title = "Investments by category", slices = categoryBreakdown)
+        PieChartCard(title = "Investments by account", slices = accountBreakdown)
+        PieChartCard(title = "Investments by currency", slices = currencyBreakdown)
+
+        if (yearlyHistory.isNotEmpty()) {
+            val labels = yearlyHistory.map { it.year.toString() }
+            val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
+
+            SwipeableTrendChartCard(
+                title = "Realized gains/losses by year",
+                labels = labels,
+                series = listOf(
+                    ChartSeries("Realized", PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
+                ),
+                valueFormatter = moneyFormatter,
+                showValueLabels = true
+            )
+
+            TrendChartCard(
+                title = "Contributions by year",
+                labels = labels,
+                series = listOf(
+                    ChartSeries("Invested", PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() })
+                ),
+                valueFormatter = moneyFormatter,
+                showValueLabels = true
+            )
+        }
     }
 }
 

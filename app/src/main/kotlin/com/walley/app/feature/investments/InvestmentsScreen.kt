@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -117,6 +118,7 @@ private fun PortfolioListPage(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
+    var showClosed by remember { mutableStateOf(false) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         pendingImportUri = uri
     }
@@ -138,44 +140,88 @@ private fun PortfolioListPage(
             }
         }
     ) { innerPadding ->
-        if (investments.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.List,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "No investments yet — tap + to add one.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(investments, key = { it.investment.id }) { investment ->
-                    InvestmentRow(
-                        data = investment,
-                        accountName = investment.investment.accountId?.let { id ->
-                            investmentAccounts.find { it.id == id }?.name
-                        },
-                        onClick = { onOpenInvestment(investment.investment.id) },
-                        onLongClick = { editingInvestment = investment.investment }
+        val closedCount = investments.count { it.quantity.signum() == 0 }
+        val visibleInvestments = if (showClosed) investments else investments.filter { it.quantity.signum() != 0 }
+
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            if (closedCount > 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    FilterChip(
+                        selected = showClosed,
+                        onClick = { showClosed = !showClosed },
+                        label = { Text(if (showClosed) "Hide closed" else "Show closed ($closedCount)") }
                     )
+                }
+            }
+            if (investments.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.List,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "No investments yet — tap + to add one.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (visibleInvestments.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.List,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "All positions are closed — tap \"Show closed\" above to see them.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(visibleInvestments, key = { it.investment.id }) { investment ->
+                        InvestmentRow(
+                            data = investment,
+                            accountName = investment.investment.accountId?.let { id ->
+                                investmentAccounts.find { it.id == id }?.name
+                            },
+                            onClick = { onOpenInvestment(investment.investment.id) },
+                            onLongClick = { editingInvestment = investment.investment }
+                        )
+                    }
                 }
             }
         }
@@ -232,10 +278,19 @@ private fun InvestmentRow(
     onLongClick: () -> Unit
 ) {
     val investment = data.investment
+    val isClosed = data.quantity.signum() == 0
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .combinedClickable(onLongClick = onLongClick, onClick = onClick),
+        colors = if (isClosed) {
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            CardDefaults.cardColors()
+        },
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -253,6 +308,13 @@ private fun InvestmentRow(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         InvestmentCategoryChip(category = investment.category)
+                        if (isClosed) {
+                            Text(
+                                "Closed",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                     Text(
                         text = listOfNotNull(investment.ticker, accountName).joinToString(" · "),
