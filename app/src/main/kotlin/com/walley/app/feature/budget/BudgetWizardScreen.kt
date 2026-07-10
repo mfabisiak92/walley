@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,6 +54,7 @@ import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
 import com.walley.app.domain.model.AccountEffectsGroup
 import com.walley.app.domain.model.Budget
+import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
@@ -249,6 +251,13 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
     }
 }
 
+/** Same mapping [BudgetWizardViewModel.collectItems] falls back to at save time — applied here too so a freshly added item shows its icon immediately in the wizard's own list. */
+private fun defaultIconFor(section: BudgetSectionType): BudgetItemIcon? = when (section) {
+    BudgetSectionType.SAVINGS -> BudgetItemIcon.SAVING
+    BudgetSectionType.INVESTMENTS -> BudgetItemIcon.INVESTMENT
+    else -> null
+}
+
 @Composable
 private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSectionType) {
     var showAddDialog by remember { mutableStateOf(false) }
@@ -287,6 +296,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     WizardItemRow(
                         draft = draft,
                         accountName = accounts.find { it.id == draft.accountId }?.name,
+                        isAccountLinked = isAccountLinked,
                         onClick = { editingDraft = draft },
                         onRemove = { viewModel.removeItem(section, draft.localId) }
                     )
@@ -329,7 +339,10 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                             currency = account.currency,
                             accountId = accountId,
                             paymentDay = day,
-                            paymentDayIsLastOfMonth = lastOfMonth
+                            paymentDayIsLastOfMonth = lastOfMonth,
+                            // Set immediately so the wizard's own list shows it right away, rather than
+                            // relying on collectItems()'s same fallback, which only applies at save time.
+                            icon = initial?.icon ?: defaultIconFor(section)
                         )
                         if (initial != null) {
                             viewModel.updateItem(section, initial.localId, draft)
@@ -379,7 +392,17 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
 }
 
 @Composable
-private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick: () -> Unit, onRemove: () -> Unit) {
+private fun WizardItemRow(
+    draft: WizardItemDraft,
+    accountName: String?,
+    isAccountLinked: Boolean,
+    onClick: () -> Unit,
+    onRemove: () -> Unit
+) {
+    // Mirrors BudgetItemRow's treatment: a SAVINGS/INVESTMENTS draft's title should track the
+    // account it's linked to, not the name copied from it when the item was first added.
+    val displayName = if (isAccountLinked) accountName ?: draft.name else draft.name
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -388,10 +411,14 @@ private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick:
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.weight(1f, fill = false),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             BudgetItemIconBadge(icon = draft.icon)
-            Column {
-                Text(draft.name, style = MaterialTheme.typography.bodyLarge)
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Text(displayName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 val dayLabel = when {
                     draft.paymentDayIsLastOfMonth -> "Last day of month"
                     draft.paymentDay != null -> "Day ${draft.paymentDay}"
@@ -405,7 +432,7 @@ private fun WizardItemRow(draft: WizardItemDraft, accountName: String?, onClick:
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(formatMoney(draft.amount, draft.currency), style = MaterialTheme.typography.bodyLarge)
             IconButton(onClick = onRemove) {
-                Icon(Icons.Filled.Close, contentDescription = "Remove ${draft.name}")
+                Icon(Icons.Filled.Close, contentDescription = "Remove $displayName")
             }
         }
     }

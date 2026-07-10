@@ -6,9 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,19 +72,26 @@ fun PieChartCard(title: String, slices: List<PieSlice>) {
                         }
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     slices.forEach { slice ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.Top) {
                             Box(
                                 modifier = Modifier
+                                    .padding(top = 4.dp)
                                     .size(10.dp)
                                     .clip(CircleShape)
                                     .background(slice.color)
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            // The gap before the label comes entirely from the Spacer above, not leading
+                            // spaces baked into the string — those only offset the first line, so a
+                            // wrapped second line would start further left than the first, misaligned.
                             Text(
-                                text = "  ${slice.label}",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(start = 4.dp)
+                                text = slice.label,
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }

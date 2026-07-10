@@ -26,7 +26,9 @@ private val GoalGreen = Color(0xFF2E7D32)
  * Shows the configured target % of disposable income for [section] (if any), plus how far
  * [actualPercent] sits from it:
  * - Fixed/Other costs (spending ceilings): over target warns, at/under target checks off.
- * - Savings/Investments (goals): at/over target checks off, under target warns.
+ * - Savings/Investments (goals): any deviation from target, over or under, warns — since the
+ *   percentages across every section have to add up, overshooting one still means another section
+ *   got shortchanged, so it's just as worth flagging as falling short of the goal.
  */
 @Composable
 fun CategoryTargetIndicator(
@@ -47,7 +49,7 @@ fun CategoryTargetIndicator(
             val diff = actualPercent.setScale(1, RoundingMode.HALF_UP) - targetPercent.setScale(1, RoundingMode.HALF_UP)
             val isOver = diff.signum() > 0
             val isUnder = diff.signum() < 0
-            val isWarning = if (section.isSpendingLimit) isOver else isUnder
+            val isWarning = if (section.isSpendingLimit) isOver else (isOver || isUnder)
             val message = when {
                 !isOver && !isUnder -> "On target"
                 isOver -> "${formatPercent(diff)}% over target allocation"

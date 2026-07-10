@@ -32,6 +32,13 @@ interface BudgetDao {
     )
     suspend fun countForMonth(year: Int, month: Int, excludeBudgetId: Long?): Int
 
+    @Query(
+        "SELECT COUNT(*) FROM budget_items " +
+            "INNER JOIN budgets ON budget_items.budgetId = budgets.id " +
+            "WHERE budget_items.accountId = :accountId AND budgets.status = :status"
+    )
+    suspend fun countItemsForAccountWithStatus(accountId: Long, status: BudgetStatus): Int
+
     @Insert
     suspend fun insertBudget(budget: BudgetEntity): Long
 

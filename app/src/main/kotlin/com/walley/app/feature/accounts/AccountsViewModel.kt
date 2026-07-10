@@ -2,6 +2,7 @@ package com.walley.app.feature.accounts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.data.repository.AccountHasLinkedActiveBudgetException
 import com.walley.app.data.repository.AccountHasLinkedInvestmentsException
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.ExchangeRateRepository
@@ -121,6 +122,10 @@ class AccountsViewModel @Inject constructor(
             } catch (e: AccountHasLinkedInvestmentsException) {
                 _deleteBlockedMessage.value =
                     "This account still has linked investments. Delete or move them first."
+            } catch (e: AccountHasLinkedActiveBudgetException) {
+                _deleteBlockedMessage.value =
+                    "This account is linked to an active budget item. Remove it from the budget first, " +
+                        "or mark the budget completed."
             }
         }
     }

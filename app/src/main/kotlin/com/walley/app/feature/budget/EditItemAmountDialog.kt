@@ -71,10 +71,14 @@ fun EditItemAmountDialog(
         BudgetSectionType.SAVINGS, BudgetSectionType.INVESTMENTS -> null
         else -> EXPENSE_ICONS
     }
+    // Same as BudgetItemRow/WizardItemRow: a SAVINGS/INVESTMENTS item's title always tracks its
+    // linked account's current name (including live, as the dropdown selection changes below).
+    val isAccountLinked = item.section == BudgetSectionType.SAVINGS || item.section == BudgetSectionType.INVESTMENTS
+    val displayName = if (isAccountLinked) selectedAccount?.name ?: item.name else item.name
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(item.name) },
+        title = { Text(displayName) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(

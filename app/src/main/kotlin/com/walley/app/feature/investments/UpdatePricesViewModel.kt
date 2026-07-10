@@ -17,8 +17,9 @@ class UpdatePricesViewModel @Inject constructor(
     private val repository: InvestmentRepository
 ) : ViewModel() {
 
+    /** Closed positions (quantity 0) are excluded — their price never affects anything, since value and gain/loss are both zero regardless of it. */
     val investments: StateFlow<List<Investment>> = repository.observeInvestments()
-        .map { list -> list.map { it.investment } }
+        .map { list -> list.filter { it.quantity.signum() != 0 }.map { it.investment } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     suspend fun saveAll(updates: Map<Long, BigDecimal>) {

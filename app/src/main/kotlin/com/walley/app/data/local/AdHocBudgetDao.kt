@@ -52,4 +52,7 @@ interface AdHocBudgetDao {
 
     @Query("UPDATE adhoc_budgets SET isCompleted = 1 WHERE id = :budgetId")
     suspend fun markCompleted(budgetId: Long)
+
+    @Query("SELECT COUNT(*) FROM adhoc_budgets WHERE accountId = :accountId AND isCompleted = 0")
+    suspend fun countActiveForAccount(accountId: Long): Int
 }

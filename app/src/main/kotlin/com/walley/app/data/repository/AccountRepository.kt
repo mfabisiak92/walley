@@ -29,7 +29,11 @@ interface AccountRepository {
         commissionFlat: BigDecimal = BigDecimal.ZERO,
         commissionPercent: BigDecimal = BigDecimal.ZERO
     )
-    /** @throws AccountHasLinkedInvestmentsException if the account still has linked investments. */
+    /**
+     * @throws AccountHasLinkedInvestmentsException if the account still has linked investments.
+     * @throws AccountHasLinkedActiveBudgetException if the account is still referenced by an active
+     * monthly budget item or an incomplete ad-hoc budget.
+     */
     suspend fun deleteAccount(accountId: Long)
     /** Adds (or subtracts, for a negative delta) an amount to an account's stored balance. */
     suspend fun addToBalance(accountId: Long, delta: BigDecimal)
@@ -43,3 +47,4 @@ interface AccountRepository {
 }
 
 class AccountHasLinkedInvestmentsException : Exception("Account has linked investments")
+class AccountHasLinkedActiveBudgetException : Exception("Account is linked to an active budget")

@@ -52,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -524,6 +525,11 @@ private fun BudgetItemRow(
     } else {
         0f
     }
+    // A SAVINGS/INVESTMENTS item's identity *is* its linked account, so its title should always
+    // reflect that account's current name rather than the copy taken when the item was created —
+    // falling back to the stored name only if the account no longer resolves (e.g. it was deleted).
+    val isAccountLinked = item.section == BudgetSectionType.SAVINGS || item.section == BudgetSectionType.INVESTMENTS
+    val displayName = if (isAccountLinked) accountName ?: item.name else item.name
 
     val content: @Composable () -> Unit = {
         Column(
@@ -535,12 +541,16 @@ private fun BudgetItemRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.weight(1f, fill = false),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
                     BudgetItemIconBadge(icon = item.icon, size = 28.dp)
-                    Column {
-                        Text(item.name, style = MaterialTheme.typography.bodyMedium)
+                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                        Text(displayName, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val subtitleParts = listOfNotNull(
-                            accountName,
+                            accountName.takeUnless { isAccountLinked },
                             when {
                                 item.paymentDayIsLastOfMonth -> "Last day of month"
                                 item.paymentDay != null -> "Day ${item.paymentDay}"

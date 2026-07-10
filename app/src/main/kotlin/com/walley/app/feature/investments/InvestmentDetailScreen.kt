@@ -284,7 +284,9 @@ private fun OverviewTab(data: InvestmentWithTransactions, onClickCurrentPrice: (
                     StatTile(
                         "Current price",
                         formatMoney(investment.currentPrice, investment.currency),
-                        onClick = onClickCurrentPrice
+                        // A closed position's price never affects anything shown (value and gain/loss
+                        // are both zero regardless of it), so editing it here would be pointless.
+                        onClick = if (data.quantity.signum() == 0) null else onClickCurrentPrice
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))

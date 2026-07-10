@@ -3,12 +3,15 @@ package com.walley.app.data.repository
 import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AccountEntity
 import com.walley.app.data.local.AccountOperationDao
+import com.walley.app.data.local.AdHocBudgetDao
+import com.walley.app.data.local.BudgetDao
 import com.walley.app.data.local.InvestmentDao
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.local.toMinorUnits
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
@@ -20,7 +23,9 @@ import kotlinx.coroutines.flow.combine
 class AccountRepositoryImpl @Inject constructor(
     private val accountDao: AccountDao,
     private val investmentDao: InvestmentDao,
-    private val accountOperationDao: AccountOperationDao
+    private val accountOperationDao: AccountOperationDao,
+    private val budgetDao: BudgetDao,
+    private val adHocBudgetDao: AdHocBudgetDao
 ) : AccountRepository {
 
     // Investment accounts' displayed balance is uninvested cash (the stored balance column)
@@ -115,6 +120,11 @@ class AccountRepositoryImpl @Inject constructor(
     override suspend fun deleteAccount(accountId: Long) {
         if (investmentDao.countForAccount(accountId) > 0) {
             throw AccountHasLinkedInvestmentsException()
+        }
+        if (budgetDao.countItemsForAccountWithStatus(accountId, BudgetStatus.ACTIVE) > 0 ||
+            adHocBudgetDao.countActiveForAccount(accountId) > 0
+        ) {
+            throw AccountHasLinkedActiveBudgetException()
         }
         accountOperationDao.deleteForAccount(accountId)
         accountDao.delete(accountId)
