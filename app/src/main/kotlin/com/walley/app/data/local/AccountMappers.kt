@@ -17,7 +17,8 @@ fun AccountEntity.toDomain(): Account = Account(
     uninvestedCash = BigDecimal(balanceMinorUnits).movePointLeft(2),
     isDefault = isDefault,
     commissionFlat = BigDecimal(commissionFlatMinorUnits).movePointLeft(2),
-    commissionPercent = commissionPercent
+    commissionPercent = commissionPercent,
+    isVirtual = isVirtual
 )
 
 fun BigDecimal.toMinorUnits(): Long = movePointRight(2).setScale(0, RoundingMode.HALF_UP).toLong()

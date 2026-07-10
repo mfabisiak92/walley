@@ -18,5 +18,6 @@ data class AccountEntity(
     val targetAmountMinorUnits: Long? = null,
     val isDefault: Boolean = false,
     val commissionFlatMinorUnits: Long = 0,
-    val commissionPercent: BigDecimal = BigDecimal.ZERO
+    val commissionPercent: BigDecimal = BigDecimal.ZERO,
+    val isVirtual: Boolean = false
 )

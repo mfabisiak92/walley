@@ -77,7 +77,8 @@ class AccountRepositoryImpl @Inject constructor(
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal,
-        commissionPercent: BigDecimal
+        commissionPercent: BigDecimal,
+        isVirtual: Boolean
     ) {
         val isFirstAccount = accountDao.count() == 0
         accountDao.insert(
@@ -90,7 +91,8 @@ class AccountRepositoryImpl @Inject constructor(
                 targetAmountMinorUnits = targetAmount?.toMinorUnits(),
                 isDefault = isFirstAccount,
                 commissionFlatMinorUnits = commissionFlat.toMinorUnits(),
-                commissionPercent = commissionPercent
+                commissionPercent = commissionPercent,
+                isVirtual = isVirtual
             )
         )
     }
@@ -103,7 +105,8 @@ class AccountRepositoryImpl @Inject constructor(
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal,
-        commissionPercent: BigDecimal
+        commissionPercent: BigDecimal,
+        isVirtual: Boolean
     ) {
         accountDao.update(
             accountId,
@@ -113,7 +116,8 @@ class AccountRepositoryImpl @Inject constructor(
             newBalance.toMinorUnits(),
             targetAmount?.toMinorUnits(),
             commissionFlat.toMinorUnits(),
-            commissionPercent
+            commissionPercent,
+            isVirtual
         )
     }
 

@@ -326,13 +326,14 @@ class BudgetRepositoryImpl @Inject constructor(
         val assets = assetRepository.observeAssets().first()
         val liabilities = liabilityRepository.observeLiabilities().first()
 
+        // Virtual accounts' balance already sits in a real account, so they're excluded from every total to avoid double-counting.
         fun accountsTotal(type: AccountType) = accounts
-            .filter { it.type == type }
+            .filter { it.type == type && !it.isVirtual }
             .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.balance, account.currency, base, rates) }
 
         // Net worth counts investment gains after tax, not their pre-tax market value.
         fun accountsNetWorthTotal(type: AccountType) = accounts
-            .filter { it.type == type }
+            .filter { it.type == type && !it.isVirtual }
             .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.netWorthValue, account.currency, base, rates) }
 
         val cashAndChecking = accountsTotal(AccountType.CHECKING) + accountsTotal(AccountType.CASH)

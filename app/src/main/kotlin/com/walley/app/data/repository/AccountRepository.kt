@@ -17,7 +17,8 @@ interface AccountRepository {
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
-        commissionPercent: BigDecimal = BigDecimal.ZERO
+        commissionPercent: BigDecimal = BigDecimal.ZERO,
+        isVirtual: Boolean = false
     )
     suspend fun updateAccount(
         accountId: Long,
@@ -27,7 +28,8 @@ interface AccountRepository {
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
-        commissionPercent: BigDecimal = BigDecimal.ZERO
+        commissionPercent: BigDecimal = BigDecimal.ZERO,
+        isVirtual: Boolean = false
     )
     /**
      * @throws AccountHasLinkedInvestmentsException if the account still has linked investments.

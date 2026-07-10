@@ -116,7 +116,8 @@ class HomeViewModel @Inject constructor(
         .map { accounts ->
             val investmentAccounts = accounts.filter { it.type == AccountType.INVESTMENT }
             HomeBalances(
-                total = currencyTotals(accounts),
+                // Virtual accounts' balance already sits in a real account, so excluding them here avoids double-counting.
+                total = currencyTotals(accounts.filterNot { it.isVirtual }),
                 savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING }),
                 investments = currencyTotals(investmentAccounts),
                 investmentsAfterTax = currencyTotals(investmentAccounts) { it.netWorthValue },
@@ -234,7 +235,8 @@ class HomeViewModel @Inject constructor(
             return amount.divide(rate, 10, RoundingMode.HALF_UP)
         }
 
-        for (account in accounts) {
+        // Virtual accounts' balance already sits in a real account, so they're excluded to avoid double-counting.
+        for (account in accounts.filterNot { it.isVirtual }) {
             // Net worth reflects investment gains after tax, not their pre-tax market value.
             val amountInBase = convertToBase(account.netWorthValue, account.currency)
                 ?: return NetWorthState(currency = base, amount = null, rateDate = null)

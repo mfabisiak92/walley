@@ -17,7 +17,8 @@ fun calculateNetWorth(
     rates: ExchangeRates?
 ): BigDecimal? {
     var total = BigDecimal.ZERO
-    for (account in accounts) {
+    // Virtual accounts' balance already sits in a real account, so they're excluded to avoid double-counting.
+    for (account in accounts.filterNot { it.isVirtual }) {
         total += convertToCurrency(account.netWorthValue, account.currency, targetCurrency, rates) ?: return null
     }
     for (asset in assets) {

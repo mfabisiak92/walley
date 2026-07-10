@@ -181,7 +181,7 @@ private fun AccountsListPage(
                 item {
                     val isInvestments = group == AccountBalanceGroup.INVESTMENTS
                     SummaryRibbon(
-                        totalsByCurrency = currencyTotals(filteredAccounts),
+                        totalsByCurrency = currencyTotals(filteredAccounts.filterNot { it.isVirtual }),
                         netProfit = if (isInvestments) investmentsNetProfit else null,
                         estimatedTax = if (isInvestments) portfolioTaxEstimate.taxOwed else null,
                         baseCurrency = baseCurrency
@@ -204,8 +204,18 @@ private fun AccountsListPage(
         AddAccountDialog(
             allowedTypes = allowedTypes,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent ->
-                viewModel.addAccount(name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent)
+            onConfirm = { name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent, isVirtual ->
+                viewModel.addAccount(
+                    name,
+                    type,
+                    currency,
+                    balance,
+                    taxRate,
+                    targetAmount,
+                    commissionFlat,
+                    commissionPercent,
+                    isVirtual
+                )
                 showAddDialog = false
             }
         )
@@ -216,8 +226,18 @@ private fun AccountsListPage(
             account = account,
             allowedTypes = allowedTypes,
             onDismiss = { editingAccount = null },
-            onSave = { name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent ->
-                viewModel.updateAccount(account.id, name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent)
+            onSave = { name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent, isVirtual ->
+                viewModel.updateAccount(
+                    account.id,
+                    name,
+                    type,
+                    taxRate,
+                    newBalance,
+                    targetAmount,
+                    commissionFlat,
+                    commissionPercent,
+                    isVirtual
+                )
                 editingAccount = null
             },
             onDelete = {
@@ -263,11 +283,11 @@ private fun AccountRow(
                 Column {
                     Text(account.name, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = if (account.type == AccountType.INVESTMENT) {
-                            "${account.type.label} · ${account.taxRate.label}"
-                        } else {
-                            account.type.label
-                        },
+                        text = listOfNotNull(
+                            account.type.label,
+                            account.taxRate.label.takeIf { account.type == AccountType.INVESTMENT },
+                            "Virtual".takeIf { account.isVirtual }
+                        ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -349,6 +369,7 @@ private fun DefaultAccountButton(isDefault: Boolean, onClick: () -> Unit) {
     }
 }
 
+/** Callers should exclude virtual accounts first — their balance is already counted in a real account. */
 private fun currencyTotals(accounts: List<Account>): List<CurrencyTotal> =
     Currency.entries.mapNotNull { currency ->
         val total = accounts.filter { it.currency == currency }.fold(BigDecimal.ZERO) { acc, a -> acc + a.balance }

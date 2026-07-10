@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
+import com.walley.app.feature.budget.AccountEffectsToggleRow
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +40,8 @@ fun AddAccountDialog(
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal,
-        commissionPercent: BigDecimal
+        commissionPercent: BigDecimal,
+        isVirtual: Boolean
     ) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
@@ -50,6 +52,7 @@ fun AddAccountDialog(
     var targetAmountText by remember { mutableStateOf("") }
     var commissionFlatText by remember { mutableStateOf("") }
     var commissionPercentText by remember { mutableStateOf("") }
+    var isVirtual by remember { mutableStateOf(false) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
@@ -133,6 +136,17 @@ fun AddAccountDialog(
                         }
                     }
                 }
+                AccountEffectsToggleRow(
+                    label = "Virtual account",
+                    checked = isVirtual,
+                    onCheckedChange = { isVirtual = it }
+                )
+                Text(
+                    "Doesn't exist in the real world — its balance is really an earmarked slice of " +
+                        "another account's money, so it's excluded from net worth and other totals.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 if (isInvestment) {
                     ExposedDropdownMenuBox(
                         expanded = taxRateMenuExpanded,
@@ -230,7 +244,8 @@ fun AddAccountDialog(
                         taxRate,
                         if (isSaving) parsedTargetAmount else null,
                         if (isInvestment) parsedCommissionFlat ?: BigDecimal.ZERO else BigDecimal.ZERO,
-                        if (isInvestment) parsedCommissionPercent ?: BigDecimal.ZERO else BigDecimal.ZERO
+                        if (isInvestment) parsedCommissionPercent ?: BigDecimal.ZERO else BigDecimal.ZERO,
+                        isVirtual
                     )
                 },
                 enabled = isValid

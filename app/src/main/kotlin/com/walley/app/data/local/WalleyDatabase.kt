@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -497,5 +497,13 @@ val MIGRATION_27_28 = object : Migration(27, 28) {
         // Ad-hoc budget items can now each draw from a different account than the budget's default,
         // to support ad-hoc budgets that span multiple currencies.
         db.execSQL("ALTER TABLE adhoc_budget_items ADD COLUMN accountId INTEGER")
+    }
+}
+
+val MIGRATION_28_29 = object : Migration(28, 29) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // A virtual account doesn't exist in the real world — its balance is really an earmarked
+        // slice of another account's money — so it's excluded from net worth and other totals.
+        db.execSQL("ALTER TABLE accounts ADD COLUMN isVirtual INTEGER NOT NULL DEFAULT 0")
     }
 }

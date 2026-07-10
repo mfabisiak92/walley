@@ -93,10 +93,21 @@ class AccountsViewModel @Inject constructor(
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
-        commissionPercent: BigDecimal = BigDecimal.ZERO
+        commissionPercent: BigDecimal = BigDecimal.ZERO,
+        isVirtual: Boolean = false
     ) {
         viewModelScope.launch {
-            repository.addAccount(name, type, currency, initialBalance, taxRate, targetAmount, commissionFlat, commissionPercent)
+            repository.addAccount(
+                name,
+                type,
+                currency,
+                initialBalance,
+                taxRate,
+                targetAmount,
+                commissionFlat,
+                commissionPercent,
+                isVirtual
+            )
         }
     }
 
@@ -108,10 +119,21 @@ class AccountsViewModel @Inject constructor(
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
-        commissionPercent: BigDecimal = BigDecimal.ZERO
+        commissionPercent: BigDecimal = BigDecimal.ZERO,
+        isVirtual: Boolean = false
     ) {
         viewModelScope.launch {
-            repository.updateAccount(accountId, name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent)
+            repository.updateAccount(
+                accountId,
+                name,
+                type,
+                taxRate,
+                newBalance,
+                targetAmount,
+                commissionFlat,
+                commissionPercent,
+                isVirtual
+            )
         }
     }
 

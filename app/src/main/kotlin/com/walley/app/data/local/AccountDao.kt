@@ -21,7 +21,7 @@ interface AccountDao {
         UPDATE accounts
         SET name = :name, type = :type, taxRate = :taxRate, balanceMinorUnits = :balanceMinorUnits,
             targetAmountMinorUnits = :targetAmountMinorUnits, commissionFlatMinorUnits = :commissionFlatMinorUnits,
-            commissionPercent = :commissionPercent
+            commissionPercent = :commissionPercent, isVirtual = :isVirtual
         WHERE id = :accountId
         """
     )
@@ -33,7 +33,8 @@ interface AccountDao {
         balanceMinorUnits: Long,
         targetAmountMinorUnits: Long?,
         commissionFlatMinorUnits: Long,
-        commissionPercent: BigDecimal
+        commissionPercent: BigDecimal,
+        isVirtual: Boolean
     )
 
     @Query("DELETE FROM accounts WHERE id = :accountId")
