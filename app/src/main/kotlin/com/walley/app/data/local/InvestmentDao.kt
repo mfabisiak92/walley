@@ -76,9 +76,13 @@ interface InvestmentDao {
     @Query("DELETE FROM investment_transactions WHERE id = :transactionId")
     suspend fun deleteTransaction(transactionId: Long)
 
+    @Query("DELETE FROM strategy_investment_links WHERE investmentId = :investmentId")
+    suspend fun deleteStrategyLinksForInvestment(investmentId: Long)
+
     @Transaction
     suspend fun deleteInvestmentWithTransactions(investmentId: Long) {
         deleteTransactionsForInvestment(investmentId)
+        deleteStrategyLinksForInvestment(investmentId)
         delete(investmentId)
     }
 

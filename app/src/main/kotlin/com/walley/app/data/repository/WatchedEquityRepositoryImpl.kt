@@ -65,4 +65,22 @@ class WatchedEquityRepositoryImpl @Inject constructor(
     override suspend fun deleteNote(noteId: Long) {
         dao.deleteNote(noteId)
     }
+
+    override fun observeLinkedInvestmentIds(equityId: Long): Flow<List<Long>> =
+        dao.observeLinkedInvestmentIds(equityId)
+
+    override suspend fun setLinkedInvestments(equityId: Long, investmentIds: Set<Long>) {
+        dao.setLinkedInvestments(equityId, investmentIds)
+    }
+
+    override fun observeStrategiesByInvestmentId(): Flow<Map<Long, WatchedEquityWithNotes>> =
+        combine(observeEquitiesWithNotes(), dao.observeAllStrategyLinks()) { equities, links ->
+            val equitiesById = equities.associateBy { it.equity.id }
+            links
+                .mapNotNull { link -> equitiesById[link.equityId]?.let { link.investmentId to it } }
+                .groupBy({ it.first }, { it.second })
+                .mapValues { (_, strategies) ->
+                    strategies.maxByOrNull { it.notes.firstOrNull()?.date ?: LocalDate.MIN } ?: strategies.first()
+                }
+        }
 }

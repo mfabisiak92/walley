@@ -50,10 +50,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.EquityStatusChip
 import com.walley.app.core.ui.InvestmentCategoryChip
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentWithTransactions
+import com.walley.app.domain.model.WatchedEquityWithNotes
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
@@ -98,6 +100,7 @@ fun InvestmentsScreen(
                 when (page) {
                     0 -> PortfolioListPage(
                         onOpenInvestment = onOpenInvestment,
+                        onOpenEquity = onOpenEquity,
                         onOpenUpdatePrices = onOpenUpdatePrices
                     )
                     else -> StrategiesListPage(onOpenEquity = onOpenEquity)
@@ -110,11 +113,13 @@ fun InvestmentsScreen(
 @Composable
 private fun PortfolioListPage(
     onOpenInvestment: (Long) -> Unit,
+    onOpenEquity: (Long) -> Unit,
     onOpenUpdatePrices: () -> Unit,
     viewModel: InvestmentsViewModel = hiltViewModel()
 ) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
+    val strategiesByInvestmentId by viewModel.strategiesByInvestmentId.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
@@ -218,8 +223,10 @@ private fun PortfolioListPage(
                             accountName = investment.investment.accountId?.let { id ->
                                 investmentAccounts.find { it.id == id }?.name
                             },
+                            strategy = strategiesByInvestmentId[investment.investment.id],
                             onClick = { onOpenInvestment(investment.investment.id) },
-                            onLongClick = { editingInvestment = investment.investment }
+                            onLongClick = { editingInvestment = investment.investment },
+                            onClickStrategy = { onOpenEquity(it) }
                         )
                     }
                 }
@@ -274,8 +281,10 @@ private fun PortfolioListPage(
 private fun InvestmentRow(
     data: InvestmentWithTransactions,
     accountName: String?,
+    strategy: WatchedEquityWithNotes?,
     onClick: () -> Unit,
-    onLongClick: () -> Unit
+    onLongClick: () -> Unit,
+    onClickStrategy: (Long) -> Unit
 ) {
     val investment = data.investment
     val isClosed = data.quantity.signum() == 0
@@ -308,6 +317,12 @@ private fun InvestmentRow(
                             modifier = Modifier.weight(1f, fill = false)
                         )
                         InvestmentCategoryChip(category = investment.category)
+                        strategy?.latestStatus?.let { status ->
+                            EquityStatusChip(
+                                status = status,
+                                modifier = Modifier.combinedClickable(onClick = { onClickStrategy(strategy.equity.id) })
+                            )
+                        }
                         if (isClosed) {
                             Text(
                                 "Closed",

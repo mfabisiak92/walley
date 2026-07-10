@@ -2,14 +2,18 @@ package com.walley.app.core.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,4 +56,19 @@ fun EquityStatusIconBadge(status: EquityStatus, modifier: Modifier = Modifier, s
             modifier = Modifier.size(size * 0.6f)
         )
     }
+}
+
+/** A small pill labeling a linked strategy's status — same visual treatment as [InvestmentCategoryChip], for placing inline next to it. */
+@Composable
+fun EquityStatusChip(status: EquityStatus, modifier: Modifier = Modifier) {
+    val color = EquityStatusColors.getValue(status)
+    Text(
+        text = status.label,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(color.copy(alpha = 0.12f))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+    )
 }

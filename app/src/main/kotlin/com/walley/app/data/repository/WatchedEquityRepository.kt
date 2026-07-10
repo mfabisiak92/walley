@@ -26,4 +26,15 @@ interface WatchedEquityRepository {
     suspend fun deleteEquity(equityId: Long)
 
     suspend fun deleteNote(noteId: Long)
+
+    fun observeLinkedInvestmentIds(equityId: Long): Flow<List<Long>>
+
+    /** Replaces the full set of investments this equity/strategy is linked to. */
+    suspend fun setLinkedInvestments(equityId: Long, investmentIds: Set<Long>)
+
+    /**
+     * For each linked investment id, the strategy that applies to it. An investment linked to more
+     * than one strategy shows whichever has the most recently dated note.
+     */
+    fun observeStrategiesByInvestmentId(): Flow<Map<Long, WatchedEquityWithNotes>>
 }

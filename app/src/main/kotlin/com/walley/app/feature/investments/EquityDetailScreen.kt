@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -40,6 +42,7 @@ import com.walley.app.core.ui.EquityStatusColors
 import com.walley.app.core.ui.EquityStatusIconBadge
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.EquityNote
+import com.walley.app.domain.model.InvestmentWithTransactions
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,10 +52,13 @@ fun EquityDetailScreen(
     viewModel: EquityDetailViewModel = hiltViewModel()
 ) {
     val equityWithNotes by viewModel.equityWithNotes.collectAsStateWithLifecycle()
+    val allInvestments by viewModel.allInvestments.collectAsStateWithLifecycle()
+    val linkedInvestmentIds by viewModel.linkedInvestmentIds.collectAsStateWithLifecycle()
     var showAddNoteDialog by remember { mutableStateOf(false) }
     var editingNote by remember { mutableStateOf<EquityNote?>(null) }
     var pendingDeleteNote by remember { mutableStateOf<EquityNote?>(null) }
     var showDeleteEquityConfirm by remember { mutableStateOf(false) }
+    var showLinkInvestmentsDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -82,39 +88,62 @@ fun EquityDetailScreen(
         }
     ) { innerPadding ->
         val notes = equityWithNotes?.notes.orEmpty()
-        if (notes.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .padding(32.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    "No notes yet — tap + to add one.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(notes, key = { it.id }) { note ->
-                    SwipeToDeleteBox(
-                        onDelete = { pendingDeleteNote = note },
-                        dismissOnDelete = false
-                    ) {
-                        NoteRow(note = note, onClick = { editingNote = note })
+        val linkedInvestments = allInvestments.filter { it.investment.id in linkedInvestmentIds }
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            LinkedInvestmentsSection(
+                linkedInvestments = linkedInvestments,
+                onEditClick = { showLinkInvestmentsDialog = true }
+            )
+            if (notes.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        "No notes yet — tap + to add one.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(notes, key = { it.id }) { note ->
+                        SwipeToDeleteBox(
+                            onDelete = { pendingDeleteNote = note },
+                            dismissOnDelete = false
+                        ) {
+                            NoteRow(note = note, onClick = { editingNote = note })
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showLinkInvestmentsDialog) {
+        LinkInvestmentsDialog(
+            investments = allInvestments,
+            initiallyLinkedIds = linkedInvestmentIds,
+            onDismiss = { showLinkInvestmentsDialog = false },
+            onConfirm = { selectedIds ->
+                viewModel.setLinkedInvestments(selectedIds)
+                showLinkInvestmentsDialog = false
+            }
+        )
     }
 
     if (showAddNoteDialog || editingNote != null) {
@@ -176,6 +205,35 @@ fun EquityDetailScreen(
                 TextButton(onClick = { showDeleteEquityConfirm = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun LinkedInvestmentsSection(linkedInvestments: List<InvestmentWithTransactions>, onEditClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text("Linked investments", style = MaterialTheme.typography.labelLarge)
+            Text(
+                text = if (linkedInvestments.isEmpty()) {
+                    "None yet"
+                } else {
+                    linkedInvestments.joinToString(", ") { it.investment.name }
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        IconButton(onClick = onEditClick) {
+            Icon(Icons.Filled.Edit, contentDescription = "Edit linked investments")
+        }
     }
 }
 

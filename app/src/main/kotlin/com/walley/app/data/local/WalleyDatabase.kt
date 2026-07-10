@@ -21,9 +21,10 @@ import java.time.LocalDate
         EquityNoteEntity::class,
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class,
-        AccountOperationEntity::class
+        AccountOperationEntity::class,
+        StrategyInvestmentLinkEntity::class
     ],
-    version = 25,
+    version = 26,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -458,5 +459,20 @@ val MIGRATION_24_25 = object : Migration(24, 25) {
         // Ad-hoc budgets previously had no explicit "done" state (the UI derived it from every item
         // being paid off); completion is now an explicit, user-triggered action, same as monthly budgets.
         db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_25_26 = object : Migration(25, 26) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Links a watched equity (strategy) to the portfolio investments it applies to.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `strategy_investment_links` (
+                `equityId` INTEGER NOT NULL,
+                `investmentId` INTEGER NOT NULL,
+                PRIMARY KEY(`equityId`, `investmentId`)
+            )
+            """.trimIndent()
+        )
     }
 }

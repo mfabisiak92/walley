@@ -148,7 +148,10 @@ fun WalleyNavHost() {
             WalleyDestinations.INVESTMENT_DETAIL,
             arguments = listOf(navArgument("investmentId") { type = NavType.LongType })
         ) {
-            InvestmentDetailScreen(onNavigateBack = { navController.popBackStack() })
+            InvestmentDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenEquity = { equityId -> navController.navigate(WalleyDestinations.equityDetail(equityId)) }
+            )
         }
         composable(WalleyDestinations.AD_HOC_WIZARD) {
             AdHocWizardScreen(

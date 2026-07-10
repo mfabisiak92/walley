@@ -1,6 +1,7 @@
 package com.walley.app.feature.investments
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,12 +64,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.EquityStatusChip
 import com.walley.app.core.ui.InvestmentCategoryChip
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentTransaction
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
+import com.walley.app.domain.model.WatchedEquityWithNotes
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
@@ -81,11 +84,13 @@ private val DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 @Composable
 fun InvestmentDetailScreen(
     onNavigateBack: () -> Unit,
+    onOpenEquity: (Long) -> Unit,
     viewModel: InvestmentDetailViewModel = hiltViewModel()
 ) {
     val data by viewModel.investmentWithTransactions.collectAsStateWithLifecycle()
     val linkedAccount by viewModel.linkedAccount.collectAsStateWithLifecycle()
     val investmentsInAccount by viewModel.investmentsInAccount.collectAsStateWithLifecycle()
+    val strategy by viewModel.strategy.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { TABS.size })
     val scope = rememberCoroutineScope()
     var pendingTransactionType by remember { mutableStateOf<InvestmentTransactionType?>(null) }
@@ -154,7 +159,12 @@ fun InvestmentDetailScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> OverviewTab(data = current, onClickCurrentPrice = { showUpdatePriceDialog = true })
+                    0 -> OverviewTab(
+                        data = current,
+                        strategy = strategy,
+                        onClickCurrentPrice = { showUpdatePriceDialog = true },
+                        onClickStrategy = onOpenEquity
+                    )
                     else -> EventsTab(
                         data = current,
                         onClickTransaction = { editingTransaction = it },
@@ -248,7 +258,12 @@ fun InvestmentDetailScreen(
 }
 
 @Composable
-private fun OverviewTab(data: InvestmentWithTransactions, onClickCurrentPrice: () -> Unit) {
+private fun OverviewTab(
+    data: InvestmentWithTransactions,
+    strategy: WatchedEquityWithNotes?,
+    onClickCurrentPrice: () -> Unit,
+    onClickStrategy: (Long) -> Unit
+) {
     val investment = data.investment
     Column(
         modifier = Modifier
@@ -262,7 +277,15 @@ private fun OverviewTab(data: InvestmentWithTransactions, onClickCurrentPrice: (
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            InvestmentCategoryChip(category = investment.category)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                InvestmentCategoryChip(category = investment.category)
+                strategy?.latestStatus?.let { status ->
+                    EquityStatusChip(
+                        status = status,
+                        modifier = Modifier.clickable { onClickStrategy(strategy.equity.id) }
+                    )
+                }
+            }
             Text(investment.ticker, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Card(

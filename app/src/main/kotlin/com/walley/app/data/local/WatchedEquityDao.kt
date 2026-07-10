@@ -2,6 +2,7 @@ package com.walley.app.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.walley.app.domain.model.EquityStatus
@@ -40,9 +41,28 @@ interface WatchedEquityDao {
     @Query("DELETE FROM equity_notes WHERE id = :noteId")
     suspend fun deleteNote(noteId: Long)
 
+    @Query("SELECT * FROM strategy_investment_links")
+    fun observeAllStrategyLinks(): Flow<List<StrategyInvestmentLinkEntity>>
+
+    @Query("SELECT investmentId FROM strategy_investment_links WHERE equityId = :equityId")
+    fun observeLinkedInvestmentIds(equityId: Long): Flow<List<Long>>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertStrategyLinks(links: List<StrategyInvestmentLinkEntity>)
+
+    @Query("DELETE FROM strategy_investment_links WHERE equityId = :equityId")
+    suspend fun deleteStrategyLinksForEquity(equityId: Long)
+
+    @Transaction
+    suspend fun setLinkedInvestments(equityId: Long, investmentIds: Set<Long>) {
+        deleteStrategyLinksForEquity(equityId)
+        insertStrategyLinks(investmentIds.map { StrategyInvestmentLinkEntity(equityId = equityId, investmentId = it) })
+    }
+
     @Transaction
     suspend fun deleteEquityWithNotes(equityId: Long) {
         deleteNotesForEquity(equityId)
+        deleteStrategyLinksForEquity(equityId)
         deleteEquity(equityId)
     }
 }
