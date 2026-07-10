@@ -57,11 +57,9 @@ import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.WatchedEquityWithNotes
 import java.math.RoundingMode
-import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 private val TABS = listOf("Portfolio", "Strategies")
-private val PURCHASE_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
 @Composable
 fun InvestmentsScreen(
@@ -357,15 +355,7 @@ private fun InvestmentRow(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = buildString {
-                        append(data.quantity.toPlainString())
-                        append(" @ ")
-                        append(formatMoney(investment.currentPrice, investment.currency))
-                        data.firstPurchaseDate?.let {
-                            append(" · since ")
-                            append(it.format(PURCHASE_DATE_FORMATTER))
-                        }
-                    },
+                    text = "${data.quantity.toPlainString()} @ ${formatMoney(investment.currentPrice, investment.currency)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
