@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
@@ -145,11 +146,9 @@ fun EditAccountDialog(
                     checked = isVirtual,
                     onCheckedChange = { isVirtual = it }
                 )
-                Text(
+                FieldHint(
                     "Doesn't exist in the real world — its balance is really an earmarked slice of " +
-                        "another account's money, so it's excluded from net worth and other totals.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "another account's money, so it's excluded from net worth and other totals."
                 )
                 if (isInvestment) {
                     ExposedDropdownMenuBox(
@@ -179,11 +178,9 @@ fun EditAccountDialog(
                             }
                         }
                     }
-                    Text(
+                    FieldHint(
                         "This is cash not yet invested. The account's total balance also includes " +
-                            "the current value of any linked investments.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "the current value of any linked investments."
                     )
                     OutlinedTextField(
                         value = balanceText,
@@ -193,11 +190,9 @@ fun EditAccountDialog(
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedBalance == null
                     )
-                    Text(
+                    FieldHint(
                         "Commission charged per buy/sell trade — whichever of the two is higher. " +
-                            "Used as the default when logging an event, but you can override it per trade.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "Used as the default when logging an event, but you can override it per trade."
                     )
                     OutlinedTextField(
                         value = commissionFlatText,

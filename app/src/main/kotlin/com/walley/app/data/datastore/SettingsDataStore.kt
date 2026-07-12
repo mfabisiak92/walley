@@ -22,6 +22,7 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
 
     private val darkModeKey = booleanPreferencesKey("dark_mode_enabled")
     private val baseCurrencyKey = stringPreferencesKey("base_currency")
+    private val includeSavingsInNetWorthKey = booleanPreferencesKey("include_savings_in_net_worth")
 
     private val categoryTargetKeys = mapOf(
         BudgetSectionType.FIXED_COSTS to doublePreferencesKey("fixed_costs_target_percent"),
@@ -46,6 +47,13 @@ class SettingsDataStore @Inject constructor(@ApplicationContext private val cont
 
     suspend fun setBaseCurrency(currency: Currency) {
         context.settingsDataStore.edit { preferences -> preferences[baseCurrencyKey] = currency.name }
+    }
+
+    val includeSavingsInNetWorth: Flow<Boolean> = context.settingsDataStore.data
+        .map { preferences -> preferences[includeSavingsInNetWorthKey] ?: true }
+
+    suspend fun setIncludeSavingsInNetWorth(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences -> preferences[includeSavingsInNetWorthKey] = enabled }
     }
 
     fun categoryTarget(section: BudgetSectionType): Flow<BigDecimal?> {

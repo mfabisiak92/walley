@@ -101,6 +101,7 @@ fun SettingsScreen(
 private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState: SnackbarHostState) {
     val darkModeOverride by viewModel.darkModeOverride.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val includeSavingsInNetWorth by viewModel.includeSavingsInNetWorth.collectAsStateWithLifecycle()
     val fingerprintUnlock by viewModel.fingerprintUnlock.collectAsStateWithLifecycle()
     val changePinError by viewModel.changePinError.collectAsStateWithLifecycle()
     val changePinSuccess by viewModel.changePinSuccess.collectAsStateWithLifecycle()
@@ -195,6 +196,23 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState:
                     }
                 }
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+                Text("Include savings in net worth", style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    "Virtual Saving accounts are always excluded, since their balance already " +
+                        "sits in another account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = includeSavingsInNetWorth, onCheckedChange = viewModel::setIncludeSavingsInNetWorth)
         }
 
         Row(

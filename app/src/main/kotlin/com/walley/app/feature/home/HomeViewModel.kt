@@ -157,17 +157,22 @@ class HomeViewModel @Inject constructor(
 
     private val currentMonthBudgetItems = currentMonthBudget.map { it?.items ?: emptyList() }
 
+    private val baseCurrencyRatesAndNetWorthSettings = combine(
+        baseCurrencyRates,
+        settingsRepository.observeIncludeSavingsInNetWorth()
+    ) { (base, rates), includeSavings -> Triple(base, rates, includeSavings) }
+
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
         assetRepository.observeAssets(),
         liabilityRepository.observeLiabilities(),
-        baseCurrencyRates,
+        baseCurrencyRatesAndNetWorthSettings,
         currentMonthBudgetItems
-    ) { accounts, assets, liabilities, (base, rates), budgetItems ->
+    ) { accounts, assets, liabilities, (base, rates, includeSavings), budgetItems ->
         if (accounts.isEmpty() && assets.isEmpty() && liabilities.isEmpty()) {
             null
         } else {
-            computeNetWorth(accounts, assets, liabilities, budgetItems, base, rates)
+            computeNetWorth(accounts, assets, liabilities, budgetItems, base, rates, includeSavings)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -221,7 +226,8 @@ class HomeViewModel @Inject constructor(
         liabilities: List<Liability>,
         currentMonthBudgetItems: List<BudgetItem>,
         base: Currency,
-        rates: ExchangeRates?
+        rates: ExchangeRates?,
+        includeSavings: Boolean
     ): NetWorthState {
         val byCurrency = linkedMapOf<Currency, BigDecimal>()
         val elements = mutableListOf<NetWorthElement>()
@@ -235,16 +241,19 @@ class HomeViewModel @Inject constructor(
             return amount.divide(rate, 10, RoundingMode.HALF_UP)
         }
 
-        // Virtual accounts' balance already sits in a real account, so they're excluded to avoid double-counting.
-        for (account in accounts.filterNot { it.isVirtual }) {
-            // Net worth reflects investment gains after tax, not their pre-tax market value.
-            val amountInBase = convertToBase(account.netWorthValue, account.currency)
+        for (account in accounts) {
+            // See Account.netWorthContribution: usually the account's netWorthValue, but a virtual
+            // Saving account contributes nothing (already counted via its host) when savings are
+            // included, or its earmarked amount back out (negative) when savings are excluded.
+            val contribution = account.netWorthContribution(includeSavings)
+            if (contribution.signum() == 0) continue
+            val amountInBase = convertToBase(contribution, account.currency)
                 ?: return NetWorthState(currency = base, amount = null, rateDate = null)
             byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
             elements += NetWorthElement(
                 name = account.name,
                 currency = account.currency,
-                originalAmount = account.netWorthValue,
+                originalAmount = contribution,
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
             )
         }

@@ -58,6 +58,11 @@ class BudgetDetailViewModel @Inject constructor(
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base).map { rates -> base to rates } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN to null)
 
+    private val baseCurrencyRatesAndNetWorthSettings = combine(
+        baseCurrencyRates,
+        settingsRepository.observeIncludeSavingsInNetWorth()
+    ) { (base, rates), includeSavings -> Triple(base, rates, includeSavings) }
+
     val categoryTargets: StateFlow<Map<BudgetSectionType, BigDecimal?>> = combine(
         settingsRepository.observeCategoryTarget(BudgetSectionType.FIXED_COSTS),
         settingsRepository.observeCategoryTarget(BudgetSectionType.OTHER_COSTS),
@@ -78,10 +83,11 @@ class BudgetDetailViewModel @Inject constructor(
         accountRepository.observeAccounts(),
         assetRepository.observeAssets(),
         liabilityRepository.observeLiabilities(),
-        baseCurrencyRates
-    ) { budgetWithItems, accounts, assets, liabilities, (base, rates) ->
+        baseCurrencyRatesAndNetWorthSettings
+    ) { budgetWithItems, accounts, assets, liabilities, (base, rates, includeSavings) ->
         val items = budgetWithItems?.items ?: return@combine null
-        val currentNetWorth = calculateNetWorth(accounts, assets, liabilities, base, rates) ?: return@combine null
+        val currentNetWorth = calculateNetWorth(accounts, assets, liabilities, base, rates, includeSavings)
+            ?: return@combine null
         val delta = projectedNetWorthDelta(items, base, rates) ?: return@combine null
         (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)

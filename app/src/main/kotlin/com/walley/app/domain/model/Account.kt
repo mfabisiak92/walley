@@ -56,6 +56,25 @@ data class Account(
     val netWorthValue: BigDecimal
         get() = balance - (investmentTaxAmount ?: BigDecimal.ZERO)
 
+    /**
+     * What this account actually contributes to net worth, given whether Saving accounts count
+     * ([includeSavings]).
+     *
+     * A virtual Saving account's balance isn't separate money — it's already inside whichever real
+     * account it's earmarked from, and that host account is counted normally. So it contributes
+     * nothing when savings are included (adding it again would double-count it), but when savings
+     * are excluded, its earmarked slice has to be subtracted back out of its host's full balance —
+     * otherwise that money would silently still count even though "savings" is supposed to be out.
+     * A non-Saving virtual account (any host, any type) simply contributes nothing either way, since
+     * there's no separate exclusion toggle for it to interact with.
+     */
+    fun netWorthContribution(includeSavings: Boolean): BigDecimal = when {
+        isVirtual && type == AccountType.SAVING -> if (includeSavings) BigDecimal.ZERO else -netWorthValue
+        isVirtual -> BigDecimal.ZERO
+        type == AccountType.SAVING -> if (includeSavings) netWorthValue else BigDecimal.ZERO
+        else -> netWorthValue
+    }
+
     /** Commission for a trade worth [tradeValue] — whichever of [commissionFlat] or [commissionPercent] is higher, matching how many brokers price it. */
     fun defaultCommission(tradeValue: BigDecimal): BigDecimal {
         val percentAmount = (tradeValue * commissionPercent).divide(BigDecimal(100), 2, RoundingMode.HALF_UP)

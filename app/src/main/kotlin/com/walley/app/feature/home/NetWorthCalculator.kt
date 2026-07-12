@@ -8,18 +8,25 @@ import com.walley.app.domain.model.Liability
 import com.walley.app.feature.budget.convertToCurrency
 import java.math.BigDecimal
 
-/** Total net worth (accounts + assets − liabilities) in [targetCurrency]; null if a needed rate is unavailable. */
+/**
+ * Total net worth (accounts + assets − liabilities) in [targetCurrency]; null if a needed rate is
+ * unavailable. [includeSavings] lets Saving accounts be excluded entirely, per the user's setting —
+ * see [Account.netWorthContribution] for how that interacts with virtual accounts.
+ */
 fun calculateNetWorth(
     accounts: List<Account>,
     assets: List<Asset>,
     liabilities: List<Liability>,
     targetCurrency: Currency,
-    rates: ExchangeRates?
+    rates: ExchangeRates?,
+    includeSavings: Boolean = true
 ): BigDecimal? {
     var total = BigDecimal.ZERO
-    // Virtual accounts' balance already sits in a real account, so they're excluded to avoid double-counting.
-    for (account in accounts.filterNot { it.isVirtual }) {
-        total += convertToCurrency(account.netWorthValue, account.currency, targetCurrency, rates) ?: return null
+    for (account in accounts) {
+        val contribution = account.netWorthContribution(includeSavings)
+        if (contribution.signum() != 0) {
+            total += convertToCurrency(contribution, account.currency, targetCurrency, rates) ?: return null
+        }
     }
     for (asset in assets) {
         total += convertToCurrency(asset.currentValue, asset.currency, targetCurrency, rates) ?: return null

@@ -29,6 +29,9 @@ class SettingsViewModel @Inject constructor(
     val baseCurrency: StateFlow<Currency> = repository.observeBaseCurrency()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
 
+    val includeSavingsInNetWorth: StateFlow<Boolean> = repository.observeIncludeSavingsInNetWorth()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
     val fingerprintUnlock: StateFlow<Boolean> = securityRepository.observeFingerprintUnlock()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
@@ -52,6 +55,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setBaseCurrency(currency: Currency) {
         viewModelScope.launch { repository.setBaseCurrency(currency) }
+    }
+
+    fun setIncludeSavingsInNetWorth(enabled: Boolean) {
+        viewModelScope.launch { repository.setIncludeSavingsInNetWorth(enabled) }
     }
 
     fun setFingerprintUnlock(enabled: Boolean) {

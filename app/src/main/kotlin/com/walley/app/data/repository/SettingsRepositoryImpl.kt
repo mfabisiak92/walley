@@ -23,6 +23,12 @@ class SettingsRepositoryImpl @Inject constructor(
         settingsDataStore.setBaseCurrency(currency)
     }
 
+    override fun observeIncludeSavingsInNetWorth(): Flow<Boolean> = settingsDataStore.includeSavingsInNetWorth
+
+    override suspend fun setIncludeSavingsInNetWorth(enabled: Boolean) {
+        settingsDataStore.setIncludeSavingsInNetWorth(enabled)
+    }
+
     override fun observeCategoryTarget(section: BudgetSectionType): Flow<BigDecimal?> =
         settingsDataStore.categoryTarget(section)
 

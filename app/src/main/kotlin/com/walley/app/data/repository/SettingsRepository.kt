@@ -11,6 +11,10 @@ interface SettingsRepository {
     fun observeBaseCurrency(): Flow<Currency>
     suspend fun setBaseCurrency(currency: Currency)
 
+    /** Whether Saving accounts count toward net worth; defaults to true. */
+    fun observeIncludeSavingsInNetWorth(): Flow<Boolean>
+    suspend fun setIncludeSavingsInNetWorth(enabled: Boolean)
+
     /** Target % of disposable income for [section] (Fixed costs/Other costs/Savings/Investments only); null if unset. */
     fun observeCategoryTarget(section: BudgetSectionType): Flow<BigDecimal?>
     suspend fun setCategoryTarget(section: BudgetSectionType, percent: BigDecimal?)

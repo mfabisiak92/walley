@@ -325,16 +325,12 @@ class BudgetRepositoryImpl @Inject constructor(
         val accounts = accountRepository.observeAccounts().first()
         val assets = assetRepository.observeAssets().first()
         val liabilities = liabilityRepository.observeLiabilities().first()
+        val includeSavingsInNetWorth = settingsRepository.observeIncludeSavingsInNetWorth().first()
 
         // Virtual accounts' balance already sits in a real account, so they're excluded from every total to avoid double-counting.
         fun accountsTotal(type: AccountType) = accounts
             .filter { it.type == type && !it.isVirtual }
             .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.balance, account.currency, base, rates) }
-
-        // Net worth counts investment gains after tax, not their pre-tax market value.
-        fun accountsNetWorthTotal(type: AccountType) = accounts
-            .filter { it.type == type && !it.isVirtual }
-            .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.netWorthValue, account.currency, base, rates) }
 
         val cashAndChecking = accountsTotal(AccountType.CHECKING) + accountsTotal(AccountType.CASH)
         val savings = accountsTotal(AccountType.SAVING)
@@ -343,7 +339,14 @@ class BudgetRepositoryImpl @Inject constructor(
         val liabilitiesTotal = liabilities.fold(BigDecimal.ZERO) { acc, liability ->
             acc + convert(liability.currentBalance, liability.currency, base, rates)
         }
-        val netWorth = cashAndChecking + savings + accountsNetWorthTotal(AccountType.INVESTMENT) + assetsTotal - liabilitiesTotal
+        // Computed straight from Account.netWorthContribution (not from cashAndChecking/savings above)
+        // since a virtual Saving account's earmarked balance has to be subtracted back out of its
+        // host account when savings are excluded — see Account.netWorthContribution for why.
+        val accountsNetWorth = accounts.fold(BigDecimal.ZERO) { acc, account ->
+            val contribution = account.netWorthContribution(includeSavingsInNetWorth)
+            if (contribution.signum() == 0) acc else acc + convert(contribution, account.currency, base, rates)
+        }
+        val netWorth = accountsNetWorth + assetsTotal - liabilitiesTotal
 
         fun sectionTotal(section: BudgetSectionType) = items
             .filter { it.section == section }
