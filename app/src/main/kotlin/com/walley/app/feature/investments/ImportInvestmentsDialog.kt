@@ -46,6 +46,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.ImportRowOutcome
 import com.walley.app.domain.model.ImportRowStatus
@@ -175,12 +176,10 @@ private fun SelectAccountContent(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                Row(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Include deposits, transfers & interest", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "Adjusts this account's balance by each deposit/transfer/interest amount and by what's spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    FieldHint(
+                        "Adjusts this account's balance by each deposit/transfer/interest amount and by what's spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on."
                     )
                 }
                 Switch(checked = includeAccountOperations, onCheckedChange = { includeAccountOperations = it })

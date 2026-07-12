@@ -2,6 +2,7 @@ package com.walley.app.feature.accounts
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -18,6 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -140,10 +142,8 @@ fun AddAccountDialog(
                 AccountEffectsToggleRow(
                     label = "Virtual account",
                     checked = isVirtual,
-                    onCheckedChange = { isVirtual = it }
-                )
-                FieldHint(
-                    "Doesn't exist in the real world — its balance is really an earmarked slice of " +
+                    onCheckedChange = { isVirtual = it },
+                    hint = "Doesn't exist in the real world — its balance is really an earmarked slice of " +
                         "another account's money, so it's excluded from net worth and other totals."
                 )
                 if (isInvestment) {
@@ -174,30 +174,46 @@ fun AddAccountDialog(
                             }
                         }
                     }
-                    FieldHint(
-                        "This is cash not yet invested. The account's total balance also includes " +
-                            "the current value of any linked investments."
-                    )
-                    OutlinedTextField(
-                        value = balanceText,
-                        onValueChange = { balanceText = it },
-                        label = { Text("Uninvested cash") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = parsedBalance == null
-                    )
-                    FieldHint(
-                        "Commission charged per buy/sell trade — whichever of the two is higher. " +
-                            "Used as the default when logging an event, but you can override it per trade."
-                    )
-                    OutlinedTextField(
-                        value = commissionFlatText,
-                        onValueChange = { commissionFlatText = it },
-                        label = { Text("Flat commission (optional)") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = !commissionFlatValid
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Uninvested cash",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FieldHint(
+                                "This is cash not yet invested. The account's total balance also includes " +
+                                    "the current value of any linked investments."
+                            )
+                        }
+                        OutlinedTextField(
+                            value = balanceText,
+                            onValueChange = { balanceText = it },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            isError = parsedBalance == null
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "Flat commission (optional)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            FieldHint(
+                                "Commission charged per buy/sell trade — whichever of the two is higher. " +
+                                    "Used as the default when logging an event, but you can override it per trade."
+                            )
+                        }
+                        OutlinedTextField(
+                            value = commissionFlatText,
+                            onValueChange = { commissionFlatText = it },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            isError = !commissionFlatValid
+                        )
+                    }
                     OutlinedTextField(
                         value = commissionPercentText,
                         onValueChange = { commissionPercentText = it },

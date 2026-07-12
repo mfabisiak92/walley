@@ -44,6 +44,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.ui.FieldHint
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.CATEGORY_TARGET_SECTIONS
@@ -203,13 +204,11 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState:
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 16.dp)) {
+            Row(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Include savings in net worth", style = MaterialTheme.typography.bodyLarge)
-                Text(
+                FieldHint(
                     "Virtual Saving accounts are always excluded, since their balance already " +
-                        "sits in another account.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                        "sits in another account."
                 )
             }
             Switch(checked = includeSavingsInNetWorth, onCheckedChange = viewModel::setIncludeSavingsInNetWorth)
