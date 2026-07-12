@@ -15,6 +15,7 @@ import com.walley.app.domain.model.InvestmentCategory
 val InvestmentCategoryColors: Map<InvestmentCategory, Color> = mapOf(
     InvestmentCategory.STOCK to Color(0xFF1565C0),
     InvestmentCategory.ETF to Color(0xFF2E7D32),
+    InvestmentCategory.BOND to Color(0xFF00838F),
     InvestmentCategory.PRECIOUS_METAL to Color(0xFFF9A825),
     InvestmentCategory.ENERGY_METAL to Color(0xFF6D4C41),
     InvestmentCategory.CRYPTO to Color(0xFF6A1B9A)
