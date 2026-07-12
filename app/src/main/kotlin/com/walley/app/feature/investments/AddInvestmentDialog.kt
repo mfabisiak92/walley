@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,8 +28,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentCategory
@@ -81,10 +85,14 @@ fun AddInvestmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(decorFitsSystemWindows = false),
         title = { Text("Add investment") },
         text = {
             Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.6f).dp)
+                    .verticalScroll(rememberScrollState())
+                    .imePadding(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (investmentAccounts.isEmpty()) {
