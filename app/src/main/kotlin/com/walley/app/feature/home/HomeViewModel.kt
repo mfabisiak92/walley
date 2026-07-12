@@ -59,13 +59,31 @@ data class NetWorthByCurrency(
     val percent: BigDecimal
 )
 
+/** Grouping used to collapse the breakdown screen's element list by kind. */
+enum class NetWorthCategory(val label: String) {
+    CHECKING("Checking accounts"),
+    SAVING("Saving accounts"),
+    CASH("Cash accounts"),
+    INVESTMENT("Investment accounts"),
+    ASSET("Assets"),
+    LIABILITY("Liabilities")
+}
+
 /** One contributor to net worth (an account or an asset), shown in the breakdown screen. */
 data class NetWorthElement(
     val name: String,
+    val category: NetWorthCategory,
     val currency: Currency,
     val originalAmount: BigDecimal,
     val amountInBaseCurrency: BigDecimal
 )
+
+private fun AccountType.toNetWorthCategory(): NetWorthCategory = when (this) {
+    AccountType.CHECKING -> NetWorthCategory.CHECKING
+    AccountType.SAVING -> NetWorthCategory.SAVING
+    AccountType.CASH -> NetWorthCategory.CASH
+    AccountType.INVESTMENT -> NetWorthCategory.INVESTMENT
+}
 
 data class NetWorthState(
     val currency: Currency,
@@ -252,6 +270,7 @@ class HomeViewModel @Inject constructor(
             byCurrency[account.currency] = (byCurrency[account.currency] ?: BigDecimal.ZERO) + amountInBase
             elements += NetWorthElement(
                 name = account.name,
+                category = account.type.toNetWorthCategory(),
                 currency = account.currency,
                 originalAmount = contribution,
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
@@ -263,6 +282,7 @@ class HomeViewModel @Inject constructor(
             byCurrency[asset.currency] = (byCurrency[asset.currency] ?: BigDecimal.ZERO) + amountInBase
             elements += NetWorthElement(
                 name = asset.name,
+                category = NetWorthCategory.ASSET,
                 currency = asset.currency,
                 originalAmount = asset.currentValue,
                 amountInBaseCurrency = amountInBase.setScale(2, RoundingMode.HALF_UP)
@@ -275,6 +295,7 @@ class HomeViewModel @Inject constructor(
             byCurrency[liability.currency] = (byCurrency[liability.currency] ?: BigDecimal.ZERO) - amountInBase
             elements += NetWorthElement(
                 name = liability.name,
+                category = NetWorthCategory.LIABILITY,
                 currency = liability.currency,
                 originalAmount = -liability.currentBalance,
                 amountInBaseCurrency = amountInBase.negate().setScale(2, RoundingMode.HALF_UP)
