@@ -23,7 +23,7 @@ class UpdateBalancesViewModel @Inject constructor(
     val group: AccountBalanceGroup = AccountBalanceGroup.valueOf(checkNotNull(savedStateHandle["group"]))
 
     val accounts: StateFlow<List<Account>> = repository.observeAccounts()
-        .map { accounts -> accounts.filter { it.type in group.types } }
+        .map { accounts -> accounts.filter { it.type in group.types && !it.isClosed } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     suspend fun saveAll(updates: Map<Long, BigDecimal>) {
