@@ -57,8 +57,16 @@ class AdHocWizardViewModel @Inject constructor(
     private val itemDrafts = mutableStateListOf<AdHocItemDraft>()
     val items: List<AdHocItemDraft> get() = itemDrafts
 
-    val savingAccounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
-        .map { accounts -> accounts.filter { it.type == AccountType.SAVING } }
+    private val allAccounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Selectable in the account picker — excludes closed accounts. Name resolution ([selectedAccount],
+     * [accountFor]) reads from [allAccounts] instead, so a resumed draft pointing at a since-closed
+     * account still displays its name correctly.
+     */
+    val savingAccounts: StateFlow<List<Account>> = allAccounts
+        .map { accounts -> accounts.filter { it.type == AccountType.SAVING && !it.isClosed } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
@@ -94,14 +102,14 @@ class AdHocWizardViewModel @Inject constructor(
         accountId = id
     }
 
-    val selectedAccount: Account? get() = savingAccounts.value.find { it.id == accountId }
+    val selectedAccount: Account? get() = allAccounts.value.find { it.id == accountId }
 
     val detailsValid: Boolean
         get() = name.isNotBlank() && accountId != null && !endDate.isBefore(startDate)
 
     /** The account a given item draft actually draws from: its own override, or the budget's default. */
     fun accountFor(draft: AdHocItemDraft): Account? =
-        (draft.accountId ?: accountId)?.let { id -> savingAccounts.value.find { it.id == id } }
+        (draft.accountId ?: accountId)?.let { id -> allAccounts.value.find { it.id == id } }
 
     val totalPlanned: BigDecimal get() = itemDrafts.fold(BigDecimal.ZERO) { acc, item -> acc + item.amount }
 

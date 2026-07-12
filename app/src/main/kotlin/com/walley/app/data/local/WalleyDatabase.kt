@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 30,
+    version = 31,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -512,5 +512,13 @@ val MIGRATION_29_30 = object : Migration(29, 30) {
     override fun migrate(db: SupportSQLiteDatabase) {
         // Ad-hoc budgets now autosave a Draft as the wizard progresses, same as monthly budgets.
         db.execSQL("ALTER TABLE adhoc_budgets ADD COLUMN isDraft INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_30_31 = object : Migration(30, 31) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Soft-close for Saving accounts: kept in the DB (reversible), hidden from pickers used to
+        // link something new, and excluded from net worth and other totals.
+        db.execSQL("ALTER TABLE accounts ADD COLUMN isClosed INTEGER NOT NULL DEFAULT 0")
     }
 }

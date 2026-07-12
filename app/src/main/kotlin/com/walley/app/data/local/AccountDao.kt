@@ -57,4 +57,13 @@ interface AccountDao {
 
     @Query("UPDATE accounts SET isDefault = CASE WHEN id = :accountId THEN 1 ELSE 0 END")
     suspend fun setDefaultAccount(accountId: Long)
+
+    @Query("SELECT * FROM accounts WHERE id = :accountId")
+    suspend fun getById(accountId: Long): AccountEntity?
+
+    @Query("UPDATE accounts SET isClosed = :isClosed WHERE id = :accountId")
+    suspend fun setClosed(accountId: Long, isClosed: Boolean)
+
+    @Query("SELECT id FROM accounts WHERE isClosed = 0 ORDER BY id ASC LIMIT 1")
+    suspend fun firstOpenAccountId(): Long?
 }

@@ -52,7 +52,8 @@ fun EditItemAmountDialog(
     val parsedAmount = amountText.toBigDecimalOrNull()
 
     val accountRequired = item.section.requiresAccount
-    val accountOptions = item.section.allowedAccountTypes()?.let { types -> accounts.filter { it.type in types } }
+    val accountOptions = item.section.allowedAccountTypes()
+        ?.let { types -> accounts.filter { it.type in types && !it.isClosed } }
         ?: emptyList()
     val selectedAccount = accounts.find { it.id == accountId }
     // For Savings/Investments the account is the item's identity, so the amount tracks its currency.

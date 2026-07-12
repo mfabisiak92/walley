@@ -30,7 +30,12 @@ data class Account(
      * earmarked slice of another account's money (e.g. a "Vacation fund" envelope inside Checking).
      * Excluded from net worth and other cross-account totals to avoid double-counting.
      */
-    val isVirtual: Boolean = false
+    val isVirtual: Boolean = false,
+    /**
+     * Soft-closed [AccountType.SAVING] account: kept around (reversible via reopening), hidden from
+     * pickers used to link something new, and excluded from net worth and other totals.
+     */
+    val isClosed: Boolean = false
 ) {
     val targetProgressPercent: BigDecimal?
         get() = targetAmount?.takeIf { it.signum() > 0 }
@@ -69,6 +74,7 @@ data class Account(
      * there's no separate exclusion toggle for it to interact with.
      */
     fun netWorthContribution(includeSavings: Boolean): BigDecimal = when {
+        isClosed -> BigDecimal.ZERO
         isVirtual && type == AccountType.SAVING -> if (includeSavings) BigDecimal.ZERO else -netWorthValue
         isVirtual -> BigDecimal.ZERO
         type == AccountType.SAVING -> if (includeSavings) netWorthValue else BigDecimal.ZERO

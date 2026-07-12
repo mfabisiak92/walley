@@ -327,9 +327,10 @@ class BudgetRepositoryImpl @Inject constructor(
         val liabilities = liabilityRepository.observeLiabilities().first()
         val includeSavingsInNetWorth = settingsRepository.observeIncludeSavingsInNetWorth().first()
 
-        // Virtual accounts' balance already sits in a real account, so they're excluded from every total to avoid double-counting.
+        // Virtual accounts' balance already sits in a real account, and closed accounts no longer count,
+        // so both are excluded from every total to avoid double-counting/stale figures.
         fun accountsTotal(type: AccountType) = accounts
-            .filter { it.type == type && !it.isVirtual }
+            .filter { it.type == type && !it.isVirtual && !it.isClosed }
             .fold(BigDecimal.ZERO) { acc, account -> acc + convert(account.balance, account.currency, base, rates) }
 
         val cashAndChecking = accountsTotal(AccountType.CHECKING) + accountsTotal(AccountType.CASH)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -47,6 +48,7 @@ import java.math.BigDecimal
 fun EditAccountDialog(
     account: Account,
     allowedTypes: List<AccountType>,
+    otherAccounts: List<Account> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (
         name: String,
@@ -58,7 +60,8 @@ fun EditAccountDialog(
         commissionPercent: BigDecimal,
         isVirtual: Boolean
     ) -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onClose: (transferToAccountId: Long?) -> Unit = {}
 ) {
     var name by remember { mutableStateOf(account.name) }
     var type by remember { mutableStateOf(account.type) }
@@ -77,6 +80,7 @@ fun EditAccountDialog(
     var commissionFlatText by remember { mutableStateOf(account.commissionFlat.toPlainString()) }
     var commissionPercentText by remember { mutableStateOf(account.commissionPercent.toPlainString()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
+    var showCloseAccountDialog by remember { mutableStateOf(false) }
     var typeMenuExpanded by remember { mutableStateOf(false) }
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
 
@@ -102,12 +106,19 @@ fun EditAccountDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Edit account")
-                IconButton(onClick = { showDeleteConfirm = true }) {
-                    Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Delete account",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                Row {
+                    if (!account.isClosed) {
+                        IconButton(onClick = { showCloseAccountDialog = true }) {
+                            Icon(Icons.Filled.Lock, contentDescription = "Close account")
+                        }
+                    }
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(
+                            Icons.Filled.Delete,
+                            contentDescription = "Delete account",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         },
@@ -294,6 +305,18 @@ fun EditAccountDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showCloseAccountDialog) {
+        CloseAccountDialog(
+            account = account,
+            otherAccounts = otherAccounts,
+            onDismiss = { showCloseAccountDialog = false },
+            onConfirm = { transferToAccountId ->
+                showCloseAccountDialog = false
+                onClose(transferToAccountId)
             }
         )
     }

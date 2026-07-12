@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
@@ -126,13 +128,16 @@ private fun AccountsListPage(
     val tabLabel = group.label
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
+    val (activeAccounts, closedAccounts) = filteredAccounts.partition { !it.isClosed }
     val investmentsByAccount by viewModel.investmentsByAccount.collectAsStateWithLifecycle()
     val portfolioTaxEstimate by viewModel.portfolioTaxEstimate.collectAsStateWithLifecycle()
     val investmentsNetProfit by viewModel.investmentsNetProfit.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
+    val closeBlockedMessage by viewModel.closeBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<Account?>(null) }
+    var closedExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
@@ -181,13 +186,13 @@ private fun AccountsListPage(
                 item {
                     val isInvestments = group == AccountBalanceGroup.INVESTMENTS
                     SummaryRibbon(
-                        totalsByCurrency = currencyTotals(filteredAccounts.filterNot { it.isVirtual }),
+                        totalsByCurrency = currencyTotals(activeAccounts.filterNot { it.isVirtual }),
                         netProfit = if (isInvestments) investmentsNetProfit else null,
                         estimatedTax = if (isInvestments) portfolioTaxEstimate.taxOwed else null,
                         baseCurrency = baseCurrency
                     )
                 }
-                items(filteredAccounts, key = { it.id }) { account ->
+                items(activeAccounts, key = { it.id }) { account ->
                     AccountRow(
                         account = account,
                         investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
@@ -195,6 +200,22 @@ private fun AccountsListPage(
                         onEditAccount = { editingAccount = account },
                         onSetDefault = { viewModel.setDefaultAccount(account.id) }
                     )
+                }
+                if (closedAccounts.isNotEmpty()) {
+                    item(key = "closed_header") {
+                        ClosedAccountsHeaderRow(
+                            expanded = closedExpanded,
+                            onToggle = { closedExpanded = !closedExpanded }
+                        )
+                    }
+                    if (closedExpanded) {
+                        items(closedAccounts, key = { "closed_${it.id}" }) { account ->
+                            ClosedAccountRow(
+                                account = account,
+                                onReopen = { viewModel.reopenAccount(account.id) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -225,6 +246,7 @@ private fun AccountsListPage(
         EditAccountDialog(
             account = account,
             allowedTypes = allowedTypes,
+            otherAccounts = accounts.filter { it.id != account.id },
             onDismiss = { editingAccount = null },
             onSave = { name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent, isVirtual ->
                 viewModel.updateAccount(
@@ -243,6 +265,10 @@ private fun AccountsListPage(
             onDelete = {
                 viewModel.deleteAccount(account.id)
                 editingAccount = null
+            },
+            onClose = { transferToAccountId ->
+                viewModel.closeAccount(account.id, transferToAccountId)
+                editingAccount = null
             }
         )
     }
@@ -254,6 +280,17 @@ private fun AccountsListPage(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+            }
+        )
+    }
+
+    closeBlockedMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissCloseBlockedMessage,
+            title = { Text("Can't close account") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissCloseBlockedMessage) { Text("OK") }
             }
         )
     }
@@ -345,6 +382,62 @@ private fun AccountRow(
                     SavingsGoalProgress(account = account, progressPercent = progressPercent)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ClosedAccountsHeaderRow(expanded: Boolean, onToggle: () -> Unit) {
+    Card(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Closed accounts", style = MaterialTheme.typography.bodyLarge)
+            Icon(
+                if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = if (expanded) "Collapse" else "Expand",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun ClosedAccountRow(account: Account, onReopen: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    account.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    formatMoney(account.balance, account.currency),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TextButton(onClick = onReopen) { Text("Reopen") }
         }
     }
 }

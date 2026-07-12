@@ -85,6 +85,13 @@ class AccountsViewModel @Inject constructor(
         _deleteBlockedMessage.value = null
     }
 
+    private val _closeBlockedMessage = MutableStateFlow<String?>(null)
+    val closeBlockedMessage: StateFlow<String?> = _closeBlockedMessage.asStateFlow()
+
+    fun dismissCloseBlockedMessage() {
+        _closeBlockedMessage.value = null
+    }
+
     fun addAccount(
         name: String,
         type: AccountType,
@@ -154,5 +161,24 @@ class AccountsViewModel @Inject constructor(
 
     fun setDefaultAccount(accountId: Long) {
         viewModelScope.launch { repository.setDefaultAccount(accountId) }
+    }
+
+    fun closeAccount(accountId: Long, transferToAccountId: Long?) {
+        viewModelScope.launch {
+            try {
+                repository.closeAccount(accountId, transferToAccountId)
+            } catch (e: AccountHasLinkedInvestmentsException) {
+                _closeBlockedMessage.value =
+                    "This account still has linked investments. Delete or move them first."
+            } catch (e: AccountHasLinkedActiveBudgetException) {
+                _closeBlockedMessage.value =
+                    "This account is linked to an active budget item. Remove it from the budget first, " +
+                        "or mark the budget completed."
+            }
+        }
+    }
+
+    fun reopenAccount(accountId: Long) {
+        viewModelScope.launch { repository.reopenAccount(accountId) }
     }
 }

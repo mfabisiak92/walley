@@ -36,7 +36,8 @@ fun AddAccountLinkedItemDialog(
     onDismiss: () -> Unit,
     onConfirm: (accountId: Long, amount: BigDecimal, paymentDay: Int?, isLastOfMonth: Boolean) -> Unit
 ) {
-    var accountId by remember { mutableStateOf(initial?.accountId ?: accounts.firstOrNull()?.id) }
+    val selectableAccounts = accounts.filterNot { it.isClosed }
+    var accountId by remember { mutableStateOf(initial?.accountId ?: selectableAccounts.firstOrNull()?.id) }
     var accountMenuExpanded by remember { mutableStateOf(false) }
     var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
     var paymentDay by remember { mutableStateOf(initial?.paymentDay) }
@@ -70,7 +71,7 @@ fun AddAccountLinkedItemDialog(
                         expanded = accountMenuExpanded,
                         onDismissRequest = { accountMenuExpanded = false }
                     ) {
-                        accounts.forEach { account ->
+                        selectableAccounts.forEach { account ->
                             DropdownMenuItem(
                                 text = { Text(account.name) },
                                 onClick = {

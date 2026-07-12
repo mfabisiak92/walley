@@ -154,7 +154,7 @@ class BudgetWizardViewModel @Inject constructor(
 
     fun accountsFor(section: BudgetSectionType): List<Account> {
         val types = section.allowedAccountTypes() ?: return emptyList()
-        return accounts.value.filter { it.type in types }
+        return accounts.value.filter { it.type in types && !it.isClosed }
     }
 
     fun itemsFor(section: BudgetSectionType): List<WizardItemDraft> = itemsBySection[section].orEmpty()

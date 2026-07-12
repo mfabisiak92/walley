@@ -60,10 +60,15 @@ fun AddBudgetItemDialog(
     var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
     var paymentDay by remember { mutableStateOf(initial?.paymentDay) }
     var isLastOfMonth by remember { mutableStateOf(initial?.paymentDayIsLastOfMonth ?: false) }
+    val selectableAccounts = accounts.filterNot { it.isClosed }
     var accountId by remember {
         mutableStateOf(
             initial?.accountId
-                ?: (if (requireAccount) accounts.find { it.isDefault }?.id ?: accounts.firstOrNull()?.id else null)
+                ?: (if (requireAccount) {
+                    selectableAccounts.find { it.isDefault }?.id ?: selectableAccounts.firstOrNull()?.id
+                } else {
+                    null
+                })
         )
     }
     var accountMenuExpanded by remember { mutableStateOf(false) }
@@ -127,7 +132,7 @@ fun AddBudgetItemDialog(
                                     }
                                 )
                             }
-                            accounts.forEach { account ->
+                            selectableAccounts.forEach { account ->
                                 DropdownMenuItem(
                                     text = { Text(account.name) },
                                     onClick = {

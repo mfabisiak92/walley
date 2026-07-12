@@ -136,7 +136,7 @@ class HomeViewModel @Inject constructor(
             HomeBalances(
                 // Virtual accounts' balance already sits in a real account, so excluding them here avoids double-counting.
                 total = currencyTotals(accounts.filterNot { it.isVirtual }),
-                savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING }),
+                savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING && !it.isClosed }),
                 investments = currencyTotals(investmentAccounts),
                 investmentsAfterTax = currencyTotals(investmentAccounts) { it.netWorthValue },
                 investmentsGainLoss = currencyTotals(investmentAccounts) { it.investmentGainLoss }
