@@ -180,8 +180,7 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
             series = listOf(
                 ChartSeries("Savings rate", PieChartColors[5], history.map { it.savingsRatePercent?.toFloat() })
             ),
-            valueFormatter = { value -> "${value.toInt()}%" },
-            showValueLabels = true
+            valueFormatter = { value -> "${value.toInt()}%" }
         )
 
         TrendChartCard(
@@ -190,8 +189,7 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
             series = listOf(
                 ChartSeries("Spent", PieChartColors[2], history.map { it.progress?.percent?.toFloat() })
             ),
-            valueFormatter = { value -> "${value.toInt()}%" },
-            showValueLabels = true
+            valueFormatter = { value -> "${value.toInt()}%" }
         )
 
         if (categorySpending.categoryLabels.isNotEmpty()) {
@@ -201,8 +199,7 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
                 series = categorySpending.categoryLabels.mapIndexed { index, label ->
                     ChartSeries(label, PieChartColors[index % PieChartColors.size], categorySpending.seriesByCategory[index])
                 },
-                valueFormatter = moneyFormatter,
-                showTotalLabels = true
+                valueFormatter = moneyFormatter
             )
 
             CategoryVarianceSection(categorySpendPoints, moneyFormatter)
@@ -397,8 +394,7 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             series = listOf(
                 ChartSeries("Net worth", PieChartColors[4], visible.map { it.netWorth.toFloat() })
             ),
-            valueFormatter = moneyFormatter,
-            showValueLabels = true
+            valueFormatter = moneyFormatter
         )
 
         if (visibleGrowth.isNotEmpty()) {
@@ -409,8 +405,7 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
                     ChartSeries("MoM %", PieChartColors[2], visibleGrowth.map { it.momPercent?.toFloat() }),
                     ChartSeries("YoY %", PieChartColors[4], visibleGrowth.map { it.yoyPercent?.toFloat() })
                 ),
-                valueFormatter = { value -> "${value.toInt()}%" },
-                showValueLabels = true
+                valueFormatter = { value -> "${value.toInt()}%" }
             )
         }
 
@@ -432,8 +427,7 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             series = listOf(
                 ChartSeries("Growth", PieChartColors[5], visible.map { it.investmentGrowth?.toFloat() })
             ),
-            valueFormatter = moneyFormatter,
-            showValueLabels = true
+            valueFormatter = moneyFormatter
         )
     }
 }
@@ -474,8 +468,7 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
                 series = listOf(
                     ChartSeries("Realized", PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
                 ),
-                valueFormatter = moneyFormatter,
-                showValueLabels = true
+                valueFormatter = moneyFormatter
             )
 
             TrendChartCard(
@@ -484,8 +477,7 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
                 series = listOf(
                     ChartSeries("Invested", PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() })
                 ),
-                valueFormatter = moneyFormatter,
-                showValueLabels = true
+                valueFormatter = moneyFormatter
             )
         }
 

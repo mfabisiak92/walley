@@ -35,6 +35,7 @@ val PieChartColors = listOf(
 
 data class PieSlice(
     val label: String,
+    val value: String,
     val percent: Float,
     val color: Color
 )
@@ -89,10 +90,17 @@ fun PieChartCard(title: String, slices: List<PieSlice>) {
                             // The gap before the label comes entirely from the Spacer above, not leading
                             // spaces baked into the string — those only offset the first line, so a
                             // wrapped second line would start further left than the first, misaligned.
-                            Text(
-                                text = slice.label,
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Column {
+                                Text(
+                                    text = slice.label,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Text(
+                                    text = "${slice.value} · ${slice.percent.toInt()}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }

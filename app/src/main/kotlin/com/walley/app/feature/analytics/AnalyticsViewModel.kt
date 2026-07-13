@@ -2,6 +2,7 @@ package com.walley.app.feature.analytics
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.InvestmentCategoryColors
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
@@ -217,6 +218,7 @@ class AnalyticsViewModel @Inject constructor(
                 .map { (category, value) ->
                     PieSlice(
                         label = category.label,
+                        value = formatMoney(value, base),
                         percent = (value.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)).toFloat(),
                         color = InvestmentCategoryColors.getValue(category)
                     )
@@ -239,7 +241,7 @@ class AnalyticsViewModel @Inject constructor(
                     acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)
                 }
             }
-        toPieSlices(totalsByAccountName)
+        toPieSlices(totalsByAccountName, base)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Current value of every investment, grouped by its own currency and converted to base currency. */
@@ -254,7 +256,7 @@ class AnalyticsViewModel @Inject constructor(
                     acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)
                 }
             }
-        toPieSlices(totalsByCurrency)
+        toPieSlices(totalsByCurrency, base)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** One point per calendar year spanned by the portfolio's transaction history, oldest first. */
@@ -306,7 +308,7 @@ class AnalyticsViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Shares each key's value as a percent of the total, largest first; drops zero/negative entries. */
-    private fun toPieSlices(totalsByLabel: Map<String, BigDecimal>): List<PieSlice> {
+    private fun toPieSlices(totalsByLabel: Map<String, BigDecimal>, currency: Currency): List<PieSlice> {
         val total = totalsByLabel.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
         if (total.signum() <= 0) return emptyList()
         return totalsByLabel
@@ -316,6 +318,7 @@ class AnalyticsViewModel @Inject constructor(
             .mapIndexed { index, (label, value) ->
                 PieSlice(
                     label = label,
+                    value = formatMoney(value, currency),
                     percent = (value.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)).toFloat(),
                     color = PieChartColors[index % PieChartColors.size]
                 )

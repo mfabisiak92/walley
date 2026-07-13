@@ -3,6 +3,7 @@ package com.walley.app.core.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,7 +52,9 @@ private const val MAX_TEXT_LABELS = 6
 /**
  * A hand-rolled line/area trend chart (no charting library, matching [TrendChartCard]'s bar-chart
  * approach). Defaults to an area chart; swiping left or right anywhere on the chart toggles it to
- * a line chart and back, independently per card.
+ * a line chart and back, independently per card. Tapping (a clean down-up with negligible
+ * movement, which the swipe gesture never consumes) selects the nearest data point and reveals
+ * its value instead of showing every point's value always.
  */
 @Composable
 fun SwipeableTrendChartCard(
@@ -59,19 +62,22 @@ fun SwipeableTrendChartCard(
     labels: List<String>,
     series: List<ChartSeries>,
     valueFormatter: (Float) -> String,
-    modifier: Modifier = Modifier,
-    showValueLabels: Boolean = false
+    modifier: Modifier = Modifier
 ) {
     if (labels.isEmpty()) return
 
     var chartType by remember { mutableStateOf(ChartType.AREA) }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
+    var selectedIndex by remember(labels) { mutableStateOf<Int?>(null) }
     val density = LocalDensity.current
     val swipeThresholdPx = with(density) { SwipeThreshold.toPx() }
 
     val allValues = series.flatMap { it.values }.filterNotNull()
-    val maxValue = (allValues.maxOrNull() ?: 1f).coerceAtLeast(0f).let { if (it == 0f) 1f else it }
-    val minValue = (allValues.minOrNull() ?: 0f).coerceAtMost(0f)
+    val rawMax = (allValues.maxOrNull() ?: 0f).coerceAtLeast(0f)
+    val rawMin = (allValues.minOrNull() ?: 0f).coerceAtMost(0f)
+    val ticks = niceTicks(rawMin, rawMax)
+    val minValue = ticks.first()
+    val maxValue = ticks.last()
     val labelIndices = remember(labels.size) { selectLabelIndices(labels.size) }
 
     Card(
@@ -125,71 +131,81 @@ fun SwipeableTrendChartCard(
                 }
             }
 
-            if (showValueLabels) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    labelIndices.forEach { index ->
-                        val value = series.firstOrNull()?.values?.getOrNull(index)
-                        Text(
-                            value?.let(valueFormatter) ?: "—",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
+            selectedIndex?.let { index ->
+                Text(
+                    selectedPointDescription(labels[index], series, index, valueFormatter),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
             }
 
-            Canvas(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = if (showValueLabels) 4.dp else 16.dp)
-                    .height(ChartHeight)
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(
-                            onDragEnd = { dragAccumulator = 0f },
-                            onDragCancel = { dragAccumulator = 0f },
-                            onHorizontalDrag = { change, dragAmount ->
-                                dragAccumulator += dragAmount
-                                if (abs(dragAccumulator) > swipeThresholdPx) {
-                                    chartType = if (chartType == ChartType.AREA) ChartType.LINE else ChartType.AREA
-                                    dragAccumulator = 0f
-                                }
-                                change.consume()
+            Row(modifier = Modifier.padding(top = 16.dp)) {
+                ChartAxisScale(ticks = ticks, height = ChartHeight, valueFormatter = valueFormatter)
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(ChartHeight)
+                            .pointerInput(Unit) {
+                                detectHorizontalDragGestures(
+                                    onDragEnd = { dragAccumulator = 0f },
+                                    onDragCancel = { dragAccumulator = 0f },
+                                    onHorizontalDrag = { change, dragAmount ->
+                                        dragAccumulator += dragAmount
+                                        if (abs(dragAccumulator) > swipeThresholdPx) {
+                                            chartType = if (chartType == ChartType.AREA) ChartType.LINE else ChartType.AREA
+                                            dragAccumulator = 0f
+                                        }
+                                        change.consume()
+                                    }
+                                )
                             }
-                        )
+                            .pointerInput(labels) {
+                                detectTapGestures(
+                                    onTap = { offset ->
+                                        val stepX = if (labels.size > 1) size.width.toFloat() / (labels.size - 1) else 0f
+                                        val index = if (stepX > 0f) {
+                                            (offset.x / stepX).roundToInt().coerceIn(0, labels.size - 1)
+                                        } else {
+                                            0
+                                        }
+                                        selectedIndex = if (selectedIndex == index) null else index
+                                    }
+                                )
+                            }
+                    ) {
+                        series.forEach { s ->
+                            drawTrendSeries(
+                                values = s.values,
+                                color = s.color,
+                                minValue = minValue,
+                                maxValue = maxValue,
+                                filled = chartType == ChartType.AREA
+                            )
+                        }
+                        selectedIndex?.let { index ->
+                            drawSelectionGuide(index, labels.size, series, minValue, maxValue)
+                        }
                     }
-            ) {
-                series.forEach { s ->
-                    drawTrendSeries(
-                        values = s.values,
-                        color = s.color,
-                        minValue = minValue,
-                        maxValue = maxValue,
-                        filled = chartType == ChartType.AREA
-                    )
-                }
-            }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                labelIndices.forEach { index ->
-                    Text(
-                        labels[index],
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        labelIndices.forEach { index ->
+                            Text(
+                                labels[index],
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -267,4 +283,29 @@ private fun DrawScope.drawRun(
         color,
         style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
     )
+}
+
+/** A vertical guide line at the selected index, plus a dot per series that has a value there. */
+private fun DrawScope.drawSelectionGuide(
+    index: Int,
+    labelCount: Int,
+    series: List<ChartSeries>,
+    minValue: Float,
+    maxValue: Float
+) {
+    val stepX = if (labelCount > 1) size.width / (labelCount - 1) else 0f
+    val x = index * stepX
+    val range = (maxValue - minValue).takeIf { it > 0f } ?: 1f
+    fun yFor(value: Float) = size.height - ((value - minValue) / range) * size.height
+
+    drawLine(
+        color = Color.Gray.copy(alpha = 0.4f),
+        start = Offset(x, 0f),
+        end = Offset(x, size.height),
+        strokeWidth = 1.dp.toPx()
+    )
+    series.forEach { s ->
+        val value = s.values.getOrNull(index) ?: return@forEach
+        drawCircle(s.color, radius = 4.dp.toPx(), center = Offset(x, yFor(value)))
+    }
 }

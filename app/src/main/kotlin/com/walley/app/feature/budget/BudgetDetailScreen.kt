@@ -551,8 +551,8 @@ private fun SummaryTabContent(
                 if (amount.signum() <= 0) return@mapNotNull null
                 val percent = amount.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 PieSlice(
-                    label = "${labels[index]} · ${percent.setScale(1, RoundingMode.HALF_UP)}% · " +
-                        formatMoney(amount, baseCurrency),
+                    label = labels[index],
+                    value = formatMoney(amount, baseCurrency),
                     percent = percent.toFloat(),
                     color = PieChartColors[index % PieChartColors.size]
                 )
