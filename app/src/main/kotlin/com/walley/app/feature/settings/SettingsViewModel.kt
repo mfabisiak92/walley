@@ -2,6 +2,7 @@ package com.walley.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.data.repository.IntegrationsRepository
 import com.walley.app.data.repository.SecurityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.BudgetSectionType
@@ -20,7 +21,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val repository: SettingsRepository,
-    private val securityRepository: SecurityRepository
+    private val securityRepository: SecurityRepository,
+    private val integrationsRepository: IntegrationsRepository
 ) : ViewModel() {
 
     val darkModeOverride: StateFlow<Boolean?> = repository.observeDarkModeOverride()
@@ -33,6 +35,9 @@ class SettingsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     val fingerprintUnlock: StateFlow<Boolean> = securityRepository.observeFingerprintUnlock()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val yahooFinanceEnabled: StateFlow<Boolean> = integrationsRepository.observeYahooFinanceEnabled()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val categoryTargets: StateFlow<Map<BudgetSectionType, BigDecimal?>> = combine(
@@ -63,6 +68,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setFingerprintUnlock(enabled: Boolean) {
         viewModelScope.launch { securityRepository.setFingerprintUnlock(enabled) }
+    }
+
+    fun setYahooFinanceEnabled(enabled: Boolean) {
+        viewModelScope.launch { integrationsRepository.setYahooFinanceEnabled(enabled) }
     }
 
     fun setCategoryTarget(section: BudgetSectionType, percent: BigDecimal?) {

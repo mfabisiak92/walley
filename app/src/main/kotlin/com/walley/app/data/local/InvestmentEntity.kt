@@ -1,10 +1,12 @@
 package com.walley.app.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentCategory
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @Entity(tableName = "investments")
 data class InvestmentEntity(
@@ -14,5 +16,9 @@ data class InvestmentEntity(
     val category: InvestmentCategory = InvestmentCategory.STOCK,
     val currency: Currency,
     val currentPrice: BigDecimal,
-    val accountId: Long? = null
+    val accountId: Long? = null,
+    val lastPriceUpdate: LocalDate? = null,
+    // Column kept as "exchange" (from when this held a Twelve Data exchange code) to avoid another
+    // migration — it now holds a full Yahoo Finance symbol instead.
+    @ColumnInfo(name = "exchange") val externalTicker: String? = null
 )

@@ -22,6 +22,12 @@ class Converters {
     fun toLocalDate(value: String): LocalDate = LocalDate.parse(value)
 
     @TypeConverter
+    fun fromLocalDateNullable(date: LocalDate?): String? = date?.toString()
+
+    @TypeConverter
+    fun toLocalDateNullable(value: String?): LocalDate? = value?.let { LocalDate.parse(it) }
+
+    @TypeConverter
     fun fromBudgetSectionType(section: BudgetSectionType): String = section.name
 
     @TypeConverter

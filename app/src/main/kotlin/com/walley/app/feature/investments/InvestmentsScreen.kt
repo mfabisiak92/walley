@@ -236,10 +236,11 @@ private fun PortfolioListPage(
         AddInvestmentDialog(
             investmentAccounts = investmentAccounts,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, ticker, category, purchaseDate, quantity, currency, price, currentPrice, accountId, commission ->
+            onConfirm = { name, ticker, externalTicker, category, purchaseDate, quantity, currency, price, currentPrice, accountId, commission ->
                 viewModel.addInvestment(
                     name,
                     ticker,
+                    externalTicker,
                     category,
                     purchaseDate,
                     quantity,
@@ -259,8 +260,8 @@ private fun PortfolioListPage(
             investment = investment,
             investmentAccounts = investmentAccounts,
             onDismiss = { editingInvestment = null },
-            onSave = { name, ticker, category, accountId ->
-                viewModel.updateInvestmentDetails(investment.id, name, ticker, category, accountId)
+            onSave = { name, ticker, externalTicker, category, accountId ->
+                viewModel.updateInvestmentDetails(investment.id, name, ticker, externalTicker, category, accountId)
                 editingInvestment = null
             }
         )

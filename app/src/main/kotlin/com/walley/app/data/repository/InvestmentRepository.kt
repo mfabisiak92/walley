@@ -8,6 +8,13 @@ import java.math.BigDecimal
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
+/** Result of fetching one investment's price from the market data provider. */
+sealed interface PriceFetchOutcome {
+    data class Success(val price: BigDecimal) : PriceFetchOutcome
+    /** [reason] is shown to the user, e.g. an API error message or a currency mismatch explanation. */
+    data class NotFound(val reason: String) : PriceFetchOutcome
+}
+
 interface InvestmentRepository {
     fun observeInvestments(): Flow<List<InvestmentWithTransactions>>
     fun observeInvestment(investmentId: Long): Flow<InvestmentWithTransactions?>
@@ -22,7 +29,8 @@ interface InvestmentRepository {
         firstPurchaseDate: LocalDate,
         initialQuantity: BigDecimal,
         initialPrice: BigDecimal,
-        initialCommission: BigDecimal = BigDecimal.ZERO
+        initialCommission: BigDecimal = BigDecimal.ZERO,
+        externalTicker: String? = null
     )
 
     suspend fun updateInvestmentDetails(
@@ -30,11 +38,15 @@ interface InvestmentRepository {
         name: String,
         ticker: String,
         category: InvestmentCategory,
-        accountId: Long
+        accountId: Long,
+        externalTicker: String? = null
     )
 
     suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal)
     suspend fun deleteInvestment(investmentId: Long)
+
+    /** Fetches current market prices for [investmentIds] and applies any that resolve successfully. */
+    suspend fun refreshMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome>
 
     suspend fun addTransaction(
         investmentId: Long,

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
@@ -37,6 +38,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -44,6 +46,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -51,6 +55,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,15 +96,29 @@ fun InvestmentDetailScreen(
     val linkedAccount by viewModel.linkedAccount.collectAsStateWithLifecycle()
     val investmentsInAccount by viewModel.investmentsInAccount.collectAsStateWithLifecycle()
     val strategy by viewModel.strategy.collectAsStateWithLifecycle()
+    val marketDataConfigured by viewModel.marketDataConfigured.collectAsStateWithLifecycle()
+    val isRefreshingPrice by viewModel.isRefreshingPrice.collectAsStateWithLifecycle()
+    val priceNotFoundReason by viewModel.priceNotFoundReason.collectAsStateWithLifecycle()
     val pagerState = rememberPagerState(pageCount = { TABS.size })
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var pendingTransactionType by remember { mutableStateOf<InvestmentTransactionType?>(null) }
     var editingTransaction by remember { mutableStateOf<InvestmentTransaction?>(null) }
     var pendingDeleteTransaction by remember { mutableStateOf<InvestmentTransaction?>(null) }
     var showUpdatePriceDialog by remember { mutableStateOf(false) }
     var showDeleteInvestmentConfirm by remember { mutableStateOf(false) }
 
+    LaunchedEffect(priceNotFoundReason) {
+        val reason = priceNotFoundReason
+        if (reason != null) {
+            val ticker = data?.investment?.ticker
+            scope.launch { snackbarHostState.showSnackbar("${ticker ?: "Price"}: $reason") }
+            viewModel.dismissPriceNotFound()
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -163,7 +182,10 @@ fun InvestmentDetailScreen(
                         data = current,
                         strategy = strategy,
                         onClickCurrentPrice = { showUpdatePriceDialog = true },
-                        onClickStrategy = onOpenEquity
+                        onClickStrategy = onOpenEquity,
+                        showRefreshPriceButton = marketDataConfigured,
+                        isRefreshingPrice = isRefreshingPrice,
+                        onRefreshPrice = viewModel::refreshPrice
                     )
                     else -> EventsTab(
                         data = current,
@@ -262,7 +284,10 @@ private fun OverviewTab(
     data: InvestmentWithTransactions,
     strategy: WatchedEquityWithNotes?,
     onClickCurrentPrice: () -> Unit,
-    onClickStrategy: (Long) -> Unit
+    onClickStrategy: (Long) -> Unit,
+    showRefreshPriceButton: Boolean,
+    isRefreshingPrice: Boolean,
+    onRefreshPrice: () -> Unit
 ) {
     val investment = data.investment
     Column(
@@ -308,8 +333,25 @@ private fun OverviewTab(
                         "Current price",
                         formatMoney(investment.currentPrice, investment.currency),
                         // A closed position's price never affects anything shown (value and gain/loss
-                        // are both zero regardless of it), so editing it here would be pointless.
-                        onClick = if (data.quantity.signum() == 0) null else onClickCurrentPrice
+                        // are both zero regardless of it), so editing/refreshing it here would be pointless.
+                        onClick = if (data.quantity.signum() == 0) null else onClickCurrentPrice,
+                        trailingIcon = if (showRefreshPriceButton && data.quantity.signum() != 0) {
+                            {
+                                if (isRefreshingPrice) {
+                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                } else {
+                                    Icon(
+                                        Icons.Filled.Refresh,
+                                        contentDescription = "Refresh price",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                        onTrailingIconClick = if (isRefreshingPrice) null else onRefreshPrice
                     )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
@@ -356,7 +398,13 @@ private fun UnrealizedGainBadge(amount: BigDecimal, percent: BigDecimal?, curren
 }
 
 @Composable
-private fun RowScope.StatTile(label: String, value: String, onClick: (() -> Unit)? = null) {
+private fun RowScope.StatTile(
+    label: String,
+    value: String,
+    onClick: (() -> Unit)? = null,
+    trailingIcon: (@Composable () -> Unit)? = null,
+    onTrailingIconClick: (() -> Unit)? = null
+) {
     Surface(
         modifier = Modifier.weight(1f),
         color = MaterialTheme.colorScheme.surfaceVariant,
@@ -371,13 +419,24 @@ private fun RowScope.StatTile(label: String, value: String, onClick: (() -> Unit
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (onClick != null) {
-                    Icon(
-                        Icons.Filled.Edit,
-                        contentDescription = "Edit $label",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (trailingIcon != null) {
+                        Box(
+                            modifier = if (onTrailingIconClick != null) {
+                                Modifier.clickable(onClick = onTrailingIconClick)
+                            } else {
+                                Modifier
+                            }
+                        ) { trailingIcon() }
+                    }
+                    if (onClick != null) {
+                        Icon(
+                            Icons.Filled.Edit,
+                            contentDescription = "Edit $label",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(4.dp))

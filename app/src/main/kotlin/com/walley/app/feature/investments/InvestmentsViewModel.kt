@@ -43,6 +43,7 @@ class InvestmentsViewModel @Inject constructor(
     fun addInvestment(
         name: String,
         ticker: String,
+        externalTicker: String?,
         category: InvestmentCategory,
         purchaseDate: LocalDate,
         quantity: BigDecimal,
@@ -63,7 +64,8 @@ class InvestmentsViewModel @Inject constructor(
                 purchaseDate,
                 quantity,
                 price,
-                commission
+                commission,
+                externalTicker
             )
         }
     }
@@ -72,9 +74,12 @@ class InvestmentsViewModel @Inject constructor(
         investmentId: Long,
         name: String,
         ticker: String,
+        externalTicker: String?,
         category: InvestmentCategory,
         accountId: Long
     ) {
-        viewModelScope.launch { repository.updateInvestmentDetails(investmentId, name, ticker, category, accountId) }
+        viewModelScope.launch {
+            repository.updateInvestmentDetails(investmentId, name, ticker, category, accountId, externalTicker)
+        }
     }
 }

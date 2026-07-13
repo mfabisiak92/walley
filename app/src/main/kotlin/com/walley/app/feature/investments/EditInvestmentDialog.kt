@@ -35,12 +35,14 @@ fun EditInvestmentDialog(
     onSave: (
         name: String,
         ticker: String,
+        externalTicker: String?,
         category: InvestmentCategory,
         accountId: Long
     ) -> Unit
 ) {
     var name by remember { mutableStateOf(investment.name) }
     var ticker by remember { mutableStateOf(investment.ticker) }
+    var externalTicker by remember { mutableStateOf(investment.externalTicker.orEmpty()) }
     var category by remember { mutableStateOf(investment.category) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var accountId by remember { mutableStateOf(investment.accountId) }
@@ -79,6 +81,13 @@ fun EditInvestmentDialog(
                     onValueChange = { ticker = it },
                     label = { Text("Ticker") },
                     singleLine = true
+                )
+                OutlinedTextField(
+                    value = externalTicker,
+                    onValueChange = { externalTicker = it },
+                    label = { Text("External ticker (optional, e.g. PZU.WA)") },
+                    singleLine = true,
+                    supportingText = { Text("Yahoo Finance symbol, for automatic price refresh") }
                 )
                 ExposedDropdownMenuBox(
                     expanded = categoryMenuExpanded,
@@ -121,7 +130,13 @@ fun EditInvestmentDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onSave(name.trim(), ticker.trim().uppercase(), category, selectedAccount!!.id)
+                    onSave(
+                        name.trim(),
+                        ticker.trim().uppercase(),
+                        externalTicker.trim().uppercase().ifBlank { null },
+                        category,
+                        selectedAccount!!.id
+                    )
                 },
                 enabled = isValid
             ) { Text("Save") }

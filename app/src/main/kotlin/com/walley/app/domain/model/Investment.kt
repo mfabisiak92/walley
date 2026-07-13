@@ -16,7 +16,11 @@ data class Investment(
     val category: InvestmentCategory,
     val currency: Currency,
     val currentPrice: BigDecimal,
-    val accountId: Long? = null
+    val accountId: Long? = null,
+    /** Null means the price has never been refreshed (e.g. investments created before this field existed). */
+    val lastPriceUpdate: LocalDate? = null,
+    /** The Yahoo Finance symbol for this instrument (e.g. "PZU.WA"), set once per investment. Null falls back to [ticker] as-is, which is fine for tickers Yahoo resolves without a suffix (e.g. most US ones). */
+    val externalTicker: String? = null
 )
 
 data class InvestmentTransaction(

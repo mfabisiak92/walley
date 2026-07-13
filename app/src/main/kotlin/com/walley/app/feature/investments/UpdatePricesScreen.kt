@@ -17,9 +17,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -47,7 +50,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Investment
 import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import kotlinx.coroutines.launch
+
+/** A price not refreshed within this many days is flagged as stale in the UI. */
+private const val STALE_PRICE_THRESHOLD_DAYS = 3L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +64,22 @@ fun UpdatePricesScreen(
     viewModel: UpdatePricesViewModel = hiltViewModel()
 ) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
+    val refreshingIds by viewModel.refreshingIds.collectAsStateWithLifecycle()
+    val failedRefreshReasons by viewModel.failedRefreshReasons.collectAsStateWithLifecycle()
+    val marketDataConfigured by viewModel.marketDataConfigured.collectAsStateWithLifecycle()
     val priceTexts = remember { mutableStateMapOf<Long, String>() }
+    // Tracks the currentPrice each text field was last seeded from, so a market refresh (which
+    // changes currentPrice in the DB) overwrites the field, while an unsaved manual edit (which
+    // doesn't) is left alone.
+    val seededPrices = remember { mutableStateMapOf<Long, BigDecimal>() }
     val scope = rememberCoroutineScope()
 
     investments.forEach { investment ->
-        if (investment.id !in priceTexts) priceTexts[investment.id] = investment.currentPrice.toPlainString()
+        val seeded = seededPrices[investment.id]
+        if (seeded == null || seeded.compareTo(investment.currentPrice) != 0) {
+            priceTexts[investment.id] = investment.currentPrice.toPlainString()
+            seededPrices[investment.id] = investment.currentPrice
+        }
     }
 
     val parsedPrices = investments.associate { it.id to priceTexts[it.id]?.toBigDecimalOrNull() }
@@ -73,6 +92,15 @@ fun UpdatePricesScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (refreshingIds.isNotEmpty()) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp).padding(end = 12.dp))
+                    } else if (marketDataConfigured) {
+                        IconButton(onClick = { viewModel.refreshFromMarket() }) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh all prices from market")
+                        }
                     }
                 }
             )
@@ -107,12 +135,27 @@ fun UpdatePricesScreen(
                 .fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp)
         ) {
+            if (!marketDataConfigured) {
+                item {
+                    Text(
+                        "Enable Yahoo Finance integration in Settings to refresh prices automatically.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+                }
+            }
             itemsIndexed(investments, key = { _, investment -> investment.id }) { index, investment ->
                 if (index > 0) HorizontalDivider()
                 UpdatePriceRow(
                     investment = investment,
                     priceText = priceTexts[investment.id].orEmpty(),
-                    onPriceChange = { priceTexts[investment.id] = it }
+                    onPriceChange = { priceTexts[investment.id] = it },
+                    priceNotFoundReason = failedRefreshReasons[investment.id],
+                    showRefreshButton = marketDataConfigured,
+                    isRefreshingThis = investment.id in refreshingIds,
+                    refreshDisabled = refreshingIds.isNotEmpty(),
+                    onRefresh = { viewModel.refreshOne(investment.id) }
                 )
             }
         }
@@ -124,7 +167,12 @@ fun UpdatePricesScreen(
 private fun UpdatePriceRow(
     investment: Investment,
     priceText: String,
-    onPriceChange: (String) -> Unit
+    onPriceChange: (String) -> Unit,
+    priceNotFoundReason: String?,
+    showRefreshButton: Boolean,
+    isRefreshingThis: Boolean,
+    refreshDisabled: Boolean,
+    onRefresh: () -> Unit
 ) {
     val parsed = priceText.toBigDecimalOrNull()
     val isValid = parsed?.let { it.signum() > 0 } == true
@@ -132,6 +180,8 @@ private fun UpdatePriceRow(
     val isIncrease = hasChanged && parsed!!.compareTo(investment.currentPrice) > 0
     val interactionSource = remember { MutableInteractionSource() }
     val textColor = MaterialTheme.colorScheme.onSurface
+    val daysSinceUpdate = investment.lastPriceUpdate?.let { ChronoUnit.DAYS.between(it, LocalDate.now()) }
+    val isStale = daysSinceUpdate == null || daysSinceUpdate >= STALE_PRICE_THRESHOLD_DAYS
 
     Column(
         modifier = Modifier
@@ -150,6 +200,19 @@ private fun UpdatePriceRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+            if (showRefreshButton) {
+                IconButton(onClick = onRefresh, enabled = !refreshDisabled, modifier = Modifier.size(32.dp)) {
+                    if (isRefreshingThis) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = "Refresh price for ${investment.ticker}",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
             BasicTextField(
                 value = priceText,
                 onValueChange = onPriceChange,
@@ -178,6 +241,32 @@ private fun UpdatePriceRow(
                             colors = OutlinedTextFieldDefaults.colors()
                         )
                     }
+                )
+            }
+        }
+        if (priceNotFoundReason != null || isStale) {
+            val warningColor = MaterialTheme.colorScheme.error
+            val message = when {
+                priceNotFoundReason != null -> "${investment.ticker}: $priceNotFoundReason"
+                daysSinceUpdate == null -> "Price never updated"
+                else -> "Not updated in $daysSinceUpdate day${if (daysSinceUpdate == 1L) "" else "s"}"
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Filled.Warning,
+                    contentDescription = "Warning",
+                    modifier = Modifier.size(14.dp),
+                    tint = warningColor
+                )
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = warningColor,
+                    modifier = Modifier.padding(start = 4.dp)
                 )
             }
         }

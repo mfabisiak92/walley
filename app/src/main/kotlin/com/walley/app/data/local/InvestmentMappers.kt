@@ -10,7 +10,9 @@ fun InvestmentEntity.toDomain(): Investment = Investment(
     category = category,
     currency = currency,
     currentPrice = currentPrice,
-    accountId = accountId
+    accountId = accountId,
+    lastPriceUpdate = lastPriceUpdate,
+    externalTicker = externalTicker
 )
 
 fun InvestmentTransactionEntity.toDomain(): InvestmentTransaction = InvestmentTransaction(

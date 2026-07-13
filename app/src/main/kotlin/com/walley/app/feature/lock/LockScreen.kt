@@ -1,7 +1,5 @@
 package com.walley.app.feature.lock
 
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,9 +27,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.biometric.biometricsAvailable
+import com.walley.app.core.biometric.promptBiometrics
 
 @Composable
 fun LockScreen(
@@ -44,28 +43,17 @@ fun LockScreen(
 
     val context = LocalContext.current
     val activity = context as? FragmentActivity
-    val biometricsAvailable = remember {
-        BiometricManager.from(context)
-            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS
-    }
+    val biometricsAvailable = remember { biometricsAvailable(context) }
     val showFingerprint = fingerprintEnabled && biometricsAvailable && activity != null
 
     fun promptBiometrics() {
-        val prompt = BiometricPrompt(
-            activity!!,
-            ContextCompat.getMainExecutor(context),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    viewModel.unlockWithBiometrics()
-                }
-            }
+        promptBiometrics(
+            activity = activity!!,
+            context = context,
+            title = "Unlock Walley",
+            negativeButtonText = "Use PIN",
+            onSuccess = viewModel::unlockWithBiometrics
         )
-        val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Unlock Walley")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_WEAK)
-            .setNegativeButtonText("Use PIN")
-            .build()
-        prompt.authenticate(promptInfo)
     }
 
     LaunchedEffect(showFingerprint) {

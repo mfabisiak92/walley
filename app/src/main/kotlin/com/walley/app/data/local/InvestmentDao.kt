@@ -21,6 +21,9 @@ interface InvestmentDao {
     @Query("SELECT * FROM investments WHERE accountId = :accountId AND ticker = :ticker LIMIT 1")
     suspend fun findByAccountAndTicker(accountId: Long, ticker: String): InvestmentEntity?
 
+    @Query("SELECT * FROM investments WHERE id = :investmentId")
+    suspend fun findById(investmentId: Long): InvestmentEntity?
+
     @Query("SELECT * FROM investment_transactions")
     fun observeAllTransactions(): Flow<List<InvestmentTransactionEntity>>
 
@@ -36,7 +39,7 @@ interface InvestmentDao {
     @Query(
         """
         UPDATE investments
-        SET name = :name, ticker = :ticker, category = :category, accountId = :accountId
+        SET name = :name, ticker = :ticker, category = :category, accountId = :accountId, exchange = :externalTicker
         WHERE id = :investmentId
         """
     )
@@ -45,7 +48,8 @@ interface InvestmentDao {
         name: String,
         ticker: String,
         category: InvestmentCategory,
-        accountId: Long?
+        accountId: Long?,
+        externalTicker: String?
     )
 
     @Query(
@@ -64,8 +68,8 @@ interface InvestmentDao {
         commission: BigDecimal
     )
 
-    @Query("UPDATE investments SET currentPrice = :currentPrice WHERE id = :investmentId")
-    suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal)
+    @Query("UPDATE investments SET currentPrice = :currentPrice, lastPriceUpdate = :lastPriceUpdate WHERE id = :investmentId")
+    suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal, lastPriceUpdate: LocalDate)
 
     @Query("DELETE FROM investments WHERE id = :investmentId")
     suspend fun delete(investmentId: Long)

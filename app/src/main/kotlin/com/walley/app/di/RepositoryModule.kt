@@ -12,6 +12,8 @@ import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.BudgetRepositoryImpl
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.ExchangeRateRepositoryImpl
+import com.walley.app.data.repository.IntegrationsRepository
+import com.walley.app.data.repository.IntegrationsRepositoryImpl
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.InvestmentRepositoryImpl
 import com.walley.app.data.repository.LiabilityRepository
@@ -68,4 +70,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindAccountOperationRepository(impl: AccountOperationRepositoryImpl): AccountOperationRepository
+
+    @Binds
+    abstract fun bindIntegrationsRepository(impl: IntegrationsRepositoryImpl): IntegrationsRepository
 }

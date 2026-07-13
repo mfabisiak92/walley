@@ -10,6 +10,14 @@ import kotlin.math.pow
 private data class CashFlow(val date: LocalDate, val amount: Double)
 
 /**
+ * Below this holding period, annualizing a return is meaningless rather than just imprecise: compounding
+ * even a small short-term move out to a full year explodes into absurd magnitudes (e.g. a position held
+ * 1 day that's up 2% annualizes to roughly +2%^365 ≈ millions of percent) — unbounded on the upside, only
+ * loosely floored near -100% on the downside. [xirr] and [cagr] both return null under this span.
+ */
+private const val MIN_ANNUALIZATION_DAYS = 30
+
+/**
  * Money-weighted annualized return (XIRR), as a percentage (e.g. 14.2 means 14.2%/year), computed
  * entirely in this position's own currency — never converted, since only *current* FX rates are
  * cached (no historical rate storage), and a cross-currency XIRR would silently misstate the return.
@@ -18,8 +26,8 @@ private data class CashFlow(val date: LocalDate, val amount: Double)
  * SELL's as a positive inflow on its date, plus — if [InvestmentWithTransactions.quantity] is still
  * positive as of [asOf] — a final synthetic inflow of [InvestmentWithTransactions.currentValue] dated
  * [asOf], as if the remaining position were liquidated today. Null when there are fewer than 2 cash
- * flows, all flows share a sign (no valid root), all flows share one date (no time value to solve
- * for), or the solver can't converge.
+ * flows, all flows share a sign (no valid root), the flows span fewer than [MIN_ANNUALIZATION_DAYS]
+ * days (no meaningful annualization), or the solver can't converge.
  */
 fun InvestmentWithTransactions.xirr(asOf: LocalDate = LocalDate.now()): BigDecimal? {
     val flows = transactions.map { t ->
@@ -38,13 +46,13 @@ fun InvestmentWithTransactions.xirr(asOf: LocalDate = LocalDate.now()): BigDecim
  * Simple point-to-point annualized return, as a percentage — treats all capital invested as a single
  * lump sum from [InvestmentWithTransactions.firstPurchaseDate] to [asOf], ignoring the timing of
  * interim buys/sells (unlike [xirr]). `beginValue` is the total BUY cost, `endValue` is current value
- * plus everything already returned via SELLs. Null when there's no purchase history, the span is 0
- * days, or `beginValue` isn't positive (no meaningful ratio to take a root of).
+ * plus everything already returned via SELLs. Null when there's no purchase history, the span is under
+ * [MIN_ANNUALIZATION_DAYS] days, or `beginValue` isn't positive (no meaningful ratio to take a root of).
  */
 fun InvestmentWithTransactions.cagr(asOf: LocalDate = LocalDate.now()): BigDecimal? {
     val start = firstPurchaseDate ?: return null
     val days = ChronoUnit.DAYS.between(start, asOf)
-    if (days <= 0) return null
+    if (days < MIN_ANNUALIZATION_DAYS) return null
 
     val beginValue = transactions
         .filter { it.type == InvestmentTransactionType.BUY }
@@ -77,7 +85,7 @@ private fun solveXirr(cashFlows: List<CashFlow>): Double? {
 
     val earliestDay = cashFlows.minOf { it.date }.toEpochDay().toDouble()
     val latestDay = cashFlows.maxOf { it.date }.toEpochDay().toDouble()
-    if (earliestDay == latestDay) return null
+    if (latestDay - earliestDay < MIN_ANNUALIZATION_DAYS) return null
 
     val years = cashFlows.map { (it.date.toEpochDay().toDouble() - earliestDay) / 365.0 }
     val amounts = cashFlows.map { it.amount }

@@ -87,6 +87,14 @@ class InvestmentPerformanceTest {
     }
 
     @Test
+    fun `xirr returns null for a holding period under the minimum annualization window`() {
+        // Bought 5 days ago and up slightly — annualizing a few days' move would blow up into an
+        // absurd percentage rather than a meaningful rate, so this must come back null, not a number.
+        val position = InvestmentWithTransactions(investment, listOf(buy("2026-01-01", "100", "10")))
+        assertNull(position.xirr(asOf = LocalDate.parse("2026-01-06")))
+    }
+
+    @Test
     fun `cagr returns null when there is no purchase date`() {
         val position = InvestmentWithTransactions(investment, emptyList())
         assertNull(position.cagr())
@@ -96,6 +104,12 @@ class InvestmentPerformanceTest {
     fun `cagr returns null when begin value is zero`() {
         val position = InvestmentWithTransactions(investment, listOf(buy("2024-01-01", "0", "10")))
         assertNull(position.cagr(asOf = LocalDate.parse("2025-01-01")))
+    }
+
+    @Test
+    fun `cagr returns null for a holding period under the minimum annualization window`() {
+        val position = InvestmentWithTransactions(investment, listOf(buy("2026-01-01", "100", "10")))
+        assertNull(position.cagr(asOf = LocalDate.parse("2026-01-06")))
     }
 
     @Test

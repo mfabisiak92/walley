@@ -1,6 +1,5 @@
 package com.walley.app.feature.settings
 
-import androidx.biometric.BiometricManager
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -44,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.biometric.biometricsAvailable
 import com.walley.app.core.ui.FieldHint
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.BudgetSectionType
@@ -106,16 +106,14 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState:
     val fingerprintUnlock by viewModel.fingerprintUnlock.collectAsStateWithLifecycle()
     val changePinError by viewModel.changePinError.collectAsStateWithLifecycle()
     val changePinSuccess by viewModel.changePinSuccess.collectAsStateWithLifecycle()
+    val yahooFinanceEnabled by viewModel.yahooFinanceEnabled.collectAsStateWithLifecycle()
     val isDarkMode = darkModeOverride ?: isSystemInDarkTheme()
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     var showChangePinDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
-    val biometricsAvailable = remember {
-        BiometricManager.from(context)
-            .canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_WEAK) == BiometricManager.BIOMETRIC_SUCCESS
-    }
+    val biometricsAvailable = remember { biometricsAvailable(context) }
 
     LaunchedEffect(changePinSuccess) {
         if (changePinSuccess) {
@@ -223,6 +221,22 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState:
             TextButton(onClick = { showChangePinDialog = true }) {
                 Text("Change PIN")
             }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Yahoo Finance integration", style = MaterialTheme.typography.bodyLarge)
+                FieldHint(
+                    "Lets Update Prices fetch current market prices automatically. Uses an unofficial, " +
+                        "free Yahoo Finance endpoint — no account or key needed, but it isn't guaranteed " +
+                        "to stay working."
+                )
+            }
+            Switch(checked = yahooFinanceEnabled, onCheckedChange = viewModel::setYahooFinanceEnabled)
         }
     }
 

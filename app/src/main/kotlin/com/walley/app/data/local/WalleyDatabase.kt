@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 31,
+    version = 33,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -520,5 +520,23 @@ val MIGRATION_30_31 = object : Migration(30, 31) {
         // Soft-close for Saving accounts: kept in the DB (reversible), hidden from pickers used to
         // link something new, and excluded from net worth and other totals.
         db.execSQL("ALTER TABLE accounts ADD COLUMN isClosed INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_31_32 = object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Tracks when a position's price was last set (manually or via market refresh), so the UI
+        // can flag stale prices. Null for existing investments — they show as never-updated until
+        // touched, same as any newly added position before its first price set.
+        db.execSQL("ALTER TABLE investments ADD COLUMN lastPriceUpdate TEXT")
+    }
+}
+
+val MIGRATION_32_33 = object : Migration(32, 33) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Disambiguates a ticker across exchanges (e.g. "CDR" also exists on TSX/ASX) for market-data
+        // lookups — plain symbol search often can't resolve a ticker without it. Null for existing
+        // investments until the user sets one.
+        db.execSQL("ALTER TABLE investments ADD COLUMN exchange TEXT")
     }
 }

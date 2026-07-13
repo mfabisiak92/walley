@@ -49,6 +49,7 @@ fun AddInvestmentDialog(
     onConfirm: (
         name: String,
         ticker: String,
+        externalTicker: String?,
         category: InvestmentCategory,
         purchaseDate: LocalDate,
         quantity: BigDecimal,
@@ -61,6 +62,7 @@ fun AddInvestmentDialog(
 ) {
     var name by remember { mutableStateOf("") }
     var ticker by remember { mutableStateOf("") }
+    var externalTicker by remember { mutableStateOf("") }
     var category by remember { mutableStateOf(InvestmentCategory.STOCK) }
     var categoryMenuExpanded by remember { mutableStateOf(false) }
     var purchaseDate by remember { mutableStateOf(LocalDate.now()) }
@@ -114,6 +116,13 @@ fun AddInvestmentDialog(
                     onValueChange = { ticker = it },
                     label = { Text("Ticker") },
                     singleLine = true
+                )
+                OutlinedTextField(
+                    value = externalTicker,
+                    onValueChange = { externalTicker = it },
+                    label = { Text("External ticker (optional, e.g. PZU.WA)") },
+                    singleLine = true,
+                    supportingText = { Text("Yahoo Finance symbol, for automatic price refresh") }
                 )
                 ExposedDropdownMenuBox(
                     expanded = categoryMenuExpanded,
@@ -209,6 +218,7 @@ fun AddInvestmentDialog(
                     onConfirm(
                         name.trim(),
                         ticker.trim().uppercase(),
+                        externalTicker.trim().uppercase().ifBlank { null },
                         category,
                         purchaseDate,
                         parsedQuantity!!,
