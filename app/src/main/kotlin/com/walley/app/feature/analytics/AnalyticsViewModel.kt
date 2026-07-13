@@ -6,9 +6,11 @@ import com.walley.app.core.ui.InvestmentCategoryColors
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.InvestmentRepository
+import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.BudgetSectionType
@@ -19,12 +21,15 @@ import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.domain.model.InvestmentTransactionType
+import com.walley.app.domain.model.cagr
+import com.walley.app.domain.model.xirr
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
 import com.walley.app.feature.budget.convertToCurrency
 import com.walley.app.feature.budget.disposableIncome
 import com.walley.app.feature.budget.sectionTotal
+import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -41,6 +46,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 data class BudgetHistoryPoint(
+    val yearMonth: YearMonth,
     val label: String,
     val income: BigDecimal?,
     val expenses: BigDecimal?,
@@ -57,7 +63,17 @@ data class InvestmentYearPoint(
     val contributions: BigDecimal
 )
 
+/** [xirr]/[cagr] are each in [currency] (the position's own) — never converted, see their KDoc. */
+data class InvestmentPerformancePoint(
+    val name: String,
+    val ticker: String,
+    val currency: Currency,
+    val xirr: BigDecimal?,
+    val cagr: BigDecimal?
+)
+
 data class SnapshotPoint(
+    val yearMonth: YearMonth,
     val label: String,
     val cashAndChecking: BigDecimal,
     val savings: BigDecimal,
@@ -77,6 +93,8 @@ class AnalyticsViewModel @Inject constructor(
     snapshotRepository: SnapshotRepository,
     investmentRepository: InvestmentRepository,
     accountRepository: AccountRepository,
+    assetRepository: AssetRepository,
+    liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -87,16 +105,34 @@ class AnalyticsViewModel @Inject constructor(
     val baseCurrency: StateFlow<Currency> = settingsRepository.observeBaseCurrency()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
 
+    /** Real (non-Draft) budgets, oldest first — the shared basis for every budget-derived trend below. */
+    private val nonDraftBudgetsWithItems = budgetRepository.observeBudgetsWithItems()
+        .map { budgetsWithItems ->
+            budgetsWithItems
+                // Drafts aren't real budgets yet, so they'd only skew the trend with incomplete data.
+                .filter { it.budget.status != BudgetStatus.DRAFT }
+                .sortedWith(compareBy({ it.budget.year }, { it.budget.month }))
+        }
+
     val history: StateFlow<List<BudgetHistoryPoint>> = combine(
-        budgetRepository.observeBudgetsWithItems(),
+        nonDraftBudgetsWithItems,
         baseCurrencyRates
     ) { budgetsWithItems, (base, rates) ->
-        budgetsWithItems
-            // Drafts aren't real budgets yet, so they'd only skew the trend with incomplete data.
-            .filter { it.budget.status != BudgetStatus.DRAFT }
-            .sortedWith(compareBy({ it.budget.year }, { it.budget.month }))
-            .map { toHistoryPoint(it, base, rates) }
+        budgetsWithItems.map { toHistoryPoint(it, base, rates) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Fixed + Other costs, broken down by icon category, one point per non-Draft budget. */
+    val categorySpendPoints: StateFlow<List<CategorySpendPoint>> = combine(
+        nonDraftBudgetsWithItems,
+        baseCurrencyRates
+    ) { budgetsWithItems, (base, rates) ->
+        categorySpendHistory(budgetsWithItems, base, rates)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** [categorySpendPoints] reduced to the top 5 categories by total spend, plus an "Other" bucket. */
+    val categorySpending: StateFlow<CappedCategorySpend> = categorySpendPoints
+        .map { points -> capToTopCategories(points) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CappedCategorySpend(emptyList(), emptyList()))
 
     /** Currency snapshot amounts are shown in — the most recently recorded snapshot's base currency. */
     val snapshotCurrency: StateFlow<Currency> = snapshotRepository.observeSnapshots()
@@ -106,6 +142,59 @@ class AnalyticsViewModel @Inject constructor(
     val snapshotHistory: StateFlow<List<SnapshotPoint>> = snapshotRepository.observeSnapshots()
         .map { snapshots -> snapshots.map(::toSnapshotPoint) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Month-over-month and year-over-year net worth growth rate, one point per recorded snapshot. */
+    val netWorthGrowth: StateFlow<List<GrowthRatePoint>> = snapshotHistory
+        .map { snapshots -> netWorthGrowthRates(snapshots) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val baseCurrencyRatesAndNetWorthSettings = combine(
+        baseCurrencyRates,
+        settingsRepository.observeIncludeSavingsInNetWorth()
+    ) { (base, rates), includeSavings -> Triple(base, rates, includeSavings) }
+
+    /** Actual net worth as of today (not projected end-of-month) — the "this month" side of a comparison. */
+    private val liveNetWorth = combine(
+        accountRepository.observeAccounts(),
+        assetRepository.observeAssets(),
+        liabilityRepository.observeLiabilities(),
+        baseCurrencyRatesAndNetWorthSettings
+    ) { accounts, assets, liabilities, (base, rates, includeSavings) ->
+        calculateNetWorth(accounts, assets, liabilities, base, rates, includeSavings)
+    }
+
+    data class PeriodComparisons(
+        val income: ComparisonValue,
+        val expenses: ComparisonValue,
+        val savings: ComparisonValue,
+        val savingsRatePercent: ComparisonValue,
+        val netWorth: ComparisonValue
+    )
+
+    /** This month vs. the previous calendar month. */
+    val monthOverMonth: StateFlow<PeriodComparisons?> = periodComparisons { it.minusMonths(1) }
+
+    /** This month vs. the same month one year ago. */
+    val yearOverYear: StateFlow<PeriodComparisons?> = periodComparisons { it.minusYears(1) }
+
+    private fun periodComparisons(previousPeriod: (YearMonth) -> YearMonth): StateFlow<PeriodComparisons?> = combine(
+        history,
+        snapshotHistory,
+        liveNetWorth
+    ) { historyPoints, snapshots, currentNetWorth ->
+        val now = YearMonth.now()
+        val previousMonth = previousPeriod(now)
+        val current = findByYearMonth(historyPoints, now) { it.yearMonth }
+        val previous = findByYearMonth(historyPoints, previousMonth) { it.yearMonth }
+        val previousNetWorth = findByYearMonth(snapshots, previousMonth) { it.yearMonth }?.netWorth
+        PeriodComparisons(
+            income = compare(current?.income, previous?.income),
+            expenses = compare(current?.expenses, previous?.expenses),
+            savings = compare(current?.savings, previous?.savings),
+            savingsRatePercent = compare(current?.savingsRatePercent, previous?.savingsRatePercent),
+            netWorth = compare(currentNetWorth, previousNetWorth)
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Current value of every investment, grouped by category and converted to base currency. */
     val investmentCategoryBreakdown: StateFlow<List<PieSlice>> = combine(
@@ -193,6 +282,29 @@ class AnalyticsViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Per-position XIRR/CAGR, each in that position's own currency (never converted — see [xirr]). */
+    val investmentPerformance: StateFlow<List<InvestmentPerformancePoint>> = investmentRepository.observeInvestments()
+        .map { investments ->
+            investments.map { position ->
+                InvestmentPerformancePoint(
+                    name = position.investment.name,
+                    ticker = position.investment.ticker,
+                    currency = position.investment.currency,
+                    xirr = position.xirr(),
+                    cagr = position.cagr()
+                )
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** All-time realized + unrealized gain/loss across every position, in base currency. */
+    val portfolioGainsSummary: StateFlow<PortfolioGainsSummary?> = combine(
+        investmentRepository.observeInvestments(),
+        baseCurrencyRates
+    ) { investments, (base, rates) ->
+        portfolioGainsSummary(investments, base, rates)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** Shares each key's value as a percent of the total, largest first; drops zero/negative entries. */
     private fun toPieSlices(totalsByLabel: Map<String, BigDecimal>): List<PieSlice> {
         val total = totalsByLabel.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
@@ -226,6 +338,7 @@ class AnalyticsViewModel @Inject constructor(
         }
 
         return BudgetHistoryPoint(
+            yearMonth = budgetWithItems.budget.yearMonth,
             label = shortLabel(budgetWithItems.budget.yearMonth),
             income = sectionTotal(items, BudgetSectionType.INCOME, base, rates),
             expenses = expensesTotal,
@@ -236,6 +349,7 @@ class AnalyticsViewModel @Inject constructor(
     }
 
     private fun toSnapshotPoint(snapshot: FinancialSnapshot): SnapshotPoint = SnapshotPoint(
+        yearMonth = snapshot.yearMonth,
         label = shortLabel(snapshot.yearMonth),
         cashAndChecking = snapshot.cashAndChecking,
         savings = snapshot.savings,

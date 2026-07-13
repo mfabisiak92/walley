@@ -7,13 +7,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -32,6 +37,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,8 +45,10 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.ChartSeries
 import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
+import com.walley.app.core.ui.StackedTrendChartCard
 import com.walley.app.core.ui.SwipeableTrendChartCard
 import com.walley.app.core.ui.TrendChartCard
+import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
@@ -55,6 +63,8 @@ private enum class HistoryHorizon(val label: String, val months: Int?) {
 private fun <T> HistoryHorizon.applyTo(items: List<T>): List<T> = months?.let { items.takeLast(it) } ?: items
 
 private val TABS = listOf("Budget", "History", "Investments")
+
+private val GainColor = Color(0xFF2E7D32)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,6 +141,10 @@ private fun EmptyState(message: String) {
 private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
     val history by viewModel.history.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val categorySpendPoints by viewModel.categorySpendPoints.collectAsStateWithLifecycle()
+    val categorySpending by viewModel.categorySpending.collectAsStateWithLifecycle()
+    val monthOverMonth by viewModel.monthOverMonth.collectAsStateWithLifecycle()
+    val yearOverYear by viewModel.yearOverYear.collectAsStateWithLifecycle()
 
     if (history.isEmpty()) {
         EmptyState("No budgets yet — create one to see analytics.")
@@ -145,6 +159,9 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         val labels = history.map { it.label }
+        val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
+
+        PeriodComparisonSection(monthOverMonth, yearOverYear, baseCurrency)
 
         TrendChartCard(
             title = "Income vs Expenses vs Savings",
@@ -154,7 +171,7 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
                 ChartSeries("Expenses", PieChartColors[3], history.map { it.expenses?.toFloat() }),
                 ChartSeries("Savings", PieChartColors[5], history.map { it.savings?.toFloat() })
             ),
-            valueFormatter = { value -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
+            valueFormatter = moneyFormatter
         )
 
         TrendChartCard(
@@ -176,6 +193,159 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
             valueFormatter = { value -> "${value.toInt()}%" },
             showValueLabels = true
         )
+
+        if (categorySpending.categoryLabels.isNotEmpty()) {
+            StackedTrendChartCard(
+                title = "Spending by category",
+                labels = categorySpendPoints.map { it.label },
+                series = categorySpending.categoryLabels.mapIndexed { index, label ->
+                    ChartSeries(label, PieChartColors[index % PieChartColors.size], categorySpending.seriesByCategory[index])
+                },
+                valueFormatter = moneyFormatter,
+                showTotalLabels = true
+            )
+
+            CategoryVarianceSection(categorySpendPoints, moneyFormatter)
+        }
+    }
+}
+
+@Composable
+private fun CategoryVarianceSection(points: List<CategorySpendPoint>, moneyFormatter: (Float) -> String) {
+    val categories = remember(points) { distinctCategories(points) }
+    if (categories.isEmpty()) return
+
+    var selected by remember(categories) { mutableStateOf(categories.first()) }
+    val variance = remember(points, selected) { varianceForCategory(points, selected) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categories.forEach { category ->
+                FilterChip(
+                    selected = selected == category,
+                    onClick = { selected = category },
+                    label = { Text(category) }
+                )
+            }
+        }
+
+        TrendChartCard(
+            title = "Planned vs actual — $selected",
+            labels = variance.monthLabels,
+            series = listOf(
+                ChartSeries("Planned", PieChartColors[0], variance.planned),
+                ChartSeries("Actual", PieChartColors[3], variance.actual)
+            ),
+            valueFormatter = moneyFormatter
+        )
+    }
+}
+
+private enum class ComparisonPeriod(val label: String) {
+    LAST_MONTH("vs last month"),
+    LAST_YEAR("vs last year")
+}
+
+@Composable
+private fun PeriodComparisonSection(
+    monthOverMonth: AnalyticsViewModel.PeriodComparisons?,
+    yearOverYear: AnalyticsViewModel.PeriodComparisons?,
+    baseCurrency: Currency
+) {
+    if (monthOverMonth == null && yearOverYear == null) return
+
+    var period by remember { mutableStateOf(ComparisonPeriod.LAST_MONTH) }
+    val comparisons = if (period == ComparisonPeriod.LAST_MONTH) monthOverMonth else yearOverYear
+    val moneyFormatter = { value: BigDecimal -> formatMoney(value, baseCurrency) }
+    val percentFormatter = { value: BigDecimal -> "${value.toInt()}%" }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ComparisonPeriod.entries.forEach { p ->
+                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.label) })
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ComparisonStatCard("Income", comparisons?.income, moneyFormatter, Modifier.weight(1f))
+            ComparisonStatCard("Expenses", comparisons?.expenses, moneyFormatter, Modifier.weight(1f))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ComparisonStatCard("Savings", comparisons?.savings, moneyFormatter, Modifier.weight(1f))
+            ComparisonStatCard("Savings rate", comparisons?.savingsRatePercent, percentFormatter, Modifier.weight(1f))
+        }
+    }
+}
+
+/** A compact stat card: current value plus a colored delta arrow vs. the comparison period, "—" when unavailable. */
+@Composable
+private fun ComparisonStatCard(
+    label: String,
+    value: ComparisonValue?,
+    valueFormatter: (BigDecimal) -> String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                value?.current?.let(valueFormatter) ?: "—",
+                style = MaterialTheme.typography.titleMedium
+            )
+            val change = value?.changePercent
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                if (change != null) {
+                    val isUp = change.signum() >= 0
+                    val color = if (isUp) GainColor else MaterialTheme.colorScheme.error
+                    Icon(
+                        if (isUp) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text("${change.abs().toInt()}%", style = MaterialTheme.typography.labelSmall, color = color)
+                } else {
+                    Text("—", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetWorthComparisonCard(
+    monthOverMonth: AnalyticsViewModel.PeriodComparisons?,
+    yearOverYear: AnalyticsViewModel.PeriodComparisons?,
+    currency: Currency
+) {
+    if (monthOverMonth == null && yearOverYear == null) return
+
+    var period by remember { mutableStateOf(ComparisonPeriod.LAST_MONTH) }
+    val comparisons = if (period == ComparisonPeriod.LAST_MONTH) monthOverMonth else yearOverYear
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ComparisonPeriod.entries.forEach { p ->
+                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.label) })
+            }
+        }
+        ComparisonStatCard("Net worth", comparisons?.netWorth, { value -> formatMoney(value, currency) })
     }
 }
 
@@ -183,6 +353,9 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
 private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
     val snapshots by viewModel.snapshotHistory.collectAsStateWithLifecycle()
     val currency by viewModel.snapshotCurrency.collectAsStateWithLifecycle()
+    val netWorthGrowth by viewModel.netWorthGrowth.collectAsStateWithLifecycle()
+    val monthOverMonth by viewModel.monthOverMonth.collectAsStateWithLifecycle()
+    val yearOverYear by viewModel.yearOverYear.collectAsStateWithLifecycle()
     var horizon by remember { mutableStateOf(HistoryHorizon.ONE_YEAR) }
 
     if (snapshots.isEmpty()) {
@@ -191,6 +364,7 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
     }
 
     val visible = remember(snapshots, horizon) { horizon.applyTo(snapshots) }
+    val visibleGrowth = remember(netWorthGrowth, horizon) { horizon.applyTo(netWorthGrowth) }
 
     Column(
         modifier = Modifier
@@ -215,6 +389,8 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             valueFormatter = moneyFormatter
         )
 
+        NetWorthComparisonCard(monthOverMonth, yearOverYear, currency)
+
         SwipeableTrendChartCard(
             title = "Net worth",
             labels = labels,
@@ -224,6 +400,19 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
             valueFormatter = moneyFormatter,
             showValueLabels = true
         )
+
+        if (visibleGrowth.isNotEmpty()) {
+            SwipeableTrendChartCard(
+                title = "Net worth growth rate",
+                labels = visibleGrowth.map { it.label },
+                series = listOf(
+                    ChartSeries("MoM %", PieChartColors[2], visibleGrowth.map { it.momPercent?.toFloat() }),
+                    ChartSeries("YoY %", PieChartColors[4], visibleGrowth.map { it.yoyPercent?.toFloat() })
+                ),
+                valueFormatter = { value -> "${value.toInt()}%" },
+                showValueLabels = true
+            )
+        }
 
         SwipeableTrendChartCard(
             title = "Income by source",
@@ -255,6 +444,8 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
     val accountBreakdown by viewModel.investmentAccountBreakdown.collectAsStateWithLifecycle()
     val currencyBreakdown by viewModel.investmentCurrencyBreakdown.collectAsStateWithLifecycle()
     val yearlyHistory by viewModel.investmentYearlyHistory.collectAsStateWithLifecycle()
+    val performance by viewModel.investmentPerformance.collectAsStateWithLifecycle()
+    val gainsSummary by viewModel.portfolioGainsSummary.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
 
     if (categoryBreakdown.isEmpty() && accountBreakdown.isEmpty() && currencyBreakdown.isEmpty() && yearlyHistory.isEmpty()) {
@@ -296,6 +487,80 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
                 valueFormatter = moneyFormatter,
                 showValueLabels = true
             )
+        }
+
+        if (gainsSummary != null) {
+            AllTimeGainsCard(gainsSummary!!, baseCurrency)
+        }
+
+        if (performance.isNotEmpty()) {
+            PerformanceByPositionCard(performance)
+        }
+    }
+}
+
+@Composable
+private fun AllTimeGainsCard(summary: PortfolioGainsSummary, baseCurrency: Currency) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("All-time gains", style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                GainStat("Realized", summary.realizedGainLoss, baseCurrency)
+                GainStat("Unrealized", summary.unrealizedGainLoss, baseCurrency)
+            }
+        }
+    }
+}
+
+@Composable
+private fun GainStat(label: String, amount: BigDecimal, currency: Currency) {
+    Column {
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            formatMoney(amount, currency),
+            style = MaterialTheme.typography.titleMedium,
+            color = when {
+                amount.signum() > 0 -> GainColor
+                amount.signum() < 0 -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+        )
+    }
+}
+
+@Composable
+private fun PerformanceByPositionCard(performance: List<InvestmentPerformancePoint>) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Performance by position", style = MaterialTheme.typography.titleMedium)
+            performance.forEach { point ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("${point.name} (${point.ticker})", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        "XIRR ${point.xirr?.let { "${it.toInt()}%" } ?: "—"} · " +
+                            "CAGR ${point.cagr?.let { "${it.toInt()}%" } ?: "—"} " +
+                            "(${point.currency.name})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
