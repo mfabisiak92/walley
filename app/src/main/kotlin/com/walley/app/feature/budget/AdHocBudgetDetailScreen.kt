@@ -225,13 +225,19 @@ fun AdHocBudgetDetailScreen(
             MarkAdHocItemPaidDialog(
                 item = item,
                 currency = itemAccount.currency,
+                accountBalance = itemAccount.balance,
                 onDismiss = { itemForPaidDialog = null },
                 onMarkFullyPaid = {
                     viewModel.markPaid(item.id)
                     itemForPaidDialog = null
                 },
-                onMarkPartiallyPaid = { amount ->
-                    viewModel.markPartiallyPaid(item.id, amount)
+                onSave = { paid, planned ->
+                    if (planned != item.amount) {
+                        viewModel.updateItemAmount(item.id, planned)
+                    }
+                    if (paid != item.paidAmount) {
+                        viewModel.markPartiallyPaid(item.id, paid)
+                    }
                     itemForPaidDialog = null
                 }
             )
@@ -239,25 +245,20 @@ fun AdHocBudgetDetailScreen(
     }
 
     itemForEditDialog?.let { item ->
-        viewModel.accountFor(item)?.let { itemAccount ->
-            EditAdHocItemAmountDialog(
-                item = item,
-                accountBalance = itemAccount.balance,
-                currency = itemAccount.currency,
-                onDismiss = { itemForEditDialog = null },
-                onSave = { amount, icon ->
-                    viewModel.updateItemAmount(item.id, amount)
-                    if (icon != item.icon) {
-                        viewModel.updateItemIcon(item.id, icon)
-                    }
-                    itemForEditDialog = null
-                },
-                onDelete = {
-                    itemForEditDialog = null
-                    deleteItemWithUndo(item)
+        EditAdHocItemAmountDialog(
+            item = item,
+            onDismiss = { itemForEditDialog = null },
+            onSave = { icon ->
+                if (icon != item.icon) {
+                    viewModel.updateItemIcon(item.id, icon)
                 }
-            )
-        }
+                itemForEditDialog = null
+            },
+            onDelete = {
+                itemForEditDialog = null
+                deleteItemWithUndo(item)
+            }
+        )
     }
 
     if (showAddDialog) {

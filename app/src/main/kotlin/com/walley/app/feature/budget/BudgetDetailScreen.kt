@@ -252,13 +252,19 @@ fun BudgetDetailScreen(
     itemForPaidDialog?.let { item ->
         MarkPaidDialog(
             item = item,
+            accounts = accounts,
             onDismiss = { itemForPaidDialog = null },
             onMarkFullyPaid = {
                 viewModel.markPaid(item.id)
                 itemForPaidDialog = null
             },
-            onMarkPartiallyPaid = { amount ->
-                viewModel.markPartiallyPaid(item.id, amount)
+            onSave = { paid, planned ->
+                if (planned != item.amount) {
+                    viewModel.updateItemAmount(item.id, planned)
+                }
+                if (paid != item.paidAmount) {
+                    viewModel.markPartiallyPaid(item.id, paid)
+                }
                 itemForPaidDialog = null
             }
         )
@@ -269,8 +275,7 @@ fun BudgetDetailScreen(
             item = item,
             accounts = accounts,
             onDismiss = { itemForEditDialog = null },
-            onSave = { amount, icon, accountId ->
-                viewModel.updateItemAmount(item.id, amount)
+            onSave = { icon, accountId ->
                 if (icon != item.icon) {
                     viewModel.updateItemIcon(item.id, icon)
                 }

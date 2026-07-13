@@ -2,7 +2,6 @@ package com.walley.app.feature.budget
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -20,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.BudgetItemIconPicker
@@ -34,39 +32,32 @@ import com.walley.app.domain.model.INCOME_ICONS
 import com.walley.app.domain.model.allowedAccountTypes
 import com.walley.app.domain.model.isAccountWithdrawal
 import com.walley.app.domain.model.requiresAccount
-import java.math.BigDecimal
 
+/** Long-press edit dialog — account and icon only; the amount is edited from [MarkPaidDialog] instead. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditItemAmountDialog(
     item: BudgetItem,
     accounts: List<Account> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (amount: BigDecimal, icon: BudgetItemIcon?, accountId: Long?) -> Unit,
+    onSave: (icon: BudgetItemIcon?, accountId: Long?) -> Unit,
     onDelete: () -> Unit
 ) {
-    var amountText by remember { mutableStateOf(item.amount.toPlainString()) }
     var icon by remember { mutableStateOf(item.icon) }
     var accountId by remember { mutableStateOf(item.accountId) }
     var accountMenuExpanded by remember { mutableStateOf(false) }
-    val parsedAmount = amountText.toBigDecimalOrNull()
 
     val accountRequired = item.section.requiresAccount
     val accountOptions = item.section.allowedAccountTypes()
         ?.let { types -> accounts.filter { it.type in types && !it.isClosed } }
         ?: emptyList()
     val selectedAccount = accounts.find { it.id == accountId }
-    // For Savings/Investments the account is the item's identity, so the amount tracks its currency.
-    val amountCurrency = selectedAccount?.currency?.takeIf {
-        item.section == BudgetSectionType.SAVINGS || item.section == BudgetSectionType.INVESTMENTS
-    } ?: item.currency
 
-    // How much more would still need to be withdrawn beyond what's already been paid out of the account.
-    val additionalWithdrawal = parsedAmount?.let { it - item.paidAmount }
+    // How much more of the (fixed) planned amount would still need to be withdrawn beyond what's paid.
+    val additionalWithdrawal = item.amount - item.paidAmount
     val exceedsSavingsBalance = item.section.isAccountWithdrawal && selectedAccount?.type == AccountType.SAVING &&
-        additionalWithdrawal != null && additionalWithdrawal > selectedAccount.balance
-    val isValid = parsedAmount != null && parsedAmount.signum() > 0 && !exceedsSavingsBalance &&
-        (!accountRequired || selectedAccount != null)
+        additionalWithdrawal > selectedAccount.balance
+    val isValid = !exceedsSavingsBalance && (!accountRequired || selectedAccount != null)
     val iconOptions = when (item.section) {
         BudgetSectionType.INCOME -> INCOME_ICONS
         BudgetSectionType.SAVINGS, BudgetSectionType.INVESTMENTS -> null
@@ -82,21 +73,6 @@ fun EditItemAmountDialog(
         title = { Text(displayName) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Planned amount (${amountCurrency.symbol})") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = amountText.isNotBlank() && (parsedAmount == null || exceedsSavingsBalance)
-                )
-                if (exceedsSavingsBalance && selectedAccount != null) {
-                    Text(
-                        "Only ${formatMoney(selectedAccount.balance, selectedAccount.currency)} left in ${selectedAccount.name}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
                 if (accountOptions.isNotEmpty()) {
                     ExposedDropdownMenuBox(
                         expanded = accountMenuExpanded,
@@ -108,7 +84,7 @@ fun EditItemAmountDialog(
                             readOnly = true,
                             label = { Text("Account") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
-                            isError = accountRequired && selectedAccount == null,
+                            isError = (accountRequired && selectedAccount == null) || exceedsSavingsBalance,
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
                         ExposedDropdownMenu(
@@ -144,6 +120,13 @@ fun EditItemAmountDialog(
                         }
                         Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    if (exceedsSavingsBalance && selectedAccount != null) {
+                        Text(
+                            "Only ${formatMoney(selectedAccount.balance, selectedAccount.currency)} left in ${selectedAccount.name}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
                 if (iconOptions != null) {
                     Text("Icon", style = MaterialTheme.typography.labelLarge)
@@ -157,7 +140,7 @@ fun EditItemAmountDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(parsedAmount!!, icon, accountId) },
+                onClick = { onSave(icon, accountId) },
                 enabled = isValid
             ) { Text("Save") }
         },

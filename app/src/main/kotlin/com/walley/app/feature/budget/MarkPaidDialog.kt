@@ -2,8 +2,14 @@ package com.walley.app.feature.budget
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -13,49 +19,106 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.format.formatMoney
+import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
+import com.walley.app.domain.model.isAccountWithdrawal
 import java.math.BigDecimal
 
+/**
+ * Lets the paid and planned amounts be edited side by side, as "paid / planned" — mirroring how
+ * [BudgetItemRow] already displays them. The title-bar checkmark (hidden once already fully paid,
+ * same as [com.walley.app.feature.assets.EditLiabilityDialog]'s) is a one-tap shortcut that ignores
+ * whatever's currently typed and marks the item paid in full immediately.
+ */
 @Composable
 fun MarkPaidDialog(
     item: BudgetItem,
+    accounts: List<Account> = emptyList(),
     onDismiss: () -> Unit,
     onMarkFullyPaid: () -> Unit,
-    onMarkPartiallyPaid: (BigDecimal) -> Unit
+    onSave: (paidAmount: BigDecimal, plannedAmount: BigDecimal) -> Unit
 ) {
-    var amountText by remember { mutableStateOf(item.paidAmount.toPlainString()) }
-    val parsedAmount = amountText.toBigDecimalOrNull()
-    val isValid = parsedAmount != null && parsedAmount.signum() >= 0 && parsedAmount <= item.amount
+    var paidText by remember { mutableStateOf(item.paidAmount.toPlainString()) }
+    var plannedText by remember { mutableStateOf(item.amount.toPlainString()) }
+    val parsedPaid = paidText.toBigDecimalOrNull()
+    val parsedPlanned = plannedText.toBigDecimalOrNull()
+
+    // Only relevant when this item's payment withdraws from a Saving account — how much more of the
+    // (possibly edited) planned amount would still need to come out of it beyond what's already paid.
+    val linkedAccount = accounts.find { it.id == item.accountId }
+    val additionalWithdrawal = parsedPlanned?.let { it - item.paidAmount }
+    val exceedsSavingsBalance = item.section.isAccountWithdrawal && linkedAccount?.type == AccountType.SAVING &&
+        additionalWithdrawal != null && additionalWithdrawal > linkedAccount.balance
+    val isValid = parsedPaid != null && parsedPlanned != null &&
+        parsedPaid.signum() >= 0 && parsedPlanned.signum() > 0 &&
+        parsedPaid <= parsedPlanned && !exceedsSavingsBalance
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(item.name) },
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    item.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                if (!item.isCompleted) {
+                    IconButton(onClick = onMarkFullyPaid) {
+                        Icon(Icons.Filled.Check, contentDescription = "Mark as fully paid")
+                    }
+                }
+            }
+        },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(
-                    "Total: ${formatMoney(item.amount, item.currency)} · Paid so far: ${formatMoney(item.paidAmount, item.currency)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                OutlinedTextField(
-                    value = amountText,
-                    onValueChange = { amountText = it },
-                    label = { Text("Paid amount (${item.currency.symbol})") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = !isValid
-                )
-                TextButton(onClick = onMarkFullyPaid) {
-                    Text("Mark fully paid")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = paidText,
+                        onValueChange = { paidText = it },
+                        label = { Text("Paid") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedPaid == null || (parsedPlanned != null && parsedPaid > parsedPlanned),
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text("/", style = MaterialTheme.typography.titleMedium)
+                    OutlinedTextField(
+                        value = plannedText,
+                        onValueChange = { plannedText = it },
+                        label = { Text("Planned (${item.currency.symbol})") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        isError = parsedPlanned == null || exceedsSavingsBalance,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (exceedsSavingsBalance && linkedAccount != null) {
+                    Text(
+                        "Only ${formatMoney(linkedAccount.balance, linkedAccount.currency)} left in ${linkedAccount.name}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onMarkPartiallyPaid(parsedAmount!!) },
+                onClick = { onSave(parsedPaid!!, parsedPlanned!!) },
                 enabled = isValid
             ) { Text("Save") }
         },
