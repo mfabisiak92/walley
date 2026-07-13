@@ -150,7 +150,7 @@ private fun UpdateBalanceRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "${account.name} · ${account.type.label}",
+            text = account.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

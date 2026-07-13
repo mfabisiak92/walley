@@ -64,11 +64,8 @@ import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
-import com.walley.app.domain.model.InvestmentWithTransactions
-import com.walley.app.domain.model.estimatedTaxForYear
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,7 +127,6 @@ private fun AccountsListPage(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val activeAccounts = filteredAccounts.filterNot { it.isClosed }
-    val investmentsByAccount by viewModel.investmentsByAccount.collectAsStateWithLifecycle()
     val portfolioTaxEstimate by viewModel.portfolioTaxEstimate.collectAsStateWithLifecycle()
     val investmentsNetProfit by viewModel.investmentsNetProfit.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
@@ -239,7 +235,6 @@ private fun AccountsListPage(
                     items(visibleAccounts, key = { it.id }) { account ->
                         AccountRow(
                             account = account,
-                            investmentsInAccount = investmentsByAccount[account.id].orEmpty(),
                             onOpenCashOperations = { onOpenCashOperations(account.id) },
                             onEditAccount = { editingAccount = account },
                             onSetDefault = { viewModel.setDefaultAccount(account.id) },
@@ -330,7 +325,6 @@ private fun AccountsListPage(
 @Composable
 private fun AccountRow(
     account: Account,
-    investmentsInAccount: List<InvestmentWithTransactions>,
     onOpenCashOperations: () -> Unit,
     onEditAccount: () -> Unit,
     onSetDefault: () -> Unit,
@@ -362,16 +356,21 @@ private fun AccountRow(
             ) {
                 Column {
                     Text(account.name, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = listOfNotNull(
-                            account.type.label,
-                            account.taxRate.label.takeIf { account.type == AccountType.INVESTMENT },
-                            "Virtual".takeIf { account.isVirtual },
-                            "Closed".takeIf { account.isClosed }
-                        ).joinToString(" · "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    val subtitle = listOfNotNull(
+                        // Redundant within the Savings/Investments tabs, which are already single-type —
+                        // only Cash & Checking mixes both types, so the label still disambiguates there.
+                        account.type.label.takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
+                        account.taxRate.label.takeIf { account.type == AccountType.INVESTMENT },
+                        "Virtual".takeIf { account.isVirtual },
+                        "Closed".takeIf { account.isClosed }
+                    ).joinToString(" · ")
+                    if (subtitle.isNotEmpty()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     if (account.isClosed) {
@@ -394,44 +393,12 @@ private fun AccountRow(
             }
             Column {
                 if (account.type == AccountType.INVESTMENT) {
-                    Text(
-                        text = "Uninvested: ${formatMoney(account.uninvestedCash, account.currency)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    val gainLoss = account.investmentGainLoss
-                    if (gainLoss.signum() != 0) {
-                        Text(
-                            text = if (gainLoss.signum() > 0) {
-                                "Gain: ${formatMoney(gainLoss, account.currency)}"
-                            } else {
-                                "Loss: ${formatMoney(gainLoss.abs(), account.currency)}"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (gainLoss.signum() > 0) Color(0xFF2E7D32) else MaterialTheme.colorScheme.error
-                        )
-                        account.investmentTaxAmount?.let { tax ->
-                            Text(
-                                text = "Estimated tax (${account.taxRate.label}): ${formatMoney(tax, account.currency)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF1565C0)
-                            )
-                        }
-                        account.investmentNetProfit?.let { netProfit ->
-                            Text(
-                                text = "Net profit: ${formatMoney(netProfit, account.currency)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF2E7D32)
-                            )
-                        }
-                    }
-                    account.estimatedTaxForYear(investmentsInAccount, LocalDate.now().year)?.let { estimatedTax ->
-                        Text(
-                            text = "Owed tax next year: ${formatMoney(estimatedTax, account.currency)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF1565C0)
-                        )
-                    }
+                    val unrealizedGain = account.investmentGainLoss
+                    val netUnrealizedGain = account.investmentNetProfit ?: unrealizedGain
+                    InvestmentDetailLine("Current account balance", account.balance, account.currency)
+                    InvestmentDetailLine("Uninvested cash", account.uninvestedCash, account.currency)
+                    InvestmentDetailLine("Unrealized gain", unrealizedGain, account.currency, signed = true)
+                    InvestmentDetailLine("Net unrealized gain", netUnrealizedGain, account.currency, signed = true)
                 }
                 val progressPercent = account.targetProgressPercent
                 if (progressPercent != null && !account.isClosed) {
@@ -440,6 +407,20 @@ private fun AccountRow(
             }
         }
     }
+}
+
+@Composable
+private fun InvestmentDetailLine(label: String, value: BigDecimal, currency: Currency, signed: Boolean = false) {
+    Text(
+        text = "$label: ${formatMoney(value, currency)}",
+        style = MaterialTheme.typography.bodySmall,
+        color = when {
+            !signed -> MaterialTheme.colorScheme.onSurfaceVariant
+            value.signum() > 0 -> Color(0xFF2E7D32)
+            value.signum() < 0 -> MaterialTheme.colorScheme.error
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    )
 }
 
 /** Marks/unmarks this [AccountType.CHECKING]/[AccountType.CASH] account as the one used by default — a concept that only makes sense for everyday spending accounts, not savings goals or investment accounts. */

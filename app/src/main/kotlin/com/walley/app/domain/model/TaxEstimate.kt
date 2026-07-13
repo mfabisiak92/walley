@@ -57,6 +57,22 @@ fun estimatePortfolioTax(
     return PortfolioTaxEstimate(netRealizedGainLoss = totalNet, taxOwed = totalTax)
 }
 
+/** Total realized gain/loss across [investmentsInAccount] — profit already locked in from every sell ever made in this account, regardless of year. */
+fun Account.realizedGain(investmentsInAccount: List<InvestmentWithTransactions>): BigDecimal =
+    investmentsInAccount.fold(BigDecimal.ZERO) { acc, data -> acc + data.realizedGainLoss }
+
+/** Tax owed on [realizedGain]; null when tax-free, or when the account has a net realized loss. */
+fun Account.realizedGainTax(investmentsInAccount: List<InvestmentWithTransactions>): BigDecimal? {
+    if (taxRate.rate.signum() == 0) return null
+    return realizedGain(investmentsInAccount).takeIf { it.signum() > 0 }
+        ?.multiply(taxRate.rate)
+        ?.setScale(2, RoundingMode.HALF_UP)
+}
+
+/** [realizedGain] minus [realizedGainTax] (no tax subtracted when none is owed). */
+fun Account.netRealizedGain(investmentsInAccount: List<InvestmentWithTransactions>): BigDecimal =
+    realizedGain(investmentsInAccount) - (realizedGainTax(investmentsInAccount) ?: BigDecimal.ZERO)
+
 /**
  * Estimated tax owed for every year that has any sell at all, keyed by year — each computed
  * independently from that year's own realized gains via [estimatePortfolioTax]. Years with nothing
