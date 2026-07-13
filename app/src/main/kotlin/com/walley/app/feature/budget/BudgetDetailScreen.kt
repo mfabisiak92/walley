@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -28,6 +29,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -69,6 +71,8 @@ import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.allowedAccountTypes
+import com.walley.app.domain.model.requiresAccount
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -91,6 +95,8 @@ fun BudgetDetailScreen(
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var itemForEditDialog by remember { mutableStateOf<BudgetItem?>(null) }
+    var addItemSection by remember { mutableStateOf<BudgetSectionType?>(null) }
+    var showAddSectionPicker by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -99,6 +105,7 @@ fun BudgetDetailScreen(
     val isEditable = status == BudgetStatus.ACTIVE
     val pagerState = rememberPagerState(pageCount = { BudgetDetailTab.entries.size })
     val tabScope = rememberCoroutineScope()
+    val currentTab = BudgetDetailTab.entries[pagerState.currentPage]
 
     fun deleteItemWithUndo(item: BudgetItem) {
         viewModel.deleteItem(item.id)
@@ -121,6 +128,22 @@ fun BudgetDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (isEditable && currentTab != BudgetDetailTab.SUMMARY) {
+                FloatingActionButton(
+                    onClick = {
+                        val sections = currentTab.sections
+                        if (sections.size == 1) {
+                            addItemSection = sections.first()
+                        } else {
+                            showAddSectionPicker = true
+                        }
+                    }
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add item")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -261,6 +284,81 @@ fun BudgetDetailScreen(
                 deleteItemWithUndo(item)
             }
         )
+    }
+
+    if (showAddSectionPicker) {
+        AlertDialog(
+            onDismissRequest = { showAddSectionPicker = false },
+            title = { Text("Add item") },
+            text = {
+                Column {
+                    currentTab.sections.forEach { section ->
+                        TextButton(
+                            onClick = {
+                                addItemSection = section
+                                showAddSectionPicker = false
+                            }
+                        ) { Text(section.label) }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showAddSectionPicker = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    addItemSection?.let { section ->
+        val isAccountLinked = section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS
+        val sectionAccounts = section.allowedAccountTypes()
+            ?.let { types -> accounts.filter { it.type in types && !it.isClosed } }
+            ?: emptyList()
+        if (isAccountLinked) {
+            AddAccountLinkedItemDialog(
+                accounts = sectionAccounts,
+                onDismiss = { addItemSection = null },
+                onConfirm = { accountId, amount, day, lastOfMonth ->
+                    sectionAccounts.find { it.id == accountId }?.let { account ->
+                        viewModel.addItem(
+                            section = section,
+                            name = account.name,
+                            amount = amount,
+                            currency = account.currency,
+                            accountId = accountId,
+                            paymentDay = day,
+                            paymentDayIsLastOfMonth = lastOfMonth,
+                            incomeCategory = null,
+                            icon = defaultIconFor(section)
+                        )
+                    }
+                    addItemSection = null
+                }
+            )
+        } else {
+            AddBudgetItemDialog(
+                currency = baseCurrency,
+                accounts = sectionAccounts,
+                requireAccount = section.requiresAccount,
+                showAccountPicker = true,
+                showCategoryPicker = section == BudgetSectionType.INCOME,
+                onDismiss = { addItemSection = null },
+                onConfirm = { name, amount, day, lastOfMonth, accountId, incomeCategory, icon ->
+                    viewModel.addItem(
+                        section = section,
+                        name = name,
+                        amount = amount,
+                        currency = baseCurrency,
+                        accountId = accountId,
+                        paymentDay = day,
+                        paymentDayIsLastOfMonth = lastOfMonth,
+                        incomeCategory = incomeCategory,
+                        icon = icon
+                    )
+                    addItemSection = null
+                }
+            )
+        }
     }
 
     if (showDeleteConfirm) {

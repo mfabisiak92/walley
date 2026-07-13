@@ -18,6 +18,7 @@ import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.IncomeCategory
 import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
@@ -148,6 +149,26 @@ class BudgetDetailViewModel @Inject constructor(
 
     fun restoreItem(item: BudgetItem) {
         viewModelScope.launch { budgetRepository.restoreBudgetItem(item) }
+    }
+
+    fun addItem(
+        section: BudgetSectionType,
+        name: String,
+        amount: BigDecimal,
+        currency: Currency,
+        accountId: Long?,
+        paymentDay: Int?,
+        paymentDayIsLastOfMonth: Boolean,
+        incomeCategory: IncomeCategory?,
+        icon: BudgetItemIcon?
+    ) {
+        if (!isEditable) return
+        viewModelScope.launch {
+            budgetRepository.addBudgetItem(
+                budgetId, section, name, amount, currency, accountId,
+                paymentDay, paymentDayIsLastOfMonth, incomeCategory, icon
+            )
+        }
     }
 
     fun markCompleted() {

@@ -6,7 +6,9 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BudgetProgressTest {
@@ -133,5 +135,41 @@ class BudgetProgressTest {
     @Test
     fun `projectedNetWorthDelta is zero for a budget with no items`() {
         assertEquals(BigDecimal.ZERO, projectedNetWorthDelta(emptyList(), Currency.PLN, rates))
+    }
+
+    @Test
+    fun `isCategoryTargetWarning warns for fixed costs only when over target`() {
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.FIXED_COSTS, BigDecimal("25"), BigDecimal("20")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.FIXED_COSTS, BigDecimal("20"), BigDecimal("20")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.FIXED_COSTS, BigDecimal("15"), BigDecimal("20")))
+    }
+
+    @Test
+    fun `isCategoryTargetWarning warns for other costs only when over target`() {
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.OTHER_COSTS, BigDecimal("12"), BigDecimal("10")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.OTHER_COSTS, BigDecimal("10"), BigDecimal("10")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.OTHER_COSTS, BigDecimal("8"), BigDecimal("10")))
+    }
+
+    @Test
+    fun `isCategoryTargetWarning warns for savings only when over target, not when under`() {
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.SAVINGS, BigDecimal("15"), BigDecimal("10")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.SAVINGS, BigDecimal("10"), BigDecimal("10")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.SAVINGS, BigDecimal("5"), BigDecimal("10")))
+    }
+
+    @Test
+    fun `isCategoryTargetWarning warns for investments when over or under target`() {
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.INVESTMENTS, BigDecimal("15"), BigDecimal("10")))
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.INVESTMENTS, BigDecimal("10"), BigDecimal("10")))
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.INVESTMENTS, BigDecimal("5"), BigDecimal("10")))
+    }
+
+    @Test
+    fun `isCategoryTargetWarning rounds to 1 decimal place before comparing`() {
+        // 10.04 rounds to 10.0, which equals a 10 target -> not a warning for a ceiling-style section
+        assertFalse(isCategoryTargetWarning(BudgetSectionType.SAVINGS, BigDecimal("10.04"), BigDecimal("10")))
+        // 10.06 rounds to 10.1, which is over a 10 target -> warning
+        assertTrue(isCategoryTargetWarning(BudgetSectionType.SAVINGS, BigDecimal("10.06"), BigDecimal("10")))
     }
 }

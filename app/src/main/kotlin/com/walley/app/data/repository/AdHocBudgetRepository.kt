@@ -49,6 +49,9 @@ interface AdHocBudgetRepository {
     /** Re-inserts a previously deleted item (used to support "undo"), preserving its original id. */
     suspend fun restoreBudgetItem(item: AdHocBudgetItem)
 
+    /** Adds a brand-new item to an already-persisted ad-hoc budget. Returns the new item's id. */
+    suspend fun addBudgetItem(budgetId: Long, name: String, amount: BigDecimal, accountId: Long?, icon: BudgetItemIcon?): Long
+
     /** @throws BudgetIsCompletedException if the budget is already marked completed. */
     suspend fun deleteAdHocBudget(budgetId: Long)
 

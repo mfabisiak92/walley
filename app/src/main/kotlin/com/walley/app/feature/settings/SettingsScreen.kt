@@ -252,8 +252,8 @@ private fun BudgetSettingsPage(viewModel: SettingsViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "Set a target % of disposable income for each category. Fixed/Other costs warn you if " +
-                "you go over; Savings/Investments show a checkmark once you reach the goal.",
+            "Set a target % of disposable income for each category. Fixed/Other costs and Savings " +
+                "warn you if you go over; Investments shows a checkmark once you reach the goal.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

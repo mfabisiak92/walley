@@ -7,6 +7,7 @@ import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AdHocBudgetRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetItemIcon
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -42,6 +44,11 @@ class AdHocBudgetDetailViewModel @Inject constructor(
     val account: StateFlow<Account?> = combine(budget, accounts) { budgetWithItems, accountList ->
         budgetWithItems?.let { accountList.find { account -> account.id == it.budget.accountId } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Selectable accounts a new/reassigned item can draw from — same restriction as the create wizard. */
+    val savingAccounts: StateFlow<List<Account>> = accounts
+        .map { accountList -> accountList.filter { it.type == AccountType.SAVING && !it.isClosed } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** The account a given item actually draws from: its own override, or the budget's default. */
     fun accountFor(item: AdHocBudgetItem): Account? {
@@ -80,6 +87,11 @@ class AdHocBudgetDetailViewModel @Inject constructor(
 
     fun restoreItem(item: AdHocBudgetItem) {
         viewModelScope.launch { repository.restoreBudgetItem(item) }
+    }
+
+    fun addItem(name: String, amount: BigDecimal, accountId: Long?, icon: BudgetItemIcon?) {
+        if (!isEditable) return
+        viewModelScope.launch { repository.addBudgetItem(budgetId, name, amount, accountId, icon) }
     }
 
     private val _deleteBlockedMessage = MutableStateFlow<String?>(null)

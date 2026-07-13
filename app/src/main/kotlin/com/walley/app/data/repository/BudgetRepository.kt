@@ -2,7 +2,10 @@ package com.walley.app.data.repository
 
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetWithItems
+import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.IncomeCategory
 import java.math.BigDecimal
 import kotlinx.coroutines.flow.Flow
 
@@ -62,6 +65,20 @@ interface BudgetRepository {
 
     /** Re-inserts a previously deleted item (used to support "undo"), preserving its original id. */
     suspend fun restoreBudgetItem(item: BudgetItem)
+
+    /** Adds a brand-new item to an already-persisted budget. Returns the new item's id. */
+    suspend fun addBudgetItem(
+        budgetId: Long,
+        section: BudgetSectionType,
+        name: String,
+        amount: BigDecimal,
+        currency: Currency,
+        accountId: Long?,
+        paymentDay: Int?,
+        paymentDayIsLastOfMonth: Boolean,
+        incomeCategory: IncomeCategory?,
+        icon: BudgetItemIcon?
+    ): Long
 
     /** One-way transition marking a budget as completed; completed budgets can no longer be deleted. */
     suspend fun markBudgetCompleted(budgetId: Long)

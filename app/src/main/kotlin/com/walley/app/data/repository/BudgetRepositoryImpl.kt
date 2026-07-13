@@ -237,6 +237,33 @@ class BudgetRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun addBudgetItem(
+        budgetId: Long,
+        section: BudgetSectionType,
+        name: String,
+        amount: BigDecimal,
+        currency: Currency,
+        accountId: Long?,
+        paymentDay: Int?,
+        paymentDayIsLastOfMonth: Boolean,
+        incomeCategory: IncomeCategory?,
+        icon: BudgetItemIcon?
+    ): Long = budgetDao.insertItem(
+        BudgetItemEntity(
+            budgetId = budgetId,
+            section = section,
+            name = name,
+            amountMinorUnits = amount.toMinorUnits(),
+            currency = currency,
+            accountId = accountId,
+            paymentDay = paymentDay,
+            paymentDayIsLastOfMonth = paymentDayIsLastOfMonth,
+            paidAmountMinorUnits = 0,
+            incomeCategory = incomeCategory,
+            icon = icon
+        )
+    )
+
     override suspend fun markBudgetCompleted(budgetId: Long) {
         budgetDao.updateStatus(budgetId, BudgetStatus.COMPLETED)
         captureSnapshot(budgetId)

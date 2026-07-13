@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.BudgetSectionType
-import com.walley.app.domain.model.isSpendingLimit
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -25,10 +24,12 @@ private val GoalGreen = Color(0xFF2E7D32)
 /**
  * Shows the configured target % of disposable income for [section] (if any), plus how far
  * [actualPercent] sits from it:
- * - Fixed/Other costs (spending ceilings): over target warns, at/under target checks off.
- * - Savings/Investments (goals): any deviation from target, over or under, warns — since the
- *   percentages across every section have to add up, overshooting one still means another section
- *   got shortchanged, so it's just as worth flagging as falling short of the goal.
+ * - Fixed/Other costs (spending ceilings) and Savings (treated as a ceiling too — a savings item
+ *   eating up more of disposable income than planned is worth flagging, undershooting isn't): over
+ *   target warns, at/under target checks off.
+ * - Investments (a goal): any deviation from target, over or under, warns — since the percentages
+ *   across every section have to add up, overshooting one still means another section got
+ *   shortchanged, so it's just as worth flagging as falling short of the goal.
  */
 @Composable
 fun CategoryTargetIndicator(
@@ -49,7 +50,7 @@ fun CategoryTargetIndicator(
             val diff = actualPercent.setScale(1, RoundingMode.HALF_UP) - targetPercent.setScale(1, RoundingMode.HALF_UP)
             val isOver = diff.signum() > 0
             val isUnder = diff.signum() < 0
-            val isWarning = if (section.isSpendingLimit) isOver else (isOver || isUnder)
+            val isWarning = isCategoryTargetWarning(section, actualPercent, targetPercent)
             val message = when {
                 !isOver && !isUnder -> "On target"
                 isOver -> "${formatPercent(diff)}% over target allocation"

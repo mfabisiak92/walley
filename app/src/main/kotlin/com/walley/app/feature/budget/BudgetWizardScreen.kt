@@ -252,7 +252,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
 }
 
 /** Same mapping [BudgetWizardViewModel.collectItems] falls back to at save time — applied here too so a freshly added item shows its icon immediately in the wizard's own list. */
-private fun defaultIconFor(section: BudgetSectionType): BudgetItemIcon? = when (section) {
+internal fun defaultIconFor(section: BudgetSectionType): BudgetItemIcon? = when (section) {
     BudgetSectionType.SAVINGS -> BudgetItemIcon.SAVING
     BudgetSectionType.INVESTMENTS -> BudgetItemIcon.INVESTMENT
     else -> null

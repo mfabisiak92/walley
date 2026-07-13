@@ -100,3 +100,21 @@ fun projectedNetWorthDelta(items: List<BudgetItem>, targetCurrency: Currency, ra
 
     return income - incomeRelatedExpenses + savings + investments - fixedCosts - otherCosts
 }
+
+/**
+ * Whether [section]'s [actualPercent] of disposable income should be flagged as a warning against
+ * its [targetPercent], for [CategoryTargetIndicator]:
+ * - Fixed/Other costs (spending ceilings) and Savings (treated as a ceiling too — a savings item
+ *   eating up more of disposable income than planned is worth flagging, undershooting isn't): over
+ *   target warns, at/under target doesn't.
+ * - Investments (a goal): any deviation from target, over or under, warns — since the percentages
+ *   across every section have to add up, overshooting one still means another section got
+ *   shortchanged, so it's just as worth flagging as falling short of the goal.
+ */
+fun isCategoryTargetWarning(section: BudgetSectionType, actualPercent: BigDecimal, targetPercent: BigDecimal): Boolean {
+    val diff = actualPercent.setScale(1, RoundingMode.HALF_UP) - targetPercent.setScale(1, RoundingMode.HALF_UP)
+    val isOver = diff.signum() > 0
+    val isUnder = diff.signum() < 0
+    val warnsOnUndershoot = section == BudgetSectionType.INVESTMENTS
+    return if (warnsOnUndershoot) (isOver || isUnder) else isOver
+}

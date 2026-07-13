@@ -141,6 +141,17 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun addBudgetItem(budgetId: Long, name: String, amount: BigDecimal, accountId: Long?, icon: BudgetItemIcon?): Long =
+        dao.insertItem(
+            AdHocBudgetItemEntity(
+                budgetId = budgetId,
+                name = name,
+                amountMinorUnits = amount.toMinorUnits(),
+                icon = icon,
+                accountId = accountId
+            )
+        )
+
     override suspend fun deleteAdHocBudget(budgetId: Long) {
         val budget = dao.observeBudgetById(budgetId).first()
         if (budget?.isCompleted == true) {

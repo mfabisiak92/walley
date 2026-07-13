@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
@@ -22,6 +23,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,9 +72,11 @@ fun AdHocBudgetDetailScreen(
 ) {
     val budgetWithItems by viewModel.budget.collectAsStateWithLifecycle()
     val account by viewModel.account.collectAsStateWithLifecycle()
+    val savingAccounts by viewModel.savingAccounts.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
     var itemForEditDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -101,6 +105,13 @@ fun AdHocBudgetDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
+        floatingActionButton = {
+            if (!isCompleted && account != null) {
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add item")
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -244,6 +255,20 @@ fun AdHocBudgetDetailScreen(
                 onDelete = {
                     itemForEditDialog = null
                     deleteItemWithUndo(item)
+                }
+            )
+        }
+    }
+
+    if (showAddDialog) {
+        account?.let { defaultAccount ->
+            AddAdHocItemDialog(
+                defaultAccount = defaultAccount,
+                accounts = savingAccounts,
+                onDismiss = { showAddDialog = false },
+                onConfirm = { name, amount, icon, accountId ->
+                    viewModel.addItem(name, amount, accountId, icon)
+                    showAddDialog = false
                 }
             )
         }
