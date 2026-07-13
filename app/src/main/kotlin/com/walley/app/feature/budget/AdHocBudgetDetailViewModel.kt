@@ -3,9 +3,11 @@ package com.walley.app.feature.budget
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.core.format.formatMoney
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AdHocBudgetRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
+import com.walley.app.data.repository.InsufficientAccountBalanceException
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.AdHocBudgetItem
@@ -62,17 +64,35 @@ class AdHocBudgetDetailViewModel @Inject constructor(
 
     fun markPaid(itemId: Long) {
         if (!isEditable) return
-        viewModelScope.launch { repository.markItemPaid(itemId) }
+        viewModelScope.launch {
+            try {
+                repository.markItemPaid(itemId)
+            } catch (e: InsufficientAccountBalanceException) {
+                _insufficientBalanceMessage.value = insufficientBalanceMessageFor(e)
+            }
+        }
     }
 
     fun markPartiallyPaid(itemId: Long, amount: BigDecimal) {
         if (!isEditable) return
-        viewModelScope.launch { repository.markItemPartiallyPaid(itemId, amount) }
+        viewModelScope.launch {
+            try {
+                repository.markItemPartiallyPaid(itemId, amount)
+            } catch (e: InsufficientAccountBalanceException) {
+                _insufficientBalanceMessage.value = insufficientBalanceMessageFor(e)
+            }
+        }
     }
 
     fun updateItemAmount(itemId: Long, amount: BigDecimal) {
         if (!isEditable) return
-        viewModelScope.launch { repository.updateItemAmount(itemId, amount) }
+        viewModelScope.launch {
+            try {
+                repository.updateItemAmount(itemId, amount)
+            } catch (e: InsufficientAccountBalanceException) {
+                _insufficientBalanceMessage.value = insufficientBalanceMessageFor(e)
+            }
+        }
     }
 
     fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
@@ -100,6 +120,16 @@ class AdHocBudgetDetailViewModel @Inject constructor(
     fun dismissDeleteBlockedMessage() {
         _deleteBlockedMessage.value = null
     }
+
+    private val _insufficientBalanceMessage = MutableStateFlow<String?>(null)
+    val insufficientBalanceMessage: StateFlow<String?> = _insufficientBalanceMessage.asStateFlow()
+
+    fun dismissInsufficientBalanceMessage() {
+        _insufficientBalanceMessage.value = null
+    }
+
+    private fun insufficientBalanceMessageFor(e: InsufficientAccountBalanceException): String =
+        "Not enough balance in \"${e.accountName}\": only ${formatMoney(e.available, e.currency)} available."
 
     fun deleteBudget(onDeleted: () -> Unit) {
         viewModelScope.launch {

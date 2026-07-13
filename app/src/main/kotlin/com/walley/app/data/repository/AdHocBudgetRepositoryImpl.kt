@@ -97,16 +97,16 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
     override suspend fun markItemPaid(itemId: Long) {
         val item = dao.getItem(itemId).toDomain()
         val delta = item.amount - item.paidAmount
-        dao.updateItemPaidAmount(itemId, item.amount.toMinorUnits())
         applyAccountDelta(item, delta)
+        dao.updateItemPaidAmount(itemId, item.amount.toMinorUnits())
     }
 
     override suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal) {
         val item = dao.getItem(itemId).toDomain()
         val clamped = paidAmount.coerceIn(BigDecimal.ZERO, item.amount)
         val delta = clamped - item.paidAmount
-        dao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
         applyAccountDelta(item, delta)
+        dao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
     }
 
     override suspend fun updateItemAmount(itemId: Long, amount: BigDecimal) {
@@ -114,8 +114,9 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         dao.updateItemAmount(itemId, amount.toMinorUnits())
         val clampedPaidAmount = item.paidAmount.coerceAtMost(amount)
         if (clampedPaidAmount != item.paidAmount) {
+            val delta = clampedPaidAmount - item.paidAmount
+            applyAccountDelta(item, delta)
             dao.updateItemPaidAmount(itemId, clampedPaidAmount.toMinorUnits())
-            applyAccountDelta(item, clampedPaidAmount - item.paidAmount)
         }
     }
 
@@ -165,10 +166,20 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         dao.markCompleted(budgetId)
     }
 
-    /** Paying an ad-hoc item withdraws from its own account override, or the budget's default account. */
+    /**
+     * Paying an ad-hoc item withdraws from its own account override, or the budget's default account.
+     * @throws InsufficientAccountBalanceException if [delta] is a withdrawal larger than the account's current balance.
+     */
     private suspend fun applyAccountDelta(item: AdHocBudgetItem, delta: BigDecimal) {
         if (delta.signum() == 0) return
         val budget = dao.observeBudgetById(item.budgetId).first() ?: return
-        accountRepository.addToBalance(item.effectiveAccountId(budget.toDomain()), delta.negate())
+        val accountId = item.effectiveAccountId(budget.toDomain())
+        if (delta.signum() > 0) {
+            val account = accountRepository.observeAccounts().first().first { it.id == accountId }
+            if (delta > account.balance) {
+                throw InsufficientAccountBalanceException(account.name, account.balance, delta, account.currency)
+            }
+        }
+        accountRepository.addToBalance(accountId, delta.negate())
     }
 }

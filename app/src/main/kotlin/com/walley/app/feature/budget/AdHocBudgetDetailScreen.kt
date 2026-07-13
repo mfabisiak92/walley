@@ -74,6 +74,7 @@ fun AdHocBudgetDetailScreen(
     val account by viewModel.account.collectAsStateWithLifecycle()
     val savingAccounts by viewModel.savingAccounts.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
+    val insufficientBalanceMessage by viewModel.insufficientBalanceMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
     var itemForEditDialog by remember { mutableStateOf<AdHocBudgetItem?>(null) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -302,6 +303,17 @@ fun AdHocBudgetDetailScreen(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+            }
+        )
+    }
+
+    insufficientBalanceMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissInsufficientBalanceMessage,
+            title = { Text("Can't complete payment") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissInsufficientBalanceMessage) { Text("OK") }
             }
         )
     }

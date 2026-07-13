@@ -3,6 +3,7 @@ package com.walley.app.data.repository
 import com.walley.app.domain.model.AdHocBudgetItem
 import com.walley.app.domain.model.AdHocBudgetWithItems
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
@@ -35,10 +36,16 @@ interface AdHocBudgetRepository {
         items: List<AdHocBudgetItem>
     ): Long
 
+    /** @throws InsufficientAccountBalanceException if the linked account doesn't have enough balance to cover this payment. */
     suspend fun markItemPaid(itemId: Long)
+
+    /** @throws InsufficientAccountBalanceException if the linked account doesn't have enough balance to cover this payment. */
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
 
-    /** Edits an item's planned amount; if it drops below the amount already paid, paidAmount is clamped down to match. */
+    /**
+     * Edits an item's planned amount; if it drops below the amount already paid, paidAmount is clamped down to match.
+     * @throws InsufficientAccountBalanceException if the linked account doesn't have enough balance to cover this payment.
+     */
     suspend fun updateItemAmount(itemId: Long, amount: BigDecimal)
 
     suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?)
@@ -58,3 +65,10 @@ interface AdHocBudgetRepository {
     /** One-way: marks the budget completed, same as [BudgetRepository.markBudgetCompleted] does for monthly budgets. */
     suspend fun markCompleted(budgetId: Long)
 }
+
+class InsufficientAccountBalanceException(
+    val accountName: String,
+    val available: BigDecimal,
+    val requested: BigDecimal,
+    val currency: Currency
+) : Exception("Insufficient balance in \"$accountName\"")

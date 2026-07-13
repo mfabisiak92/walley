@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -67,6 +68,7 @@ fun AdHocWizardScreen(
 ) {
     val scope = rememberCoroutineScope()
     val step = viewModel.currentStep
+    var showExceedsBalanceConfirm by remember { mutableStateOf(false) }
 
     BackHandler {
         if (step == AD_HOC_STEP_DETAILS) onCancel() else viewModel.goBack()
@@ -79,7 +81,6 @@ fun AdHocWizardScreen(
     }
     val nextEnabled = when (step) {
         AD_HOC_STEP_DETAILS -> viewModel.detailsValid
-        AD_HOC_STEP_SUMMARY -> !viewModel.exceedsAccountBalance
         else -> true
     }
 
@@ -114,7 +115,11 @@ fun AdHocWizardScreen(
                 Button(
                     onClick = {
                         when (step) {
-                            AD_HOC_STEP_SUMMARY -> scope.launch { onDone(viewModel.createBudget()) }
+                            AD_HOC_STEP_SUMMARY -> if (viewModel.exceedsAccountBalance) {
+                                showExceedsBalanceConfirm = true
+                            } else {
+                                scope.launch { onDone(viewModel.createBudget()) }
+                            }
                             else -> viewModel.goNext()
                         }
                     },
@@ -137,6 +142,38 @@ fun AdHocWizardScreen(
                 else -> AdHocSummaryStep(viewModel)
             }
         }
+    }
+
+    if (showExceedsBalanceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showExceedsBalanceConfirm = false },
+            title = { Text("Create budget anyway?") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("This budget's total exceeds what's currently available in one or more accounts:")
+                    viewModel.totalsByAccount.forEach { (account, planned) ->
+                        if (planned > account.balance) {
+                            Text(
+                                "${account.name}: needs ${formatMoney(planned, account.currency)}, " +
+                                    "has ${formatMoney(account.balance, account.currency)}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExceedsBalanceConfirm = false
+                        scope.launch { onDone(viewModel.createBudget()) }
+                    }
+                ) { Text("Create anyway") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExceedsBalanceConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
