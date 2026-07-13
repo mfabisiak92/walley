@@ -91,7 +91,7 @@ fun ImportInvestmentsDialog(
                         is ImportUiState.Done -> DoneContent(current.importedCount, onDismiss)
                         is ImportUiState.SelectAccount -> SelectAccountContent(
                             accounts = current.accounts,
-                            showAccountOperationsToggle = current.showAccountOperationsToggle,
+                            toggleKind = current.toggleKind,
                             onSelect = viewModel::selectAccountForImport
                         )
                         is ImportUiState.Preview -> PreviewContent(
@@ -157,32 +157,37 @@ private fun DoneContent(importedCount: Int, onDismiss: () -> Unit) {
 @Composable
 private fun SelectAccountContent(
     accounts: List<Account>,
-    showAccountOperationsToggle: Boolean,
+    toggleKind: ImportToggleKind,
     onSelect: (Account, Boolean) -> Unit
 ) {
-    var includeAccountOperations by remember { mutableStateOf(false) }
+    var toggleValue by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             "This file doesn't say which account it's for. Which investment account should these events be added to?",
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(16.dp)
         )
-        if (showAccountOperationsToggle) {
+        if (toggleKind != ImportToggleKind.NONE) {
+            val (label, hint) = when (toggleKind) {
+                ImportToggleKind.INCLUDE_ACCOUNT_OPERATIONS -> "Include deposits, transfers & interest" to
+                    "Adjusts this account's balance by each deposit/transfer/interest amount and by what's spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on."
+                ImportToggleKind.IGNORE_ACCOUNT_BALANCE -> "Ignore account balance" to
+                    "This file doesn't record deposits, so the account's balance can't be trusted to cover these buys. Turn this on to import every buy/sell regardless of the account's recorded cash — its balance is left untouched either way."
+                ImportToggleKind.NONE -> "" to ""
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .clickable { includeAccountOperations = !includeAccountOperations },
+                    .clickable { toggleValue = !toggleValue },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(modifier = Modifier.weight(1f).padding(end = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Include deposits, transfers & interest", style = MaterialTheme.typography.bodyMedium)
-                    FieldHint(
-                        "Adjusts this account's balance by each deposit/transfer/interest amount and by what's spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on."
-                    )
+                    Text(label, style = MaterialTheme.typography.bodyMedium)
+                    FieldHint(hint)
                 }
-                Switch(checked = includeAccountOperations, onCheckedChange = { includeAccountOperations = it })
+                Switch(checked = toggleValue, onCheckedChange = { toggleValue = it })
             }
         }
         LazyColumn(
@@ -194,7 +199,7 @@ private fun SelectAccountContent(
         ) {
             items(accounts, key = { it.id }) { account ->
                 Card(
-                    onClick = { onSelect(account, includeAccountOperations) },
+                    onClick = { onSelect(account, toggleValue) },
                     modifier = Modifier.fillMaxWidth(),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
                 ) {

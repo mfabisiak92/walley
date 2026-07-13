@@ -25,7 +25,8 @@ class InvestmentImportTest {
         date: String,
         quantity: String,
         price: String,
-        commission: String = "0"
+        commission: String = "0",
+        ignoreCashCheck: Boolean = false
     ) = CsvRowParseResult.Parsed(
         ParsedImportRow(
             rowNumber = rowNumber,
@@ -38,7 +39,8 @@ class InvestmentImportTest {
             date = LocalDate.parse(date),
             quantity = BigDecimal(quantity),
             price = BigDecimal(price),
-            commission = BigDecimal(commission)
+            commission = BigDecimal(commission),
+            ignoreCashCheck = ignoreCashCheck
         )
     )
 
@@ -77,6 +79,16 @@ class InvestmentImportTest {
             investmentsByAccount = emptyMap()
         )
         assertTrue(outcomes.single().status is ImportRowStatus.Rejected)
+    }
+
+    @Test
+    fun `a buy exceeding the account's cash is accepted when ignoreCashCheck is set`() {
+        val outcomes = validateImportRows(
+            listOf(row(1, date = "2026-01-01", quantity = "1000", price = "20", ignoreCashCheck = true)),
+            accounts = listOf(account(uninvestedCash = "1000")),
+            investmentsByAccount = emptyMap()
+        )
+        assertEquals(ImportRowStatus.ToImport, outcomes.single().status)
     }
 
     @Test

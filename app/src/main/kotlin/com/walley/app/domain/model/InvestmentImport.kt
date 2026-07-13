@@ -22,7 +22,13 @@ data class ParsedImportRow(
     override val date: LocalDate,
     val quantity: BigDecimal,
     val price: BigDecimal,
-    val commission: BigDecimal
+    val commission: BigDecimal,
+    /**
+     * Skips the "not enough cash" rejection on a BUY. For sources whose cash history isn't tracked
+     * in Walley (e.g. a bond ledger with no deposit records), that check would otherwise reject
+     * every buy regardless of how the purchase was actually funded.
+     */
+    val ignoreCashCheck: Boolean = false
 ) : ImportReplayRow
 
 /**
@@ -167,7 +173,9 @@ fun validateImportRows(
                         null
                     }
                 }
-                InvestmentTransactionType.BUY -> {
+                InvestmentTransactionType.BUY -> if (row.ignoreCashCheck) {
+                    null
+                } else {
                     val totalCost = (row.quantity * row.price) + row.commission
                     val cashAdjustment = cashAdjustmentByAccount[row.accountId] ?: BigDecimal.ZERO
                     val effectiveAccount = if (cashAdjustment.signum() != 0) {

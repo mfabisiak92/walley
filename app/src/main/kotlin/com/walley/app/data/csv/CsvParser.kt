@@ -62,5 +62,10 @@ fun decodeCsvBytes(bytes: ByteArray): String {
     return if (utf8.contains('�')) bytes.toString(charset("windows-1250")) else utf8
 }
 
-/** Parses a Polish-locale decimal (comma as the separator, e.g. "138,82") into a [BigDecimal]. */
-fun parsePolishDecimal(text: String): BigDecimal? = text.trim().replace(",", ".").toBigDecimalOrNull()
+/**
+ * Parses a Polish-locale decimal (comma as the separator, e.g. "138,82") into a [BigDecimal].
+ * Also strips space thousands separators (plain or non-breaking, e.g. "14 200,00"), which some
+ * exports include but brokerage reports like BOSSA/XTB never do.
+ */
+fun parsePolishDecimal(text: String): BigDecimal? =
+    text.trim().replace(" ", "").replace(" ", "").replace(",", ".").toBigDecimalOrNull()
