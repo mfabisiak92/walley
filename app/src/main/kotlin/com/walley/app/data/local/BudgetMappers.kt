@@ -28,5 +28,6 @@ fun BudgetItemEntity.toDomain(): BudgetItem = BudgetItem(
     paymentDayIsLastOfMonth = paymentDayIsLastOfMonth,
     paidAmount = BigDecimal(paidAmountMinorUnits).movePointLeft(2),
     incomeCategory = incomeCategory,
-    icon = icon
+    icon = icon,
+    isFinalized = isFinalized
 )

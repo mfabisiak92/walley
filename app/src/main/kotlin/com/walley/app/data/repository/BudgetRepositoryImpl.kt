@@ -19,6 +19,7 @@ import com.walley.app.domain.model.IncomeCategory
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.accountEffectsGroup
 import com.walley.app.domain.model.isAccountWithdrawal
+import com.walley.app.domain.model.isFinalizable
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -156,13 +157,16 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override suspend fun markItemPaid(itemId: Long) {
         val item = budgetDao.getItem(itemId).toDomain()
+        if (item.isFinalized) return
         val delta = item.amount - item.paidAmount
         budgetDao.updateItemPaidAmount(itemId, item.amount.toMinorUnits())
         applyAccountDelta(item, delta)
+        autoFinalizeIfEligible(item)
     }
 
     override suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal) {
         val item = budgetDao.getItem(itemId).toDomain()
+        if (item.isFinalized) return
         val clamped = paidAmount.coerceIn(BigDecimal.ZERO, item.amount)
         val delta = clamped - item.paidAmount
         budgetDao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
@@ -171,12 +175,24 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override suspend fun updateItemAmount(itemId: Long, amount: BigDecimal) {
         val item = budgetDao.getItem(itemId).toDomain()
+        if (item.isFinalized) return
         budgetDao.updateItemAmount(itemId, amount.toMinorUnits())
         val clampedPaidAmount = item.paidAmount.coerceAtMost(amount)
         if (clampedPaidAmount != item.paidAmount) {
             budgetDao.updateItemPaidAmount(itemId, clampedPaidAmount.toMinorUnits())
             applyAccountDelta(item, clampedPaidAmount - item.paidAmount)
         }
+    }
+
+    override suspend fun finalizeItem(itemId: Long) {
+        val item = budgetDao.getItem(itemId).toDomain()
+        if (!item.section.isFinalizable || item.isFinalized) return
+        budgetDao.finalizeItem(itemId)
+    }
+
+    /** Marking an Income/Income-related-expenses item fully paid locks it in as final automatically. */
+    private suspend fun autoFinalizeIfEligible(item: BudgetItem) {
+        if (item.section.isFinalizable) budgetDao.finalizeItem(item.id)
     }
 
     override suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
@@ -232,7 +248,8 @@ class BudgetRepositoryImpl @Inject constructor(
                 paymentDayIsLastOfMonth = item.paymentDayIsLastOfMonth,
                 paidAmountMinorUnits = item.paidAmount.toMinorUnits(),
                 incomeCategory = item.incomeCategory,
-                icon = item.icon
+                icon = item.icon,
+                isFinalized = item.isFinalized
             )
         )
     }
@@ -296,7 +313,7 @@ class BudgetRepositoryImpl @Inject constructor(
             for (itemEntity in allItems) {
                 if (itemEntity.budgetId != budgetEntity.id) continue
                 val item = itemEntity.toDomain()
-                if (item.isCompleted || !item.hasPaymentDay) continue
+                if (item.isCompleted || item.isFinalized || !item.hasPaymentDay) continue
 
                 val targetDay = if (item.paymentDayIsLastOfMonth) {
                     yearMonth.lengthOfMonth()
@@ -309,6 +326,7 @@ class BudgetRepositoryImpl @Inject constructor(
                     val delta = item.amount - item.paidAmount
                     budgetDao.updateItemPaidAmount(item.id, item.amount.toMinorUnits())
                     applyAccountDelta(item, delta)
+                    autoFinalizeIfEligible(item)
                 }
             }
         }

@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 33,
+    version = 34,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -538,5 +538,13 @@ val MIGRATION_32_33 = object : Migration(32, 33) {
         // lookups — plain symbol search often can't resolve a ticker without it. Null for existing
         // investments until the user sets one.
         db.execSQL("ALTER TABLE investments ADD COLUMN exchange TEXT")
+    }
+}
+
+val MIGRATION_33_34 = object : Migration(33, 34) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Locks an Income/Income-related-expenses item so its amount can no longer change, even if
+        // it's not fully paid — see BudgetItem.isFinalized. False for every existing item.
+        db.execSQL("ALTER TABLE budget_items ADD COLUMN isFinalized INTEGER NOT NULL DEFAULT 0")
     }
 }

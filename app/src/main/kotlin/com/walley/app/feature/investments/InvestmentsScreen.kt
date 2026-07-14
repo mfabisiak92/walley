@@ -277,7 +277,7 @@ private fun PortfolioListPage(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun InvestmentRow(
+fun InvestmentRow(
     data: InvestmentWithTransactions,
     accountName: String?,
     strategy: WatchedEquityWithNotes?,

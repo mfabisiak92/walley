@@ -37,6 +37,10 @@ fun BudgetSectionType.allowedAccountTypes(): Set<AccountType>? = when (this) {
     BudgetSectionType.INVESTMENTS -> setOf(AccountType.INVESTMENT)
 }
 
+/** Whether an item in this section can be locked via [BudgetItem.isFinalized]. */
+val BudgetSectionType.isFinalizable: Boolean
+    get() = this == BudgetSectionType.INCOME || this == BudgetSectionType.INCOME_RELATED_EXPENSES
+
 /** Whether an item requires an account to be linked (rather than it being optional). */
 val BudgetSectionType.requiresAccount: Boolean
     get() = this == BudgetSectionType.INCOME || this == BudgetSectionType.INCOME_RELATED_EXPENSES ||

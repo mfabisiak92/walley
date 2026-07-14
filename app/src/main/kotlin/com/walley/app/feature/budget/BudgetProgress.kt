@@ -82,23 +82,65 @@ fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: 
 
 /**
  * Net change to net worth from this budget's still-unpaid items, in [targetCurrency]; null if a
- * needed rate is unavailable. Income/Savings/Investments add (they land in an account once paid);
- * Income-related-expenses/Fixed costs/Other costs subtract (they represent money going out).
+ * needed rate is unavailable.
+ *
+ * Income adds (it lands in an account once received); Income-related-expenses/Fixed costs/Other
+ * costs subtract (they represent money actually leaving the tracked accounts). Savings and
+ * Investments are excluded: paying those items just moves money from one tracked account to
+ * another of the user's own (savings/investment) accounts, so it doesn't change net worth whether
+ * it's paid yet or not — it's still sitting in an account either way. The one exception is a real
+ * Saving account that's deliberately excluded from net worth ([includeSavings] false): its unpaid
+ * remainder still counts as net worth (it hasn't left for an excluded account yet), so it has to be
+ * added back to offset the exclusion.
+ *
+ * A finalized Income/Income-related-expenses item ([BudgetItem.isFinalized]) is excluded from its
+ * section's remainder entirely — it's locked in as final, so any gap between what was planned and
+ * what was actually paid is never going to close. That deviation shows up separately, as spendable
+ * budget, via [additionalAmountToSpend].
  */
-fun projectedNetWorthDelta(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
+fun projectedNetWorthDelta(
+    items: List<BudgetItem>,
+    targetCurrency: Currency,
+    rates: ExchangeRates?,
+    includeSavings: Boolean = true
+): BigDecimal? {
     fun remaining(section: BudgetSectionType): BigDecimal? {
-        val progress = budgetProgress(items, setOf(section), targetCurrency, rates) ?: return null
+        val progress = budgetProgress(items.filterNot { it.isFinalized }, setOf(section), targetCurrency, rates)
+            ?: return null
         return progress.planned - progress.spent
     }
 
     val income = remaining(BudgetSectionType.INCOME) ?: return null
     val incomeRelatedExpenses = remaining(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: return null
     val savings = remaining(BudgetSectionType.SAVINGS) ?: return null
-    val investments = remaining(BudgetSectionType.INVESTMENTS) ?: return null
     val fixedCosts = remaining(BudgetSectionType.FIXED_COSTS) ?: return null
     val otherCosts = remaining(BudgetSectionType.OTHER_COSTS) ?: return null
 
-    return income - incomeRelatedExpenses + savings + investments - fixedCosts - otherCosts
+    val savingsAdjustment = if (includeSavings) BigDecimal.ZERO else savings
+    return income - incomeRelatedExpenses + savingsAdjustment - fixedCosts - otherCosts
+}
+
+/**
+ * Extra budget freed up (or eaten into) by finalized Income/Income-related-expenses items' final
+ * deviation from plan, in [targetCurrency]; null if a needed rate is unavailable. Unfinalized items
+ * don't contribute — their deviation isn't locked in yet, and may still change.
+ *
+ * - Income: overpaid adds (more came in than planned), underpaid subtracts (less did).
+ * - Income-related expenses: overpaid subtracts (more went out than planned), underpaid adds (less did).
+ */
+fun additionalAmountToSpend(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
+    var total = BigDecimal.ZERO
+    for (item in items) {
+        if (!item.isFinalized) continue
+        val planned = convertToCurrency(item.amount, item.currency, targetCurrency, rates) ?: return null
+        val paid = convertToCurrency(item.paidAmount, item.currency, targetCurrency, rates) ?: return null
+        total += when (item.section) {
+            BudgetSectionType.INCOME -> paid - planned
+            BudgetSectionType.INCOME_RELATED_EXPENSES -> planned - paid
+            else -> BigDecimal.ZERO
+        }
+    }
+    return total
 }
 
 /**

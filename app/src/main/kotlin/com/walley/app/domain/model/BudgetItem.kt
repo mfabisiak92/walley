@@ -21,7 +21,15 @@ data class BudgetItem(
     val paidAmount: BigDecimal = BigDecimal.ZERO,
     /** Only set for [BudgetSectionType.INCOME] items; used to break income down by source in the monthly snapshot. */
     val incomeCategory: IncomeCategory? = null,
-    val icon: BudgetItemIcon? = null
+    val icon: BudgetItemIcon? = null,
+    /**
+     * One-way lock, only settable on [BudgetSectionType.INCOME] / [BudgetSectionType.INCOME_RELATED_EXPENSES]
+     * items: once true, [amount]/[paidAmount] can no longer change for this item, even if it isn't
+     * fully paid. Set automatically when the item is marked fully paid, or explicitly (with
+     * confirmation) to lock in a partial payment as final. See [additionalAmountToSpend] for how a
+     * finalized item's deviation from plan feeds back into spendable budget elsewhere.
+     */
+    val isFinalized: Boolean = false
 ) {
     val isCompleted: Boolean get() = amount.signum() > 0 && paidAmount >= amount
 

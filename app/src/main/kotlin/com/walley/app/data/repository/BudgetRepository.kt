@@ -49,6 +49,12 @@ interface BudgetRepository {
     suspend fun markItemPaid(itemId: Long)
     suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal)
 
+    /**
+     * One-way lock for an Income/Income-related-expenses item: no-ops for any other section. Once
+     * finalized, [markItemPaid]/[markItemPartiallyPaid]/[updateItemAmount] no longer touch this item.
+     */
+    suspend fun finalizeItem(itemId: Long)
+
     /** Edits an item's planned amount; if it drops below the amount already paid, paidAmount is clamped down to match. */
     suspend fun updateItemAmount(itemId: Long, amount: BigDecimal)
 

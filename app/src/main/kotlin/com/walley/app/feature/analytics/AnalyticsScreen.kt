@@ -543,14 +543,26 @@ private fun PerformanceByPositionCard(performance: List<InvestmentPerformancePoi
                         .padding(top = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("${point.name} (${point.ticker})", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        "XIRR ${point.xirr?.let { "${it.toInt()}%" } ?: "—"} · " +
-                            "CAGR ${point.cagr?.let { "${it.toInt()}%" } ?: "—"} " +
-                            "(${point.currency.name})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(point.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            point.ticker,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            "XIRR ${point.xirr?.let { "${it.toInt()}%" } ?: "—"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            "CAGR ${point.cagr?.let { "${it.toInt()}%" } ?: "—"} (${point.currency.name})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }

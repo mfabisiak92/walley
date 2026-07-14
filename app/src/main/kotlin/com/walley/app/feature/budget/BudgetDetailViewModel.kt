@@ -89,7 +89,7 @@ class BudgetDetailViewModel @Inject constructor(
         val items = budgetWithItems?.items ?: return@combine null
         val currentNetWorth = calculateNetWorth(accounts, assets, liabilities, base, rates, includeSavings)
             ?: return@combine null
-        val delta = projectedNetWorthDelta(items, base, rates) ?: return@combine null
+        val delta = projectedNetWorthDelta(items, base, rates, includeSavings) ?: return@combine null
         (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
@@ -114,6 +114,11 @@ class BudgetDetailViewModel @Inject constructor(
     fun markPartiallyPaid(itemId: Long, amount: BigDecimal) {
         if (!isEditable) return
         viewModelScope.launch { budgetRepository.markItemPartiallyPaid(itemId, amount) }
+    }
+
+    fun finalizeItem(itemId: Long) {
+        if (!isEditable) return
+        viewModelScope.launch { budgetRepository.finalizeItem(itemId) }
     }
 
     fun updateItemAmount(itemId: Long, amount: BigDecimal) {

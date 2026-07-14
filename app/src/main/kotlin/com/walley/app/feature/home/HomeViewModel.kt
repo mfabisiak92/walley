@@ -317,7 +317,7 @@ class HomeViewModel @Inject constructor(
         val projectedAmount = if (currentMonthBudgetItems.isEmpty()) {
             null
         } else {
-            projectedNetWorthDelta(currentMonthBudgetItems, base, rates)?.let { delta ->
+            projectedNetWorthDelta(currentMonthBudgetItems, base, rates, includeSavings)?.let { delta ->
                 (total + delta).setScale(2, RoundingMode.HALF_UP)
             }
         }

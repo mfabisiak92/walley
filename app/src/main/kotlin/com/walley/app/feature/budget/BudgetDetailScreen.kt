@@ -258,6 +258,10 @@ fun BudgetDetailScreen(
                 viewModel.markPaid(item.id)
                 itemForPaidDialog = null
             },
+            onComplete = {
+                viewModel.finalizeItem(item.id)
+                itemForPaidDialog = null
+            },
             onSave = { paid, planned ->
                 if (planned != item.amount) {
                     viewModel.updateItemAmount(item.id, planned)
@@ -472,11 +476,11 @@ private fun SectionTabContent(
                             BudgetItemRow(
                                 item = budgetItem,
                                 accountName = budgetItem.accountId?.let { id -> accounts.find { it.id == id }?.name },
-                                onClick = if (isEditable) ({ onItemClick(budgetItem) }) else null,
+                                onClick = if (isEditable && !budgetItem.isFinalized) ({ onItemClick(budgetItem) }) else null,
                                 onLongClick = if (isEditable) ({ onItemLongClick(budgetItem) }) else null
                             )
                         }
-                        if (isEditable && !budgetItem.isCompleted) {
+                        if (isEditable && !budgetItem.isCompleted && !budgetItem.isFinalized) {
                             SwipeToCompleteBox(onComplete = { onSwipeMarkPaid(budgetItem) }) { row() }
                         } else {
                             row()
@@ -502,6 +506,29 @@ private fun SectionTabContent(
                     targetPercent = target,
                     modifier = Modifier.padding(16.dp)
                 )
+            }
+        }
+        if (tab != BudgetDetailTab.INCOME) {
+            val additionalToSpend = additionalAmountToSpend(allItems, baseCurrency, rates)
+            if (additionalToSpend != null && allItems.any { it.isFinalized }) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Additional amount to spend", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        formatMoney(additionalToSpend, baseCurrency),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = when {
+                            additionalToSpend.signum() > 0 -> MaterialTheme.colorScheme.primary
+                            additionalToSpend.signum() < 0 -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+                    )
+                }
             }
         }
     }

@@ -23,13 +23,15 @@ class BudgetProgressTest {
         section: BudgetSectionType,
         amount: String,
         currency: Currency = Currency.PLN,
-        paidAmount: String = "0"
+        paidAmount: String = "0",
+        isFinalized: Boolean = false
     ) = BudgetItem(
         section = section,
         name = "Item",
         amount = BigDecimal(amount),
         currency = currency,
-        paidAmount = BigDecimal(paidAmount)
+        paidAmount = BigDecimal(paidAmount),
+        isFinalized = isFinalized
     )
 
     @Test
@@ -118,7 +120,7 @@ class BudgetProgressTest {
     }
 
     @Test
-    fun `projectedNetWorthDelta adds unpaid income, savings and investments and subtracts unpaid expenses`() {
+    fun `projectedNetWorthDelta ignores unpaid savings and investments since they just move between accounts`() {
         val items = listOf(
             item(BudgetSectionType.INCOME, "3000", paidAmount = "1000"),
             item(BudgetSectionType.INCOME_RELATED_EXPENSES, "200", paidAmount = "0"),
@@ -127,14 +129,85 @@ class BudgetProgressTest {
             item(BudgetSectionType.FIXED_COSTS, "400", paidAmount = "100"),
             item(BudgetSectionType.OTHER_COSTS, "100", paidAmount = "0")
         )
-        // remaining: income 2000, expenses 200, savings 500, investments 300, fixed 300, other 100
-        // delta = 2000 - 200 + 500 + 300 - 300 - 100 = 2200
-        assertEquals(BigDecimal("2200"), projectedNetWorthDelta(items, Currency.PLN, rates))
+        // remaining: income 2000, expenses 200, fixed 300, other 100; savings/investments don't count
+        // delta = 2000 - 200 - 300 - 100 = 1400
+        assertEquals(BigDecimal("1400"), projectedNetWorthDelta(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `projectedNetWorthDelta adds back unpaid savings when savings are excluded from net worth`() {
+        val items = listOf(
+            item(BudgetSectionType.INCOME, "3000", paidAmount = "1000"),
+            item(BudgetSectionType.SAVINGS, "500", paidAmount = "0"),
+            item(BudgetSectionType.INVESTMENTS, "300", paidAmount = "0")
+        )
+        // remaining: income 2000, savings 500 (added back since it hasn't left for an excluded
+        // account yet), investments still ignored
+        assertEquals(BigDecimal("2500"), projectedNetWorthDelta(items, Currency.PLN, rates, includeSavings = false))
     }
 
     @Test
     fun `projectedNetWorthDelta is zero for a budget with no items`() {
         assertEquals(BigDecimal.ZERO, projectedNetWorthDelta(emptyList(), Currency.PLN, rates))
+    }
+
+    @Test
+    fun `projectedNetWorthDelta excludes a finalized item's shortfall from its section's remainder`() {
+        val items = listOf(
+            // Finalized underpaid Income: locked in as final, so its 200 gap never arrives.
+            item(BudgetSectionType.INCOME, "1000", paidAmount = "800", isFinalized = true),
+            // Unfinalized Income: still expected to arrive in full.
+            item(BudgetSectionType.INCOME, "500", paidAmount = "0")
+        )
+        // Only the unfinalized item's remainder (500) counts; the finalized item's 200 shortfall doesn't.
+        assertEquals(BigDecimal("500"), projectedNetWorthDelta(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend is null when a rate is missing`() {
+        val items = listOf(item(BudgetSectionType.INCOME, "100", currency = Currency.GBP, isFinalized = true))
+        assertNull(additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend ignores items that aren't finalized`() {
+        val items = listOf(item(BudgetSectionType.INCOME, "1000", paidAmount = "1200"))
+        assertEquals(BigDecimal.ZERO, additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend adds an overpaid finalized income item`() {
+        val items = listOf(item(BudgetSectionType.INCOME, "1000", paidAmount = "1200", isFinalized = true))
+        assertEquals(BigDecimal("200"), additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend subtracts an underpaid finalized income item`() {
+        val items = listOf(item(BudgetSectionType.INCOME, "1000", paidAmount = "700", isFinalized = true))
+        assertEquals(BigDecimal("-300"), additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend subtracts an overpaid finalized income-related-expense item`() {
+        val items = listOf(item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500", paidAmount = "600", isFinalized = true))
+        assertEquals(BigDecimal("-100"), additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend adds an underpaid finalized income-related-expense item`() {
+        val items = listOf(item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500", paidAmount = "300", isFinalized = true))
+        assertEquals(BigDecimal("200"), additionalAmountToSpend(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `additionalAmountToSpend combines multiple finalized items`() {
+        val items = listOf(
+            item(BudgetSectionType.INCOME, "1000", paidAmount = "1200", isFinalized = true),
+            item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500", paidAmount = "300", isFinalized = true),
+            // Not finalized: excluded even though it deviates from plan.
+            item(BudgetSectionType.INCOME, "300", paidAmount = "0")
+        )
+        assertEquals(BigDecimal("400"), additionalAmountToSpend(items, Currency.PLN, rates))
     }
 
     @Test

@@ -20,5 +20,6 @@ data class BudgetItemEntity(
     val paymentDayIsLastOfMonth: Boolean = false,
     val paidAmountMinorUnits: Long = 0,
     val incomeCategory: IncomeCategory? = null,
-    val icon: BudgetItemIcon? = null
+    val icon: BudgetItemIcon? = null,
+    val isFinalized: Boolean = false
 )

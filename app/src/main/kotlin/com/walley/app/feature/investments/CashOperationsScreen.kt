@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -37,6 +38,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountOperation
+import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.netRealizedGain
@@ -45,24 +47,28 @@ import com.walley.app.domain.model.realizedGainTax
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
-private val TABS = listOf("Details", "Operations")
+private val INVESTMENT_ACCOUNT_TABS = listOf("Details", "Investments", "Operations")
+private val OTHER_ACCOUNT_TABS = listOf("Operations")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CashOperationsScreen(
     onNavigateBack: () -> Unit,
+    onOpenInvestment: (Long) -> Unit,
     viewModel: CashOperationsViewModel = hiltViewModel()
 ) {
     val account by viewModel.account.collectAsStateWithLifecycle()
     val operations by viewModel.operations.collectAsStateWithLifecycle()
     val investmentsInAccount by viewModel.investmentsInAccount.collectAsStateWithLifecycle()
-    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val isInvestmentAccount = account?.type == AccountType.INVESTMENT
+    val tabs = if (isInvestmentAccount) INVESTMENT_ACCOUNT_TABS else OTHER_ACCOUNT_TABS
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(account?.let { "Cash operations · ${it.name}" } ?: "Cash operations") },
+                title = { Text(account?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -72,24 +78,73 @@ fun CashOperationsScreen(
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            TabRow(selectedTabIndex = pagerState.currentPage) {
-                TABS.forEachIndexed { index, label ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(label) }
-                    )
+            if (tabs.size > 1) {
+                TabRow(selectedTabIndex = pagerState.currentPage) {
+                    tabs.forEachIndexed { index, label ->
+                        Tab(
+                            selected = pagerState.currentPage == index,
+                            onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                            text = { Text(label) }
+                        )
+                    }
                 }
             }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
-                if (page == 0) {
-                    DetailsTab(account = account, operations = operations, investmentsInAccount = investmentsInAccount)
+                if (isInvestmentAccount) {
+                    when (page) {
+                        0 -> DetailsTab(account = account, operations = operations, investmentsInAccount = investmentsInAccount)
+                        1 -> InvestmentsTab(investmentsInAccount = investmentsInAccount, onOpenInvestment = onOpenInvestment)
+                        else -> OperationsTab(operations = operations, currency = account?.currency ?: Currency.PLN)
+                    }
                 } else {
                     OperationsTab(operations = operations, currency = account?.currency ?: Currency.PLN)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InvestmentsTab(investmentsInAccount: List<InvestmentWithTransactions>, onOpenInvestment: (Long) -> Unit) {
+    val openInvestments = investmentsInAccount.filter { it.quantity.signum() != 0 }
+    if (openInvestments.isEmpty()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.List,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                "No investments linked to this account yet.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(openInvestments, key = { it.investment.id }) { investment ->
+                InvestmentRow(
+                    data = investment,
+                    accountName = null,
+                    strategy = null,
+                    onClick = { onOpenInvestment(investment.investment.id) },
+                    onLongClick = {},
+                    onClickStrategy = {}
+                )
             }
         }
     }

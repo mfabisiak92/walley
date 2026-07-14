@@ -190,7 +190,10 @@ fun WalleyNavHost() {
             WalleyDestinations.CASH_OPERATIONS,
             arguments = listOf(navArgument("accountId") { type = NavType.LongType })
         ) {
-            CashOperationsScreen(onNavigateBack = { navController.popBackStack() })
+            CashOperationsScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onOpenInvestment = { investmentId -> navController.navigate(WalleyDestinations.investmentDetail(investmentId)) }
+            )
         }
     }
 }
