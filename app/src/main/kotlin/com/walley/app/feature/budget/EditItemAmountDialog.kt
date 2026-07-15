@@ -2,12 +2,15 @@ package com.walley.app.feature.budget
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.BudgetItemIconPicker
+import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItem
@@ -39,6 +43,9 @@ import com.walley.app.domain.model.requiresAccount
 fun EditItemAmountDialog(
     item: BudgetItem,
     accounts: List<Account> = emptyList(),
+    // Accounts already linked to another item of the same section elsewhere in this budget — callers
+    // must exclude [item]'s own account so it stays selectable.
+    excludedAccountIds: Set<Long> = emptySet(),
     onDismiss: () -> Unit,
     onSave: (icon: BudgetItemIcon?, accountId: Long?) -> Unit,
     onDelete: () -> Unit
@@ -49,7 +56,7 @@ fun EditItemAmountDialog(
 
     val accountRequired = item.section.requiresAccount
     val accountOptions = item.section.allowedAccountTypes()
-        ?.let { types -> accounts.filter { it.type in types && !it.isClosed } }
+        ?.let { types -> accounts.filter { it.type in types && !it.isClosed && it.id !in excludedAccountIds } }
         ?: emptyList()
     val selectedAccount = accounts.find { it.id == accountId }
 
@@ -103,6 +110,15 @@ fun EditItemAmountDialog(
                             accountOptions.forEach { account ->
                                 DropdownMenuItem(
                                     text = { Text(account.name) },
+                                    trailingIcon = {
+                                        if (account.targetReached) {
+                                            Icon(
+                                                Icons.Filled.CheckCircle,
+                                                contentDescription = "Target reached",
+                                                tint = InvestmentGainColor
+                                            )
+                                        }
+                                    },
                                     onClick = {
                                         accountId = account.id
                                         accountMenuExpanded = false

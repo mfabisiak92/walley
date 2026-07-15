@@ -44,13 +44,26 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 
 data class HomeBalances(
-    val total: List<CurrencyTotal> = emptyList(),
+    /** Balance of non-virtual [AccountType.CHECKING]/[AccountType.CASH] accounts, summed per currency. */
+    val checkingCash: List<CurrencyTotal> = emptyList(),
     val savings: List<CurrencyTotal> = emptyList(),
+    /**
+     * [checkingCash] with any virtual Saving envelope's earmark subtracted back out — what's actually
+     * free to spend. A virtual account's balance already physically sits inside its (non-virtual)
+     * host's balance, so this can't be computed per-account; instead, mirroring
+     * [Account.netWorthContribution], the earmarked amount is subtracted from the flat currency total
+     * rather than from a specific host account.
+     */
+    val availableBalance: List<CurrencyTotal> = emptyList(),
     val investments: List<CurrencyTotal> = emptyList(),
     /** Same as [investments], but with tax owed on any unrealized gain subtracted per account. */
     val investmentsAfterTax: List<CurrencyTotal> = emptyList(),
     /** Current value minus cost basis, summed per currency — used to color the Investments tile. */
-    val investmentsGainLoss: List<CurrencyTotal> = emptyList()
+    val investmentsGainLoss: List<CurrencyTotal> = emptyList(),
+    /** Current market value of positions held (i.e. [investments] minus [uninvestedCash]), summed per currency. */
+    val investedAmount: List<CurrencyTotal> = emptyList(),
+    /** Cash sitting in investment accounts that hasn't been put into a position yet, summed per currency. */
+    val uninvestedCash: List<CurrencyTotal> = emptyList()
 )
 
 data class NetWorthByCurrency(
@@ -133,13 +146,29 @@ class HomeViewModel @Inject constructor(
     val homeBalances: StateFlow<HomeBalances> = accountRepository.observeAccounts()
         .map { accounts ->
             val investmentAccounts = accounts.filter { it.type == AccountType.INVESTMENT }
+            val checkingCashAccounts = accounts.filter { !it.isVirtual && (it.type == AccountType.CHECKING || it.type == AccountType.CASH) }
+            // A virtual Saving envelope's money already sits inside a real (non-virtual) account's balance,
+            // so subtracting its own balance back out of the flat total has the same effect as subtracting
+            // it from whichever specific account it's earmarked from, without needing to know which one.
+            // Closed envelopes are excluded: closing one sweeps its balance back into its host (see
+            // AccountRepositoryImpl.closeAccount), so it no longer earmarks anything.
+            val virtualSavingsAccounts = accounts.filter { it.isVirtual && it.type == AccountType.SAVING && !it.isClosed }
+            val checkingCashTotals = currencyTotals(checkingCashAccounts)
             HomeBalances(
-                // Virtual accounts' balance already sits in a real account, so excluding them here avoids double-counting.
-                total = currencyTotals(accounts.filterNot { it.isVirtual }),
+                checkingCash = checkingCashTotals,
                 savings = currencyTotals(accounts.filter { it.type == AccountType.SAVING && !it.isClosed }),
+                // Derived from checkingCashTotals (rather than currencyTotals on the combined account list)
+                // so a currency whose envelopes exactly exhaust its checking/cash balance still gets an
+                // entry showing zero, instead of being dropped and falling back to the un-deducted total.
+                availableBalance = checkingCashTotals.map { (currency, total) ->
+                    val earmarked = virtualSavingsAccounts.filter { it.currency == currency }.sumOf { it.balance }
+                    CurrencyTotal(currency, total - earmarked)
+                },
                 investments = currencyTotals(investmentAccounts),
                 investmentsAfterTax = currencyTotals(investmentAccounts) { it.netWorthValue },
-                investmentsGainLoss = currencyTotals(investmentAccounts) { it.investmentGainLoss }
+                investmentsGainLoss = currencyTotals(investmentAccounts) { it.investmentGainLoss },
+                investedAmount = currencyTotals(investmentAccounts) { it.balance - it.uninvestedCash },
+                uninvestedCash = currencyTotals(investmentAccounts) { it.uninvestedCash }
             )
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeBalances())

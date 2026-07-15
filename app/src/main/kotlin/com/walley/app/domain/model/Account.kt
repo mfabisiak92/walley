@@ -2,6 +2,7 @@ package com.walley.app.domain.model
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 
 data class Account(
     val id: Long = 0,
@@ -12,6 +13,11 @@ data class Account(
     val taxRate: AccountTaxRate = AccountTaxRate.STANDARD_19,
     /** Optional savings goal; only meaningful for [AccountType.SAVING] accounts. */
     val targetAmount: BigDecimal? = null,
+    /**
+     * Informational-only target date for reaching [targetAmount] — not used in any calculation.
+     * Mandatory (enforced in the UI) for [AccountType.SAVING] accounts; unset otherwise.
+     */
+    val targetDate: LocalDate? = null,
     /**
      * Cash held in an [AccountType.INVESTMENT] account that hasn't been put into a position yet.
      * [balance] for investment accounts is this value plus the current value of linked investments.

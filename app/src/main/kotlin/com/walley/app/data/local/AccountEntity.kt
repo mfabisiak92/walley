@@ -6,6 +6,7 @@ import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
+import java.time.LocalDate
 
 @Entity(tableName = "accounts")
 data class AccountEntity(
@@ -16,6 +17,7 @@ data class AccountEntity(
     val balanceMinorUnits: Long,
     val taxRate: AccountTaxRate = AccountTaxRate.STANDARD_19,
     val targetAmountMinorUnits: Long? = null,
+    val targetDate: LocalDate? = null,
     val isDefault: Boolean = false,
     val commissionFlatMinorUnits: Long = 0,
     val commissionPercent: BigDecimal = BigDecimal.ZERO,

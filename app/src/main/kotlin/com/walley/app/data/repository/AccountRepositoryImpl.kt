@@ -16,6 +16,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -76,6 +77,7 @@ class AccountRepositoryImpl @Inject constructor(
         initialBalance: BigDecimal,
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
+        targetDate: LocalDate?,
         commissionFlat: BigDecimal,
         commissionPercent: BigDecimal,
         isVirtual: Boolean
@@ -89,6 +91,7 @@ class AccountRepositoryImpl @Inject constructor(
                 balanceMinorUnits = initialBalance.toMinorUnits(),
                 taxRate = taxRate,
                 targetAmountMinorUnits = targetAmount?.toMinorUnits(),
+                targetDate = targetDate,
                 isDefault = isFirstAccount,
                 commissionFlatMinorUnits = commissionFlat.toMinorUnits(),
                 commissionPercent = commissionPercent,
@@ -104,6 +107,7 @@ class AccountRepositoryImpl @Inject constructor(
         taxRate: AccountTaxRate,
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
+        targetDate: LocalDate?,
         commissionFlat: BigDecimal,
         commissionPercent: BigDecimal,
         isVirtual: Boolean
@@ -115,6 +119,7 @@ class AccountRepositoryImpl @Inject constructor(
             taxRate,
             newBalance.toMinorUnits(),
             targetAmount?.toMinorUnits(),
+            targetDate,
             commissionFlat.toMinorUnits(),
             commissionPercent,
             isVirtual

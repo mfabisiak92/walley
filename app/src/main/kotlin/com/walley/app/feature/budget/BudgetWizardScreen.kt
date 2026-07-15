@@ -322,9 +322,17 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
     if (showAddDialog || editingDraft != null) {
         val initial = editingDraft
         if (isAccountLinked) {
+            // Other drafts in this section already claim these accounts — exclude them so the same
+            // account can't be double-booked, but keep the draft being edited's own account selectable.
+            val excludedAccountIds = if (section == BudgetSectionType.SAVINGS) {
+                items.filter { it.localId != initial?.localId }.mapNotNull { it.accountId }.toSet()
+            } else {
+                emptySet()
+            }
             AddAccountLinkedItemDialog(
                 accounts = linkedAccounts,
                 initial = initial,
+                excludedAccountIds = excludedAccountIds,
                 onDismiss = {
                     showAddDialog = false
                     editingDraft = null

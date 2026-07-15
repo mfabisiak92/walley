@@ -4,9 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +32,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -44,6 +45,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +60,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.AccountBalanceContainerColor
+import com.walley.app.core.ui.AccountBalanceContentColor
+import com.walley.app.core.ui.InvestmentGainColor
+import com.walley.app.core.ui.InvestmentNeutralColor
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
@@ -127,9 +133,8 @@ private fun AccountsListPage(
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val activeAccounts = filteredAccounts.filterNot { it.isClosed }
-    val portfolioTaxEstimate by viewModel.portfolioTaxEstimate.collectAsStateWithLifecycle()
-    val investmentsNetProfit by viewModel.investmentsNetProfit.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val savingsPaidThisMonth by viewModel.savingsPaidThisMonth.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     val closeBlockedMessage by viewModel.closeBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
@@ -224,17 +229,47 @@ private fun AccountsListPage(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        val isInvestments = group == AccountBalanceGroup.INVESTMENTS
-                        SummaryRibbon(
-                            totalsByCurrency = currencyTotals(activeAccounts.filterNot { it.isVirtual }),
-                            netProfit = if (isInvestments) investmentsNetProfit else null,
-                            estimatedTax = if (isInvestments) portfolioTaxEstimate.taxOwed else null,
-                            baseCurrency = baseCurrency
-                        )
+                        when (group) {
+                            AccountBalanceGroup.CASH_CHECKING -> {
+                                val checkingCashAccounts = activeAccounts.filterNot { it.isVirtual }
+                                // Virtual Savings envelopes are listed on the Savings tab, but their money
+                                // physically sits inside one of the accounts shown here — see SplitSummaryHeader.
+                                val virtualSavingsAccounts = accounts.filter { it.isVirtual && it.type == AccountType.SAVING && !it.isClosed }
+                                // Driven by which currencies actually have a checking/cash account, rather than
+                                // currencyTotals' usual "drop zero totals" rule — so Available still shows a
+                                // 0 line for a currency whose envelopes exactly cancel out its checking/cash total.
+                                val currencies = checkingCashAccounts.map { it.currency }.distinct()
+                                SplitSummaryHeader(
+                                    leftLabel = "Total",
+                                    leftTotals = signedTotalsByCurrency(currencies, checkingCashAccounts) { it.balance },
+                                    rightLabel = "Available",
+                                    rightTotals = signedTotalsByCurrency(currencies, checkingCashAccounts + virtualSavingsAccounts) { account ->
+                                        if (account.isVirtual) -account.balance else account.balance
+                                    },
+                                    baseCurrency = baseCurrency
+                                )
+                            }
+                            AccountBalanceGroup.SAVINGS -> {
+                                val realSavingsAccounts = activeAccounts.filterNot { it.isVirtual }
+                                val virtualSavingsAccounts = activeAccounts.filter { it.isVirtual }
+                                val currencies = activeAccounts.map { it.currency }.distinct()
+                                SplitSummaryHeader(
+                                    leftLabel = "Standard accounts",
+                                    leftTotals = signedTotalsByCurrency(currencies, realSavingsAccounts) { it.balance },
+                                    rightLabel = "Virtual accounts",
+                                    rightTotals = signedTotalsByCurrency(currencies, virtualSavingsAccounts) { it.balance },
+                                    baseCurrency = baseCurrency
+                                )
+                            }
+                            AccountBalanceGroup.INVESTMENTS -> {
+                                InvestmentSummaryCard(activeAccounts.filterNot { it.isVirtual }.filter { it.currency == baseCurrency })
+                            }
+                        }
                     }
                     items(visibleAccounts, key = { it.id }) { account ->
                         AccountRow(
                             account = account,
+                            paidThisMonth = savingsPaidThisMonth[account.id],
                             onOpenCashOperations = { onOpenCashOperations(account.id) },
                             onEditAccount = { editingAccount = account },
                             onSetDefault = { viewModel.setDefaultAccount(account.id) },
@@ -325,6 +360,7 @@ private fun AccountsListPage(
 @Composable
 private fun AccountRow(
     account: Account,
+    paidThisMonth: BigDecimal?,
     onOpenCashOperations: () -> Unit,
     onEditAccount: () -> Unit,
     onSetDefault: () -> Unit,
@@ -349,56 +385,52 @@ private fun AccountRow(
     ) {
         val canBeDefault = account.type == AccountType.CHECKING || account.type == AccountType.CASH
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(account.name, style = MaterialTheme.typography.titleMedium)
-                    val subtitle = listOfNotNull(
-                        // Redundant within the Savings/Investments tabs, which are already single-type —
-                        // only Cash & Checking mixes both types, so the label still disambiguates there.
-                        account.type.label.takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
-                        account.taxRate.label.takeIf { account.type == AccountType.INVESTMENT },
-                        "Virtual".takeIf { account.isVirtual },
-                        "Closed".takeIf { account.isClosed }
-                    ).joinToString(" · ")
-                    if (subtitle.isNotEmpty()) {
-                        Text(
-                            text = subtitle,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    if (account.isClosed) {
-                        OutlinedButton(
-                            onClick = onReopen,
-                            modifier = Modifier.height(32.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
-                        ) {
-                            Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.size(6.dp))
-                            Text("Reopen", style = MaterialTheme.typography.labelMedium)
-                        }
-                    } else {
-                        Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
-                        if (canBeDefault) {
-                            DefaultAccountButton(isDefault = account.isDefault, onClick = onSetDefault)
+            if (account.type == AccountType.INVESTMENT) {
+                InvestmentAccountBody(account = account, onReopen = onReopen)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(account.name, style = MaterialTheme.typography.titleMedium)
+                        val subtitle = listOfNotNull(
+                            // Redundant within the Savings tab, which is already single-type — only
+                            // Cash & Checking mixes both types, so the label still disambiguates there.
+                            account.type.label.takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
+                            "Virtual".takeIf { account.isVirtual },
+                            "Closed".takeIf { account.isClosed }
+                        ).joinToString(" · ")
+                        if (subtitle.isNotEmpty()) {
+                            Text(
+                                text = subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
+                    Column(horizontalAlignment = Alignment.End) {
+                        if (account.isClosed) {
+                            OutlinedButton(
+                                onClick = onReopen,
+                                modifier = Modifier.height(32.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                            ) {
+                                Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text("Reopen", style = MaterialTheme.typography.labelMedium)
+                            }
+                        } else {
+                            Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
+                            if (canBeDefault) {
+                                DefaultAccountButton(isDefault = account.isDefault, onClick = onSetDefault)
+                            }
+                        }
+                    }
                 }
-            }
-            Column {
-                if (account.type == AccountType.INVESTMENT) {
-                    val unrealizedGain = account.investmentGainLoss
-                    val netUnrealizedGain = account.investmentNetProfit ?: unrealizedGain
-                    InvestmentDetailLine("Current account balance", account.balance, account.currency)
-                    InvestmentDetailLine("Uninvested cash", account.uninvestedCash, account.currency)
-                    InvestmentDetailLine("Unrealized gain", unrealizedGain, account.currency, signed = true)
-                    InvestmentDetailLine("Net unrealized gain", netUnrealizedGain, account.currency, signed = true)
+                if (paidThisMonth != null && !account.isClosed) {
+                    MonthPaidRow(amount = paidThisMonth, currency = account.currency)
                 }
                 val progressPercent = account.targetProgressPercent
                 if (progressPercent != null && !account.isClosed) {
@@ -409,18 +441,89 @@ private fun AccountRow(
     }
 }
 
+/**
+ * Investments tab's row layout — name top-left (no tax-rate subtitle; the account already lives on a
+ * single-type tab), then two labeled stat rows and a profit line mirroring [InvestmentSummaryCard]'s
+ * layout and labels one account at a time: Net balance top-right, Invested amount/Uninvested cash
+ * below, and unrealized profit (with its % return on cost basis) flush right below that. All three
+ * money figures share [profitColor] — green for a gain, [MaterialTheme.colorScheme.error] for a loss,
+ * [InvestmentNeutralColor] when flat — same three-way split [InvestmentSummaryCard] uses.
+ */
 @Composable
-private fun InvestmentDetailLine(label: String, value: BigDecimal, currency: Currency, signed: Boolean = false) {
-    Text(
-        text = "$label: ${formatMoney(value, currency)}",
-        style = MaterialTheme.typography.bodySmall,
-        color = when {
-            !signed -> MaterialTheme.colorScheme.onSurfaceVariant
-            value.signum() > 0 -> Color(0xFF2E7D32)
-            value.signum() < 0 -> MaterialTheme.colorScheme.error
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
+private fun InvestmentAccountBody(account: Account, onReopen: () -> Unit) {
+    val invested = account.balance - account.uninvestedCash
+    val profit = account.investmentNetProfit ?: account.investmentGainLoss
+    val profitColor = when {
+        profit.signum() > 0 -> InvestmentGainColor
+        profit.signum() < 0 -> MaterialTheme.colorScheme.error
+        else -> InvestmentNeutralColor
+    }
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val profitPercent = account.investmentCostBasis.takeIf { it.signum() > 0 }
+        ?.let { costBasis -> profit.divide(costBasis, 4, RoundingMode.HALF_UP) * BigDecimal(100) }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Column {
+            Text(account.name, style = MaterialTheme.typography.titleMedium)
+            if (account.isClosed) {
+                Text("Closed", style = MaterialTheme.typography.bodySmall, color = labelColor)
+            }
         }
-    )
+        if (account.isClosed) {
+            OutlinedButton(
+                onClick = onReopen,
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+            ) {
+                Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.size(6.dp))
+                Text("Reopen", style = MaterialTheme.typography.labelMedium)
+            }
+        } else {
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(
+                    formatMoney(account.netWorthValue, account.currency),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = profitColor
+                )
+            }
+        }
+    }
+    if (!account.isClosed) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column {
+                Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(formatMoney(invested, account.currency), style = MaterialTheme.typography.titleSmall)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(formatMoney(account.uninvestedCash, account.currency), style = MaterialTheme.typography.titleSmall)
+            }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            horizontalArrangement = Arrangement.End
+        ) {
+            val percentText = profitPercent?.let { " · ${it.setScale(2, RoundingMode.HALF_UP)}%" }.orEmpty()
+            Text(
+                "${formatMoney(profit, account.currency)}$percentText",
+                style = MaterialTheme.typography.bodyMedium,
+                color = profitColor
+            )
+        }
+    }
 }
 
 /** Marks/unmarks this [AccountType.CHECKING]/[AccountType.CASH] account as the one used by default — a concept that only makes sense for everyday spending accounts, not savings goals or investment accounts. */
@@ -451,51 +554,168 @@ private fun currencyTotals(accounts: List<Account>): List<CurrencyTotal> =
     }
 
 /**
- * Small at-a-glance strip above a tab's account list — total balance, plus net profit and estimated
- * tax for Investments. Deliberately flat (tinted fill, no elevation or border) and slimmer than the
- * account cards below it, so it reads as a summary header rather than another list item.
+ * Like [currencyTotals], but always includes exactly [currencies] — even a currency whose total nets
+ * to zero — instead of dropping zero totals. Used for [CashSummaryHeader] so Total and Available stay
+ * aligned line-for-line even when a currency's envelopes exactly cancel out its checking/cash total.
+ */
+private fun signedTotalsByCurrency(currencies: List<Currency>, accounts: List<Account>, amount: (Account) -> BigDecimal): List<CurrencyTotal> =
+    currencies.map { currency ->
+        CurrencyTotal(currency, accounts.filter { it.currency == currency }.fold(BigDecimal.ZERO) { acc, a -> acc + amount(a) })
+    }
+
+/**
+ * Two-stat summary header used on the Cash & Checking and Savings tabs: split into two equal halves
+ * by a thin divider, one currency per line (no separator joining them), using the same light blue
+ * accent as the Home screen's "Checking, cash & savings" card — distinct from the Investments tab's
+ * [InvestmentSummaryCard] and from the account cards below it.
+ *
+ * - Cash & Checking: Total (what the list below sums to) vs. Available balance (that total minus any
+ *   virtual Savings envelope earmarked from it — those envelopes are listed on the Savings tab even
+ *   though their money physically sits in an account shown here, so this is context the list itself
+ *   can't show).
+ * - Savings: the real, dedicated Saving accounts' total vs. the virtual envelopes' total — since this
+ *   tab's list mixes both, without this split there's no way to tell from the list alone how much of
+ *   "Savings" is actual separate money versus money already counted inside a checking/cash account.
  */
 @Composable
-private fun SummaryRibbon(
-    totalsByCurrency: List<CurrencyTotal>,
-    netProfit: BigDecimal?,
-    estimatedTax: BigDecimal?,
+private fun SplitSummaryHeader(
+    leftLabel: String,
+    leftTotals: List<CurrencyTotal>,
+    rightLabel: String,
+    rightTotals: List<CurrencyTotal>,
     baseCurrency: Currency
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primaryContainer,
-        shape = RoundedCornerShape(8.dp)
+        color = AccountBalanceContainerColor,
+        contentColor = AccountBalanceContentColor,
+        shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .height(IntrinsicSize.Min)
         ) {
-            val tint = MaterialTheme.colorScheme.onPrimaryContainer
-            val totalText = if (totalsByCurrency.isEmpty()) {
-                formatMoney(BigDecimal.ZERO, baseCurrency)
-            } else {
-                totalsByCurrency.joinToString(" · ") { formatMoney(it.total, it.currency) }
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Text(leftLabel, style = MaterialTheme.typography.labelSmall, color = AccountBalanceContentColor.copy(alpha = 0.75f))
+                SplitSummaryAmounts(leftTotals, baseCurrency)
             }
-            RibbonStat("Total", totalText, tint)
-            if (netProfit != null) {
-                RibbonStat("Profit", formatMoney(netProfit, baseCurrency), tint)
-            }
-            if (estimatedTax != null) {
-                RibbonStat("Tax", formatMoney(estimatedTax, baseCurrency), tint)
+            VerticalDivider(color = AccountBalanceContentColor.copy(alpha = 0.15f))
+            Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp)) {
+                Text(rightLabel, style = MaterialTheme.typography.labelSmall, color = AccountBalanceContentColor.copy(alpha = 0.75f))
+                SplitSummaryAmounts(rightTotals, baseCurrency)
             }
         }
     }
 }
 
-/** Equal-width column so 3 stats never squeeze unevenly — a long value wraps onto a second line instead of being hidden or forcing a sibling to shrink. */
 @Composable
-private fun RowScope.RibbonStat(label: String, value: String, tint: Color) {
-    Column(modifier = Modifier.weight(1f)) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = tint.copy(alpha = 0.75f))
-        Text(value, style = MaterialTheme.typography.titleSmall, color = tint)
+private fun SplitSummaryAmounts(totals: List<CurrencyTotal>, baseCurrency: Currency) {
+    if (totals.isEmpty()) {
+        Text(formatMoney(BigDecimal.ZERO, baseCurrency), style = MaterialTheme.typography.titleSmall)
+    } else {
+        totals.forEach { Text(formatMoney(it.total, it.currency), style = MaterialTheme.typography.titleSmall) }
+    }
+}
+
+/**
+ * Investments tab summary — same tile as the Home screen's Investments card: one block per currency,
+ * Total balance unlabeled in the top-left corner (the hero figure), Net balance top-right (labeled,
+ * tinted by gain/loss), Invested amount bottom-left and Uninvested cash bottom-right (both labeled).
+ * Same [MaterialTheme.colorScheme.tertiaryContainer] tint as before, distinct from
+ * [SplitSummaryHeader]'s light blue used on the other two tabs.
+ */
+@Composable
+private fun InvestmentSummaryCard(accounts: List<Account>) {
+    val currencies = accounts.map { it.currency }.distinct()
+    if (currencies.isEmpty()) return
+
+    val lossColor = MaterialTheme.colorScheme.error
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    fun gainLossColor(currency: Currency): Color {
+        val gainLoss = accounts.filter { it.currency == currency }.sumOf { it.investmentGainLoss }
+        return when {
+            gainLoss.signum() > 0 -> InvestmentGainColor
+            gainLoss.signum() < 0 -> lossColor
+            else -> InvestmentNeutralColor
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            currencies.forEachIndexed { index, currency ->
+                if (index > 0) {
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+                val currencyAccounts = accounts.filter { it.currency == currency }
+                val total = currencyAccounts.sumOf { it.balance }
+                val net = currencyAccounts.sumOf { it.netWorthValue }
+                val invested = currencyAccounts.sumOf { it.balance - it.uninvestedCash }
+                val uninvested = currencyAccounts.sumOf { it.uninvestedCash }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(formatMoney(total, currency), style = MaterialTheme.typography.titleLarge)
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(
+                            formatMoney(net, currency),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = gainLossColor(currency)
+                        )
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(formatMoney(invested, currency), style = MaterialTheme.typography.titleSmall)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(formatMoney(uninvested, currency), style = MaterialTheme.typography.titleSmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Paid this month" — how much has been contributed so far to this Saving account's linked SAVINGS
+ * budget item(s) in the current month's budget. A dedicated row, set off by a divider, in the same
+ * label/value shape as [com.walley.app.feature.budget.BudgetItemRow]'s account subtitle — distinct
+ * from [SavingsGoalProgress] below it, which tracks the account's overall balance against its
+ * long-term target rather than this month's contribution.
+ */
+@Composable
+private fun MonthPaidRow(amount: BigDecimal, currency: Currency) {
+    HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            "Paid this month",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            formatMoney(amount, currency),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }
 

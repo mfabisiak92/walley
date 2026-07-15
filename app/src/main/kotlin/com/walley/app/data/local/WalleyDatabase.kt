@@ -24,7 +24,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 34,
+    version = 35,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -546,5 +546,16 @@ val MIGRATION_33_34 = object : Migration(33, 34) {
         // Locks an Income/Income-related-expenses item so its amount can no longer change, even if
         // it's not fully paid — see BudgetItem.isFinalized. False for every existing item.
         db.execSQL("ALTER TABLE budget_items ADD COLUMN isFinalized INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_34_35 = object : Migration(34, 35) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Informational-only target date for a Saving account's goal — not used in any calculation,
+        // and now mandatory whenever a Saving account is created/edited. The real target date isn't
+        // knowable for existing accounts, so default existing Saving accounts to the day this
+        // migration runs; other account types leave it unset since the field doesn't apply to them.
+        db.execSQL("ALTER TABLE accounts ADD COLUMN targetDate TEXT")
+        db.execSQL("UPDATE accounts SET targetDate = '${LocalDate.now()}' WHERE type = 'SAVING'")
     }
 }

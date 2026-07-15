@@ -45,10 +45,21 @@ fun sectionTotal(
     return total
 }
 
-fun disposableIncome(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
+fun plannedDisposableIncome(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
     val income = sectionTotal(items, BudgetSectionType.INCOME, targetCurrency, rates) ?: return null
     val expenses = sectionTotal(items, BudgetSectionType.INCOME_RELATED_EXPENSES, targetCurrency, rates) ?: return null
     return income - expenses
+}
+
+/**
+ * [plannedDisposableIncome] adjusted by [additionalAmountToSpend], i.e. what's actually available
+ * to spend once finalized Income/Income-related-expenses deviations from plan are accounted for;
+ * null if a needed rate is unavailable.
+ */
+fun disposableIncome(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
+    val planned = plannedDisposableIncome(items, targetCurrency, rates) ?: return null
+    val additional = additionalAmountToSpend(items, targetCurrency, rates) ?: return null
+    return planned + additional
 }
 
 /** Spent (paid) vs planned (amount) totals in [targetCurrency], summed over [sections]; null if a rate is unavailable. */
@@ -73,7 +84,10 @@ fun budgetProgress(
     return BudgetProgress(spent = spent, planned = planned, percent = percent)
 }
 
-/** Disposable income minus the total planned across [SPENDING_SECTIONS]; null if a needed rate is unavailable. */
+/**
+ * [disposableIncome] (i.e. including any [additionalAmountToSpend]) minus the total planned across
+ * [SPENDING_SECTIONS]; null if a needed rate is unavailable.
+ */
 fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: ExchangeRates?): BigDecimal? {
     val disposable = disposableIncome(items, targetCurrency, rates) ?: return null
     val spending = budgetProgress(items, SPENDING_SECTIONS, targetCurrency, rates) ?: return null

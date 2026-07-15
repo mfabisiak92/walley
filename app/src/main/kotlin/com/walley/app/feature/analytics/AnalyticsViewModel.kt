@@ -28,7 +28,7 @@ import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
 import com.walley.app.feature.budget.convertToCurrency
-import com.walley.app.feature.budget.disposableIncome
+import com.walley.app.feature.budget.plannedDisposableIncome
 import com.walley.app.feature.budget.sectionTotal
 import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -331,7 +331,7 @@ class AnalyticsViewModel @Inject constructor(
         val other = sectionTotal(items, BudgetSectionType.OTHER_COSTS, base, rates)
         val savings = sectionTotal(items, BudgetSectionType.SAVINGS, base, rates)
         val investments = sectionTotal(items, BudgetSectionType.INVESTMENTS, base, rates)
-        val disposable = disposableIncome(items, base, rates)
+        val disposable = plannedDisposableIncome(items, base, rates)
         val expensesTotal = if (fixed != null && other != null) fixed + other else null
         val savingsTotal = if (savings != null && investments != null) savings + investments else null
         val savingsRate = if (disposable != null && disposable.signum() > 0 && savingsTotal != null) {

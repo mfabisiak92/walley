@@ -5,11 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
@@ -24,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import java.math.BigDecimal
@@ -33,10 +37,13 @@ import java.math.BigDecimal
 fun AddAccountLinkedItemDialog(
     accounts: List<Account>,
     initial: WizardItemDraft? = null,
+    // Accounts already linked to another item of the same section elsewhere in this budget/wizard —
+    // callers must exclude the item being edited's own account so it stays selectable.
+    excludedAccountIds: Set<Long> = emptySet(),
     onDismiss: () -> Unit,
     onConfirm: (accountId: Long, amount: BigDecimal, paymentDay: Int?, isLastOfMonth: Boolean) -> Unit
 ) {
-    val selectableAccounts = accounts.filterNot { it.isClosed }
+    val selectableAccounts = accounts.filterNot { it.isClosed || it.id in excludedAccountIds }
     var accountId by remember { mutableStateOf(initial?.accountId ?: selectableAccounts.firstOrNull()?.id) }
     var accountMenuExpanded by remember { mutableStateOf(false) }
     var amountText by remember { mutableStateOf(initial?.amount?.toPlainString() ?: "") }
@@ -74,6 +81,15 @@ fun AddAccountLinkedItemDialog(
                         selectableAccounts.forEach { account ->
                             DropdownMenuItem(
                                 text = { Text(account.name) },
+                                trailingIcon = {
+                                    if (account.targetReached) {
+                                        Icon(
+                                            Icons.Filled.CheckCircle,
+                                            contentDescription = "Target reached",
+                                            tint = InvestmentGainColor
+                                        )
+                                    }
+                                },
                                 onClick = {
                                     accountId = account.id
                                     accountMenuExpanded = false

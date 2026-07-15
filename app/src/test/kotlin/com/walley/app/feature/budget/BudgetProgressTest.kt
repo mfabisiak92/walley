@@ -73,12 +73,33 @@ class BudgetProgressTest {
     }
 
     @Test
-    fun `disposableIncome subtracts income-related expenses from income`() {
+    fun `plannedDisposableIncome subtracts income-related expenses from income`() {
+        val items = listOf(
+            item(BudgetSectionType.INCOME, "5000"),
+            item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500")
+        )
+        assertEquals(BigDecimal("4500"), plannedDisposableIncome(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `disposableIncome equals plannedDisposableIncome when nothing is finalized`() {
         val items = listOf(
             item(BudgetSectionType.INCOME, "5000"),
             item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500")
         )
         assertEquals(BigDecimal("4500"), disposableIncome(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `disposableIncome adds additionalAmountToSpend on top of plannedDisposableIncome`() {
+        val items = listOf(
+            item(BudgetSectionType.INCOME, "5000"),
+            item(BudgetSectionType.INCOME_RELATED_EXPENSES, "500"),
+            // Finalized, overpaid by 200: locked in, so it becomes extra spendable budget.
+            item(BudgetSectionType.INCOME, "1000", paidAmount = "1200", isFinalized = true)
+        )
+        assertEquals(BigDecimal("5500"), plannedDisposableIncome(items, Currency.PLN, rates))
+        assertEquals(BigDecimal("5700"), disposableIncome(items, Currency.PLN, rates))
     }
 
     @Test
@@ -117,6 +138,18 @@ class BudgetProgressTest {
             item(BudgetSectionType.SAVINGS, "500")
         )
         assertEquals(BigDecimal("3500"), unallocatedAmount(items, Currency.PLN, rates))
+    }
+
+    @Test
+    fun `unallocatedAmount uses disposable income including additionalAmountToSpend when it differs from the plan`() {
+        val items = listOf(
+            // Finalized, underpaid by 300: locked in, so it eats into what's actually spendable.
+            item(BudgetSectionType.INCOME, "5000", paidAmount = "4700", isFinalized = true),
+            item(BudgetSectionType.FIXED_COSTS, "1000"),
+            item(BudgetSectionType.SAVINGS, "500")
+        )
+        // plannedDisposableIncome would be 5000; actual disposable income is 5000 - 300 = 4700.
+        assertEquals(BigDecimal("3200"), unallocatedAmount(items, Currency.PLN, rates))
     }
 
     @Test

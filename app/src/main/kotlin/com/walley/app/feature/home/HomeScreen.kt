@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,13 +38,16 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.core.ui.AccountBalanceContainerColor
+import com.walley.app.core.ui.AccountBalanceContentColor
 import com.walley.app.core.ui.BudgetItemIconBadge
+import com.walley.app.core.ui.InvestmentGainColor
+import com.walley.app.core.ui.InvestmentNeutralColor
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.core.ui.paidProgressColor
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.Currency
-import com.walley.app.domain.model.CurrencyTotal
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -258,66 +260,80 @@ private fun UpcomingItemIconBadge(icon: BudgetItemIcon?, size: androidx.compose.
     }
 }
 
-private val GainColor = Color(0xFF2E7D32)
-private val NeutralProfitColor = Color(0xFF1565C0)
-
 @Composable
 private fun BalanceStatsRow(balances: HomeBalances) {
-    if (balances.total.isEmpty() && balances.savings.isEmpty() && balances.investments.isEmpty()) return
+    if (balances.checkingCash.isEmpty() && balances.savings.isEmpty() && balances.investments.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (balances.total.isNotEmpty() || balances.savings.isNotEmpty()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    title = "Total balance",
-                    currencyTotals = balances.total,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "Savings",
-                    currencyTotals = balances.savings,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+        if (balances.checkingCash.isNotEmpty() || balances.savings.isNotEmpty()) {
+            CheckingCashCard(balances)
         }
         if (balances.investments.isNotEmpty()) {
-            InvestmentsStatCard(
-                grossTotals = balances.investments,
-                netTotals = balances.investmentsAfterTax,
-                gainLossTotals = balances.investmentsGainLoss
-            )
+            InvestmentsCard(balances)
         }
     }
 }
 
+/**
+ * "Checking, cash & savings" section header above a single card — like the Investments grid below it —
+ * rather than repeated per currency block. Each block: checking/cash plus savings combined as the hero
+ * figure (currency code badged in the top-right corner, since the label above no longer carries it),
+ * with Available balance (checking/cash minus any virtual Savings envelope earmarked from it) and
+ * Savings (dedicated Saving accounts plus those same envelopes) below as a two-column row. The hero
+ * figure is Available + Savings rather than raw checking/cash + Savings: a virtual envelope's balance
+ * already sits inside its host's checking/cash balance, so adding both would double-count it.
+ */
 @Composable
-private fun StatCard(
-    title: String,
-    currencyTotals: List<CurrencyTotal>,
-    containerColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxHeight(),
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+private fun CheckingCashCard(balances: HomeBalances) {
+    val currencies = (balances.checkingCash.map { it.currency } + balances.savings.map { it.currency } + balances.availableBalance.map { it.currency })
+        .distinct()
+    if (currencies.isEmpty()) return
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Checking, cash & savings", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = AccountBalanceContainerColor, contentColor = AccountBalanceContentColor)
         ) {
-            Text(title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (currencyTotals.isEmpty()) {
-                Text("—", style = MaterialTheme.typography.titleMedium)
-            } else {
-                currencyTotals.forEach { currencyTotal ->
-                    Text(formatMoney(currencyTotal.total, currencyTotal.currency), style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.padding(12.dp)) {
+                currencies.forEachIndexed { index, currency ->
+                    if (index > 0) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 8.dp),
+                            color = AccountBalanceContentColor.copy(alpha = 0.15f)
+                        )
+                    }
+                    val checkingCashTotal = balances.checkingCash.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+                    val available = balances.availableBalance.find { it.currency == currency }?.total ?: checkingCashTotal
+                    val savings = balances.savings.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+                    val total = available + savings
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(formatMoney(total, currency), style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            currency.name,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = AccountBalanceContentColor.copy(alpha = 0.7f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Available", style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
+                            Text(formatMoney(available, currency), style = MaterialTheme.typography.titleSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Savings", style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
+                            Text(formatMoney(savings, currency), style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
                 }
             }
         }
@@ -325,40 +341,79 @@ private fun StatCard(
 }
 
 /**
- * Full-width tile: one row per currency, gross value on the left and the after-tax value on the
- * right — kept as a single wide row (rather than squeezed into a third equal-width column like
- * Total balance/Savings) so neither number has to wrap. Both values are tinted by that currency's
- * overall investment gain/loss: green for a gain, red for a loss, blue when it's exactly zero.
+ * "Investments" section header above a single card, following the same shape as [CheckingCashCard]:
+ * one block per currency instead of a grid of separate tiles. Within a block, total balance sits in
+ * the top-left corner unlabeled (it's the hero figure), Net balance top-right, Invested amount
+ * bottom-left and Uninvested cash bottom-right — all four corners labeled except the hero. The tile
+ * color is unchanged from before (still [MaterialTheme.colorScheme.tertiaryContainer]); only the
+ * Net balance value keeps its gain/loss tint (green/red/blue).
  */
 @Composable
-private fun InvestmentsStatCard(
-    grossTotals: List<CurrencyTotal>,
-    netTotals: List<CurrencyTotal>,
-    gainLossTotals: List<CurrencyTotal>
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+private fun InvestmentsCard(balances: HomeBalances) {
+    val currencies = (
+        balances.investments.map { it.currency } +
+            balances.investmentsAfterTax.map { it.currency } +
+            balances.investedAmount.map { it.currency } +
+            balances.uninvestedCash.map { it.currency }
+        ).distinct()
+    if (currencies.isEmpty()) return
+
+    val lossColor = MaterialTheme.colorScheme.error
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    fun gainLossColor(currency: Currency): Color {
+        val gainLoss = balances.investmentsGainLoss.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+        return when {
+            gainLoss.signum() > 0 -> InvestmentGainColor
+            gainLoss.signum() < 0 -> lossColor
+            else -> InvestmentNeutralColor
+        }
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text("Investments", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
         ) {
-            Text("Investments", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            grossTotals.forEach { gross ->
-                val net = netTotals.find { it.currency == gross.currency }?.total ?: gross.total
-                val gainLoss = gainLossTotals.find { it.currency == gross.currency }?.total ?: BigDecimal.ZERO
-                val color = when {
-                    gainLoss.signum() > 0 -> GainColor
-                    gainLoss.signum() < 0 -> MaterialTheme.colorScheme.error
-                    else -> NeutralProfitColor
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(formatMoney(gross.total, gross.currency), style = MaterialTheme.typography.titleMedium, color = color)
-                    Text(formatMoney(net, gross.currency), style = MaterialTheme.typography.titleMedium, color = color)
+            Column(modifier = Modifier.padding(12.dp)) {
+                currencies.forEachIndexed { index, currency ->
+                    if (index > 0) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    }
+                    val total = balances.investments.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+                    val net = balances.investmentsAfterTax.find { it.currency == currency }?.total ?: total
+                    val invested = balances.investedAmount.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+                    val uninvested = balances.uninvestedCash.find { it.currency == currency }?.total ?: BigDecimal.ZERO
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(formatMoney(total, currency), style = MaterialTheme.typography.titleLarge)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(
+                                formatMoney(net, currency),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = gainLossColor(currency)
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column {
+                            Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(formatMoney(invested, currency), style = MaterialTheme.typography.titleSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(formatMoney(uninvested, currency), style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
                 }
             }
         }

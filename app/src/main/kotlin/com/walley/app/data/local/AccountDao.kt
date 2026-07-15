@@ -6,6 +6,7 @@ import androidx.room.Query
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import java.math.BigDecimal
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -20,7 +21,8 @@ interface AccountDao {
         """
         UPDATE accounts
         SET name = :name, type = :type, taxRate = :taxRate, balanceMinorUnits = :balanceMinorUnits,
-            targetAmountMinorUnits = :targetAmountMinorUnits, commissionFlatMinorUnits = :commissionFlatMinorUnits,
+            targetAmountMinorUnits = :targetAmountMinorUnits, targetDate = :targetDate,
+            commissionFlatMinorUnits = :commissionFlatMinorUnits,
             commissionPercent = :commissionPercent, isVirtual = :isVirtual
         WHERE id = :accountId
         """
@@ -32,6 +34,7 @@ interface AccountDao {
         taxRate: AccountTaxRate,
         balanceMinorUnits: Long,
         targetAmountMinorUnits: Long?,
+        targetDate: LocalDate?,
         commissionFlatMinorUnits: Long,
         commissionPercent: BigDecimal,
         isVirtual: Boolean

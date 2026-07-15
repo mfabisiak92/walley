@@ -5,6 +5,7 @@ import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
+import java.time.LocalDate
 import kotlinx.coroutines.flow.Flow
 
 interface AccountRepository {
@@ -16,6 +17,7 @@ interface AccountRepository {
         initialBalance: BigDecimal,
         taxRate: AccountTaxRate,
         targetAmount: BigDecimal?,
+        targetDate: LocalDate?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
         commissionPercent: BigDecimal = BigDecimal.ZERO,
         isVirtual: Boolean = false
@@ -27,6 +29,7 @@ interface AccountRepository {
         taxRate: AccountTaxRate,
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
+        targetDate: LocalDate?,
         commissionFlat: BigDecimal = BigDecimal.ZERO,
         commissionPercent: BigDecimal = BigDecimal.ZERO,
         isVirtual: Boolean = false

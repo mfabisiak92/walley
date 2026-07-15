@@ -275,9 +275,20 @@ fun BudgetDetailScreen(
     }
 
     itemForEditDialog?.let { item ->
+        // Other items of the same section already claim these accounts — exclude them so the same
+        // account can't be double-booked, but keep this item's own current account selectable.
+        val excludedAccountIds = if (item.section == BudgetSectionType.SAVINGS) {
+            budgetWithItems?.items.orEmpty()
+                .filter { it.section == BudgetSectionType.SAVINGS && it.id != item.id }
+                .mapNotNull { it.accountId }
+                .toSet()
+        } else {
+            emptySet()
+        }
         EditItemAmountDialog(
             item = item,
             accounts = accounts,
+            excludedAccountIds = excludedAccountIds,
             onDismiss = { itemForEditDialog = null },
             onSave = { icon, accountId ->
                 if (icon != item.icon) {
@@ -324,8 +335,19 @@ fun BudgetDetailScreen(
             ?.let { types -> accounts.filter { it.type in types && !it.isClosed } }
             ?: emptyList()
         if (isAccountLinked) {
+            // A new item has no "self" to exclude — every account already linked to a SAVINGS item
+            // elsewhere in this budget is off-limits.
+            val excludedAccountIds = if (section == BudgetSectionType.SAVINGS) {
+                budgetWithItems?.items.orEmpty()
+                    .filter { it.section == BudgetSectionType.SAVINGS }
+                    .mapNotNull { it.accountId }
+                    .toSet()
+            } else {
+                emptySet()
+            }
             AddAccountLinkedItemDialog(
                 accounts = sectionAccounts,
+                excludedAccountIds = excludedAccountIds,
                 onDismiss = { addItemSection = null },
                 onConfirm = { accountId, amount, day, lastOfMonth ->
                     sectionAccounts.find { it.id == accountId }?.let { account ->
@@ -492,7 +514,7 @@ private fun SectionTabContent(
         if (targetSection != null) {
             val target = categoryTargets[targetSection]
             if (target != null) {
-                val disposable = disposableIncome(allItems, baseCurrency, rates)
+                val disposable = plannedDisposableIncome(allItems, baseCurrency, rates)
                 val sectionAmount = sectionTotal(allItems, targetSection, baseCurrency, rates)
                 val actualPercent = if (disposable != null && sectionAmount != null && disposable.signum() != 0) {
                     (sectionAmount.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100))
@@ -508,29 +530,6 @@ private fun SectionTabContent(
                 )
             }
         }
-        if (tab != BudgetDetailTab.INCOME) {
-            val additionalToSpend = additionalAmountToSpend(allItems, baseCurrency, rates)
-            if (additionalToSpend != null && allItems.any { it.isFinalized }) {
-                HorizontalDivider()
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Additional amount to spend", style = MaterialTheme.typography.bodyMedium)
-                    Text(
-                        formatMoney(additionalToSpend, baseCurrency),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = when {
-                            additionalToSpend.signum() > 0 -> MaterialTheme.colorScheme.primary
-                            additionalToSpend.signum() < 0 -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -542,6 +541,7 @@ private fun SummaryTabContent(
     projectedNetWorth: BigDecimal?
 ) {
     val overallProgress = budgetProgress(items, SPENDING_SECTIONS, baseCurrency, rates)
+    val plannedDisposable = plannedDisposableIncome(items, baseCurrency, rates)
     val disposable = disposableIncome(items, baseCurrency, rates)
     val unallocated = unallocatedAmount(items, baseCurrency, rates)
     val fixed = sectionTotal(items, BudgetSectionType.FIXED_COSTS, baseCurrency, rates)
@@ -558,8 +558,9 @@ private fun SummaryTabContent(
     ) {
         ProgressSummaryHeader(progress = overallProgress, currency = baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Projected net worth (end of month)", projectedNetWorth, baseCurrency)
+        SummaryRow("Projected net worth", projectedNetWorth, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        SummaryRow("Planned disposable income", plannedDisposable, baseCurrency)
         SummaryRow("Disposable income", disposable, baseCurrency)
         SummaryRow("Unallocated", unallocated, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
