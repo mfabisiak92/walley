@@ -2,6 +2,7 @@ package com.walley.app.feature.accounts
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -18,24 +19,29 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -68,9 +74,15 @@ import com.walley.app.core.ui.InvestmentNeutralColor
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
+import com.walley.app.domain.model.AccountKindFilter
+import com.walley.app.domain.model.AccountSortField
+import com.walley.app.domain.model.AccountStatusFilter
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.AccountsFilterState
+import com.walley.app.domain.model.AccountsSortState
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
+import com.walley.app.domain.model.SortDirection
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
@@ -88,10 +100,29 @@ fun AccountsScreen(
     val tabs = AccountBalanceGroup.entries
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
+    val currentGroup = tabs[pagerState.currentPage]
+
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val sortState by viewModel.sortState.collectAsStateWithLifecycle()
+    val filterState by viewModel.filterState(currentGroup).collectAsStateWithLifecycle()
+    var showSortFilterSheet by remember { mutableStateOf(false) }
+
+    val hasActiveSortOrFilter = !sortState.isDefault || !filterState.isDefault
 
     Scaffold(
         modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+        topBar = {
+            WalleyTopBar(
+                onTitleClick = onNavigateHome,
+                actions = {
+                    IconButton(onClick = { showSortFilterSheet = true }) {
+                        BadgedBox(badge = { if (hasActiveSortOrFilter) Badge() }) {
+                            Icon(Icons.Filled.Tune, contentDescription = "Sort and filter")
+                        }
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -108,6 +139,21 @@ fun AccountsScreen(
                     )
                 }
             }
+            if (hasActiveSortOrFilter) {
+                ActiveFiltersRow(
+                    sortState = sortState,
+                    filterState = filterState,
+                    onResetSort = viewModel::resetSort,
+                    onStatusReset = { viewModel.setStatusFilter(currentGroup, AccountStatusFilter.ACTIVE) },
+                    onCurrencyToggled = { currency -> viewModel.toggleCurrencyFilter(currentGroup, currency) },
+                    onTypeToggled = { type -> viewModel.toggleTypeFilter(currentGroup, type) },
+                    onKindReset = { viewModel.setKindFilter(currentGroup, AccountKindFilter.ALL) },
+                    onResetAll = {
+                        viewModel.resetSort()
+                        viewModel.resetFilters(currentGroup)
+                    }
+                )
+            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
@@ -121,6 +167,92 @@ fun AccountsScreen(
             }
         }
     }
+
+    if (showSortFilterSheet) {
+        val availableCurrencies = accounts.filter { it.type in currentGroup.types }.map { it.currency }.distinct()
+        AccountsSortFilterSheet(
+            group = currentGroup,
+            sortState = sortState,
+            filterState = filterState,
+            availableCurrencies = availableCurrencies,
+            onSortFieldSelected = viewModel::setSortField,
+            onSortDirectionSelected = viewModel::setSortDirection,
+            onStatusSelected = { status -> viewModel.setStatusFilter(currentGroup, status) },
+            onCurrencyToggled = { currency -> viewModel.toggleCurrencyFilter(currentGroup, currency) },
+            onTypeToggled = { type -> viewModel.toggleTypeFilter(currentGroup, type) },
+            onKindSelected = { kind -> viewModel.setKindFilter(currentGroup, kind) },
+            onReset = {
+                viewModel.resetSort()
+                viewModel.resetFilters(currentGroup)
+            },
+            onDismiss = { showSortFilterSheet = false }
+        )
+    }
+}
+
+/** Removable-chip summary of whatever's non-default, shown under the tabs so a persisted filter is never silently invisible. */
+@Composable
+private fun ActiveFiltersRow(
+    sortState: AccountsSortState,
+    filterState: AccountsFilterState,
+    onResetSort: () -> Unit,
+    onStatusReset: () -> Unit,
+    onCurrencyToggled: (Currency) -> Unit,
+    onTypeToggled: (AccountType) -> Unit,
+    onKindReset: () -> Unit,
+    onResetAll: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!sortState.isDefault) {
+            RemovableChip(label = sortChipLabel(sortState), onRemove = onResetSort)
+        }
+        if (filterState.status != AccountStatusFilter.ACTIVE) {
+            val label = if (filterState.status == AccountStatusFilter.CLOSED) "Closed" else "All statuses"
+            RemovableChip(label = label, onRemove = onStatusReset)
+        }
+        filterState.currencies.forEach { currency ->
+            RemovableChip(label = currency.name, onRemove = { onCurrencyToggled(currency) })
+        }
+        filterState.types.forEach { type ->
+            RemovableChip(label = type.label, onRemove = { onTypeToggled(type) })
+        }
+        if (filterState.kind != AccountKindFilter.ALL) {
+            val label = if (filterState.kind == AccountKindFilter.REAL) "Real" else "Virtual"
+            RemovableChip(label = label, onRemove = onKindReset)
+        }
+        TextButton(onClick = onResetAll) { Text("Reset all") }
+    }
+}
+
+private fun sortChipLabel(sort: AccountsSortState): String {
+    val fieldLabel = when (sort.field) {
+        AccountSortField.NAME -> "Name"
+        AccountSortField.BALANCE -> "Balance"
+        AccountSortField.DATE_ADDED -> "Date added"
+        AccountSortField.DEFAULT_FIRST -> return "Default first"
+    }
+    val arrow = if (sort.direction == SortDirection.DESC) "↓" else "↑"
+    return "$arrow $fieldLabel"
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RemovableChip(label: String, onRemove: () -> Unit) {
+    InputChip(
+        selected = true,
+        onClick = onRemove,
+        label = { Text(label) },
+        trailingIcon = {
+            Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(16.dp))
+        }
+    )
 }
 
 @Composable
@@ -136,15 +268,16 @@ private fun AccountsListPage(
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val activeAccounts = filteredAccounts.filterNot { it.isClosed }
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val exchangeRates by viewModel.exchangeRates.collectAsStateWithLifecycle()
+    val sortState by viewModel.sortState.collectAsStateWithLifecycle()
+    val userFilterState by viewModel.filterState(group).collectAsStateWithLifecycle()
     val savingsPaidThisMonth by viewModel.savingsPaidThisMonth.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     val closeBlockedMessage by viewModel.closeBlockedMessage.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingAccount by remember { mutableStateOf<Account?>(null) }
-    var showClosed by remember { mutableStateOf(false) }
 
-    val closedCount = filteredAccounts.size - activeAccounts.size
-    val visibleAccounts = if (showClosed) filteredAccounts else activeAccounts
+    val visibleAccounts = sortAccounts(filterAccounts(filteredAccounts, userFilterState), sortState, baseCurrency, exchangeRates)
 
     Scaffold(
         floatingActionButton = {
@@ -166,20 +299,6 @@ private fun AccountsListPage(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            if (closedCount > 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    FilterChip(
-                        selected = showClosed,
-                        onClick = { showClosed = !showClosed },
-                        label = { Text(if (showClosed) "Hide closed" else "Show closed ($closedCount)") }
-                    )
-                }
-            }
             if (filteredAccounts.isEmpty()) {
                 Column(
                     modifier = Modifier
@@ -217,10 +336,13 @@ private fun AccountsListPage(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "All accounts are closed — tap \"Show closed\" above to see them.",
+                        "No accounts match your filters.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    TextButton(onClick = { viewModel.resetFilters(group) }) {
+                        Text("Reset filters")
+                    }
                 }
             } else {
                 LazyColumn(

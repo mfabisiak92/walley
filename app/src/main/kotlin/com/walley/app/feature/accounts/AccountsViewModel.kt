@@ -5,13 +5,23 @@ import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountHasLinkedActiveBudgetException
 import com.walley.app.data.repository.AccountHasLinkedInvestmentsException
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.AccountsPreferencesRepository
 import com.walley.app.data.repository.BudgetRepository
+import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountBalanceGroup
+import com.walley.app.domain.model.AccountKindFilter
+import com.walley.app.domain.model.AccountSortField
+import com.walley.app.domain.model.AccountStatusFilter
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.AccountsFilterState
+import com.walley.app.domain.model.AccountsSortState
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.SortDirection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -21,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,7 +41,9 @@ import kotlinx.coroutines.launch
 class AccountsViewModel @Inject constructor(
     private val repository: AccountRepository,
     settingsRepository: SettingsRepository,
-    budgetRepository: BudgetRepository
+    budgetRepository: BudgetRepository,
+    private val accountsPreferencesRepository: AccountsPreferencesRepository,
+    exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
 
     val accounts: StateFlow<List<Account>> = repository.observeAccounts()
@@ -38,6 +51,56 @@ class AccountsViewModel @Inject constructor(
 
     val baseCurrency: StateFlow<Currency> = settingsRepository.observeBaseCurrency()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Currency.PLN)
+
+    /** Rates for whatever [baseCurrency] currently is — used to sort accounts by balance across currencies. */
+    val exchangeRates: StateFlow<ExchangeRates?> = baseCurrency
+        .flatMapLatest { base -> exchangeRateRepository.observeRates(base) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Global across all three tabs — see [AccountsSortState]. */
+    val sortState: StateFlow<AccountsSortState> = accountsPreferencesRepository.observeSort()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsSortState())
+
+    /** One persisted [AccountsFilterState] per tab — precomputed since [AccountBalanceGroup] is a fixed, small set. */
+    private val filterStates: Map<AccountBalanceGroup, StateFlow<AccountsFilterState>> =
+        AccountBalanceGroup.entries.associateWith { group ->
+            accountsPreferencesRepository.observeFilter(group)
+                .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), AccountsFilterState())
+        }
+
+    fun filterState(group: AccountBalanceGroup): StateFlow<AccountsFilterState> = filterStates.getValue(group)
+
+    fun setSortField(field: AccountSortField) {
+        viewModelScope.launch { accountsPreferencesRepository.setSortField(field) }
+    }
+
+    fun setSortDirection(direction: SortDirection) {
+        viewModelScope.launch { accountsPreferencesRepository.setSortDirection(direction) }
+    }
+
+    fun resetSort() {
+        viewModelScope.launch { accountsPreferencesRepository.resetSort() }
+    }
+
+    fun setStatusFilter(group: AccountBalanceGroup, status: AccountStatusFilter) {
+        viewModelScope.launch { accountsPreferencesRepository.setStatusFilter(group, status) }
+    }
+
+    fun toggleCurrencyFilter(group: AccountBalanceGroup, currency: Currency) {
+        viewModelScope.launch { accountsPreferencesRepository.toggleCurrencyFilter(group, currency) }
+    }
+
+    fun toggleTypeFilter(group: AccountBalanceGroup, type: AccountType) {
+        viewModelScope.launch { accountsPreferencesRepository.toggleTypeFilter(group, type) }
+    }
+
+    fun setKindFilter(group: AccountBalanceGroup, kind: AccountKindFilter) {
+        viewModelScope.launch { accountsPreferencesRepository.setKindFilter(group, kind) }
+    }
+
+    fun resetFilters(group: AccountBalanceGroup) {
+        viewModelScope.launch { accountsPreferencesRepository.resetFilters(group) }
+    }
 
     /**
      * Amount paid so far this month toward each Saving account's linked SAVINGS budget item(s),

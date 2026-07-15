@@ -4,6 +4,8 @@ import com.walley.app.data.repository.AccountOperationRepository
 import com.walley.app.data.repository.AccountOperationRepositoryImpl
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AccountRepositoryImpl
+import com.walley.app.data.repository.AccountsPreferencesRepository
+import com.walley.app.data.repository.AccountsPreferencesRepositoryImpl
 import com.walley.app.data.repository.AdHocBudgetRepository
 import com.walley.app.data.repository.AdHocBudgetRepositoryImpl
 import com.walley.app.data.repository.AssetRepository
@@ -73,4 +75,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindIntegrationsRepository(impl: IntegrationsRepositoryImpl): IntegrationsRepository
+
+    @Binds
+    abstract fun bindAccountsPreferencesRepository(impl: AccountsPreferencesRepositoryImpl): AccountsPreferencesRepository
 }
