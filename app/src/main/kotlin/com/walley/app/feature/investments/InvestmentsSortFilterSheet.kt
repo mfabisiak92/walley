@@ -1,4 +1,4 @@
-package com.walley.app.feature.accounts
+package com.walley.app.feature.investments
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -27,34 +27,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.walley.app.core.ui.SortDirectionToggle
-import com.walley.app.domain.model.AccountBalanceGroup
-import com.walley.app.domain.model.AccountKindFilter
-import com.walley.app.domain.model.AccountSortField
-import com.walley.app.domain.model.AccountStatusFilter
-import com.walley.app.domain.model.AccountType
-import com.walley.app.domain.model.AccountsFilterState
-import com.walley.app.domain.model.AccountsSortState
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentSortField
+import com.walley.app.domain.model.InvestmentsFilterState
+import com.walley.app.domain.model.InvestmentsSortState
+import com.walley.app.domain.model.PositionStatusFilter
 import com.walley.app.domain.model.SortDirection
 
 /**
- * Single combined sheet for both sort and filter, opened from the funnel icon in [com.walley.app.core.ui.WalleyTopBar].
- * Every control applies immediately (no separate Apply step) and is persisted by the caller through
- * [com.walley.app.feature.accounts.AccountsViewModel] — this composable is purely presentational.
+ * Combined sort/filter sheet for the Portfolio list, opened from the funnel icon next to the tabs in
+ * [InvestmentsScreen]. Mirrors [com.walley.app.feature.accounts.AccountsSortFilterSheet]'s shape and
+ * live-apply/persisted behavior — every control applies immediately, persistence lives in the ViewModel.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AccountsSortFilterSheet(
-    group: AccountBalanceGroup,
-    sortState: AccountsSortState,
-    filterState: AccountsFilterState,
+fun InvestmentsSortFilterSheet(
+    sortState: InvestmentsSortState,
+    filterState: InvestmentsFilterState,
+    availableCategories: List<InvestmentCategory>,
     availableCurrencies: List<Currency>,
-    onSortFieldSelected: (AccountSortField) -> Unit,
+    availableAccounts: List<Account>,
+    onSortFieldSelected: (InvestmentSortField) -> Unit,
     onSortDirectionSelected: (SortDirection) -> Unit,
-    onStatusSelected: (AccountStatusFilter) -> Unit,
+    onStatusSelected: (PositionStatusFilter) -> Unit,
+    onCategoryToggled: (InvestmentCategory) -> Unit,
     onCurrencyToggled: (Currency) -> Unit,
-    onTypeToggled: (AccountType) -> Unit,
-    onKindSelected: (AccountKindFilter) -> Unit,
+    onAccountToggled: (Long) -> Unit,
     onReset: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -70,26 +70,26 @@ fun AccountsSortFilterSheet(
         ) {
             Text("Sort & filter", style = MaterialTheme.typography.titleLarge)
             Text(
-                "Changes apply immediately and are remembered next time you open this tab.",
+                "Changes apply immediately and are remembered next time you open Portfolio.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
             )
 
             SectionLabel("Sort by")
-            SortFieldRow(AccountSortField.NAME, "Name", "A→Z", "Z→A", sortState, onSortFieldSelected, onSortDirectionSelected)
-            SortFieldRow(AccountSortField.BALANCE, "Balance", "Low→High", "High→Low", sortState, onSortFieldSelected, onSortDirectionSelected)
-            SortFieldRow(AccountSortField.DATE_ADDED, "Date added", "Oldest first", "Newest first", sortState, onSortFieldSelected, onSortDirectionSelected)
-            SortFieldRow(AccountSortField.DEFAULT_FIRST, "Default account first", null, null, sortState, onSortFieldSelected, onSortDirectionSelected)
+            SortFieldRow(InvestmentSortField.NAME, "Name", "A→Z", "Z→A", sortState, onSortFieldSelected, onSortDirectionSelected)
+            SortFieldRow(InvestmentSortField.VALUE, "Value", "Low→High", "High→Low", sortState, onSortFieldSelected, onSortDirectionSelected)
+            SortFieldRow(InvestmentSortField.GAIN_LOSS_PERCENT, "Gain/loss %", "Worst first", "Best first", sortState, onSortFieldSelected, onSortDirectionSelected)
+            SortFieldRow(InvestmentSortField.DATE_ADDED, "Date added", "Oldest first", "Newest first", sortState, onSortFieldSelected, onSortDirectionSelected)
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             SectionLabel("Status")
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                 val options = listOf(
-                    AccountStatusFilter.ACTIVE to "Active",
-                    AccountStatusFilter.CLOSED to "Closed",
-                    AccountStatusFilter.ALL to "All"
+                    PositionStatusFilter.OPEN to "Open",
+                    PositionStatusFilter.CLOSED to "Closed",
+                    PositionStatusFilter.ALL to "All"
                 )
                 options.forEachIndexed { index, (value, label) ->
                     SegmentedButton(
@@ -97,6 +97,25 @@ fun AccountsSortFilterSheet(
                         onClick = { onStatusSelected(value) },
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
                     ) { Text(label) }
+                }
+            }
+
+            if (availableCategories.size > 1) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                SectionLabel("Category")
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    availableCategories.forEach { category ->
+                        FilterChip(
+                            selected = category in filterState.categories,
+                            onClick = { onCategoryToggled(category) },
+                            label = { Text(category.label) }
+                        )
+                    }
                 }
             }
 
@@ -119,42 +138,21 @@ fun AccountsSortFilterSheet(
                 }
             }
 
-            // Only Cash & Checking mixes more than one AccountType, so a type filter is meaningless elsewhere.
-            if (group == AccountBalanceGroup.CASH_CHECKING) {
+            if (availableAccounts.size > 1) {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                SectionLabel("Account type")
+                SectionLabel("Account")
                 Row(
                     modifier = Modifier
                         .horizontalScroll(rememberScrollState())
                         .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    group.types.forEach { type ->
+                    availableAccounts.forEach { account ->
                         FilterChip(
-                            selected = type in filterState.types,
-                            onClick = { onTypeToggled(type) },
-                            label = { Text(type.label) }
+                            selected = account.id in filterState.accountIds,
+                            onClick = { onAccountToggled(account.id) },
+                            label = { Text(account.name) }
                         )
-                    }
-                }
-            }
-
-            // Only Savings mixes real and virtual (earmarked) accounts, so kind only makes sense here.
-            if (group == AccountBalanceGroup.SAVINGS) {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-                SectionLabel("Kind")
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    val options = listOf(
-                        AccountKindFilter.ALL to "All",
-                        AccountKindFilter.REAL to "Real",
-                        AccountKindFilter.VIRTUAL to "Virtual"
-                    )
-                    options.forEachIndexed { index, (value, label) ->
-                        SegmentedButton(
-                            selected = filterState.kind == value,
-                            onClick = { onKindSelected(value) },
-                            shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size)
-                        ) { Text(label) }
                     }
                 }
             }
@@ -179,12 +177,12 @@ private fun SectionLabel(text: String) {
 
 @Composable
 private fun SortFieldRow(
-    field: AccountSortField,
+    field: InvestmentSortField,
     label: String,
-    ascendingDescription: String?,
-    descendingDescription: String?,
-    sortState: AccountsSortState,
-    onFieldSelected: (AccountSortField) -> Unit,
+    ascendingDescription: String,
+    descendingDescription: String,
+    sortState: InvestmentsSortState,
+    onFieldSelected: (InvestmentSortField) -> Unit,
     onDirectionSelected: (SortDirection) -> Unit
 ) {
     val selected = sortState.field == field
@@ -200,7 +198,7 @@ private fun SortFieldRow(
             RadioButton(selected = selected, onClick = { onFieldSelected(field) })
             Text(label, style = MaterialTheme.typography.bodyLarge)
         }
-        if (selected && ascendingDescription != null && descendingDescription != null) {
+        if (selected) {
             SortDirectionToggle(
                 direction = sortState.direction,
                 ascendingDescription = ascendingDescription,

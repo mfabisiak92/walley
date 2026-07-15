@@ -25,7 +25,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Star
@@ -41,7 +40,6 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -71,6 +69,7 @@ import com.walley.app.core.ui.AccountBalanceContainerColor
 import com.walley.app.core.ui.AccountBalanceContentColor
 import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.core.ui.InvestmentNeutralColor
+import com.walley.app.core.ui.RemovableChip
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
@@ -240,19 +239,6 @@ private fun sortChipLabel(sort: AccountsSortState): String {
     }
     val arrow = if (sort.direction == SortDirection.DESC) "↓" else "↑"
     return "$arrow $fieldLabel"
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun RemovableChip(label: String, onRemove: () -> Unit) {
-    InputChip(
-        selected = true,
-        onClick = onRemove,
-        label = { Text(label) },
-        trailingIcon = {
-            Icon(Icons.Filled.Close, contentDescription = "Remove", modifier = Modifier.size(16.dp))
-        }
-    )
 }
 
 @Composable

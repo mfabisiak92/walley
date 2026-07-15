@@ -3,6 +3,7 @@ package com.walley.app.feature.investments
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,24 +19,30 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PriceCheck
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,29 +59,63 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.EquityStatusChip
 import com.walley.app.core.ui.InvestmentCategoryChip
+import com.walley.app.core.ui.RemovableChip
 import com.walley.app.core.ui.WalleyTopBar
+import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.Investment
+import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentSortField
 import com.walley.app.domain.model.InvestmentWithTransactions
+import com.walley.app.domain.model.InvestmentsFilterState
+import com.walley.app.domain.model.InvestmentsSortState
+import com.walley.app.domain.model.PositionStatusFilter
+import com.walley.app.domain.model.SortDirection
 import com.walley.app.domain.model.WatchedEquityWithNotes
 import java.math.RoundingMode
 import kotlinx.coroutines.launch
 
 private val TABS = listOf("Portfolio", "Strategies")
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
     onOpenEquity: (Long) -> Unit,
     onOpenInvestment: (Long) -> Unit,
-    onOpenUpdatePrices: () -> Unit
+    onOpenUpdatePrices: () -> Unit,
+    viewModel: InvestmentsViewModel = hiltViewModel()
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
     val scope = rememberCoroutineScope()
 
+    val investments by viewModel.investments.collectAsStateWithLifecycle()
+    val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
+    val sortState by viewModel.sortState.collectAsStateWithLifecycle()
+    val filterState by viewModel.filterState.collectAsStateWithLifecycle()
+    var showSortFilterSheet by remember { mutableStateOf(false) }
+
+    // Sort/filter only applies to the Portfolio tab's list of positions — Strategies tracks watched
+    // equities, an unrelated list with its own (unfiltered) screen.
+    val onPortfolioTab = pagerState.currentPage == 0
+    val hasActiveSortOrFilter = !sortState.isDefault || !filterState.isDefault
+
     Scaffold(
         modifier = modifier,
-        topBar = { WalleyTopBar(onTitleClick = onNavigateHome) }
+        topBar = {
+            WalleyTopBar(
+                onTitleClick = onNavigateHome,
+                actions = {
+                    if (onPortfolioTab) {
+                        IconButton(onClick = { showSortFilterSheet = true }) {
+                            BadgedBox(badge = { if (hasActiveSortOrFilter) Badge() }) {
+                                Icon(Icons.Filled.Tune, contentDescription = "Sort and filter")
+                            }
+                        }
+                    }
+                }
+            )
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -91,12 +132,29 @@ fun InvestmentsScreen(
                     )
                 }
             }
+            if (onPortfolioTab && hasActiveSortOrFilter) {
+                ActiveInvestmentFiltersRow(
+                    sortState = sortState,
+                    filterState = filterState,
+                    onResetSort = viewModel::resetSort,
+                    onStatusReset = { viewModel.setStatusFilter(PositionStatusFilter.OPEN) },
+                    onCategoryToggled = viewModel::toggleCategoryFilter,
+                    onCurrencyToggled = viewModel::toggleCurrencyFilter,
+                    onAccountToggled = viewModel::toggleAccountFilter,
+                    accountName = { id -> investmentAccounts.find { it.id == id }?.name ?: "Account" },
+                    onResetAll = {
+                        viewModel.resetSort()
+                        viewModel.resetFilters()
+                    }
+                )
+            }
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
                     0 -> PortfolioListPage(
+                        viewModel = viewModel,
                         onOpenInvestment = onOpenInvestment,
                         onOpenEquity = onOpenEquity,
                         onOpenUpdatePrices = onOpenUpdatePrices
@@ -106,25 +164,105 @@ fun InvestmentsScreen(
             }
         }
     }
+
+    if (showSortFilterSheet) {
+        val availableCategories = investments.map { it.investment.category }.distinct()
+        val availableCurrencies = investments.map { it.investment.currency }.distinct()
+        InvestmentsSortFilterSheet(
+            sortState = sortState,
+            filterState = filterState,
+            availableCategories = availableCategories,
+            availableCurrencies = availableCurrencies,
+            availableAccounts = investmentAccounts,
+            onSortFieldSelected = viewModel::setSortField,
+            onSortDirectionSelected = viewModel::setSortDirection,
+            onStatusSelected = viewModel::setStatusFilter,
+            onCategoryToggled = viewModel::toggleCategoryFilter,
+            onCurrencyToggled = viewModel::toggleCurrencyFilter,
+            onAccountToggled = viewModel::toggleAccountFilter,
+            onReset = {
+                viewModel.resetSort()
+                viewModel.resetFilters()
+            },
+            onDismiss = { showSortFilterSheet = false }
+        )
+    }
+}
+
+/** Removable-chip summary of whatever's non-default, shown under the tabs so a persisted filter is never silently invisible. */
+@Composable
+private fun ActiveInvestmentFiltersRow(
+    sortState: InvestmentsSortState,
+    filterState: InvestmentsFilterState,
+    onResetSort: () -> Unit,
+    onStatusReset: () -> Unit,
+    onCategoryToggled: (InvestmentCategory) -> Unit,
+    onCurrencyToggled: (Currency) -> Unit,
+    onAccountToggled: (Long) -> Unit,
+    accountName: (Long) -> String,
+    onResetAll: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (!sortState.isDefault) {
+            RemovableChip(label = investmentSortChipLabel(sortState), onRemove = onResetSort)
+        }
+        if (filterState.status != PositionStatusFilter.OPEN) {
+            val label = if (filterState.status == PositionStatusFilter.CLOSED) "Closed" else "All statuses"
+            RemovableChip(label = label, onRemove = onStatusReset)
+        }
+        filterState.categories.forEach { category ->
+            RemovableChip(label = category.label, onRemove = { onCategoryToggled(category) })
+        }
+        filterState.currencies.forEach { currency ->
+            RemovableChip(label = currency.name, onRemove = { onCurrencyToggled(currency) })
+        }
+        filterState.accountIds.forEach { accountId ->
+            RemovableChip(label = accountName(accountId), onRemove = { onAccountToggled(accountId) })
+        }
+        TextButton(onClick = onResetAll) { Text("Reset all") }
+    }
+}
+
+private fun investmentSortChipLabel(sort: InvestmentsSortState): String {
+    val fieldLabel = when (sort.field) {
+        InvestmentSortField.NAME -> "Name"
+        InvestmentSortField.VALUE -> "Value"
+        InvestmentSortField.GAIN_LOSS_PERCENT -> "Gain/loss %"
+        InvestmentSortField.DATE_ADDED -> "Date added"
+    }
+    val arrow = if (sort.direction == SortDirection.DESC) "↓" else "↑"
+    return "$arrow $fieldLabel"
 }
 
 @Composable
 private fun PortfolioListPage(
+    viewModel: InvestmentsViewModel,
     onOpenInvestment: (Long) -> Unit,
     onOpenEquity: (Long) -> Unit,
-    onOpenUpdatePrices: () -> Unit,
-    viewModel: InvestmentsViewModel = hiltViewModel()
+    onOpenUpdatePrices: () -> Unit
 ) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
     val investmentAccounts by viewModel.investmentAccounts.collectAsStateWithLifecycle()
     val strategiesByInvestmentId by viewModel.strategiesByInvestmentId.collectAsStateWithLifecycle()
+    val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val exchangeRates by viewModel.exchangeRates.collectAsStateWithLifecycle()
+    val sortState by viewModel.sortState.collectAsStateWithLifecycle()
+    val filterState by viewModel.filterState.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingInvestment by remember { mutableStateOf<Investment?>(null) }
     var pendingImportUri by remember { mutableStateOf<Uri?>(null) }
-    var showClosed by remember { mutableStateOf(false) }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         pendingImportUri = uri
     }
+
+    val visibleInvestments = sortInvestments(filterInvestments(investments, filterState), sortState, baseCurrency, exchangeRates)
 
     Scaffold(
         floatingActionButton = {
@@ -143,28 +281,11 @@ private fun PortfolioListPage(
             }
         }
     ) { innerPadding ->
-        val closedCount = investments.count { it.quantity.signum() == 0 }
-        val visibleInvestments = if (showClosed) investments else investments.filter { it.quantity.signum() != 0 }
-
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            if (closedCount > 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    FilterChip(
-                        selected = showClosed,
-                        onClick = { showClosed = !showClosed },
-                        label = { Text(if (showClosed) "Hide closed" else "Show closed ($closedCount)") }
-                    )
-                }
-            }
             if (investments.isEmpty()) {
                 Column(
                     modifier = Modifier
@@ -202,10 +323,13 @@ private fun PortfolioListPage(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "All positions are closed — tap \"Show closed\" above to see them.",
+                        "No positions match your filters.",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    TextButton(onClick = { viewModel.resetFilters() }) {
+                        Text("Reset filters")
+                    }
                 }
             } else {
                 LazyColumn(
