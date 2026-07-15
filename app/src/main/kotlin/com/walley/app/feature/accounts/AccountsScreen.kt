@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Star
@@ -72,6 +73,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -285,7 +287,7 @@ private fun AccountsListPage(
         AddAccountDialog(
             allowedTypes = allowedTypes,
             onDismiss = { showAddDialog = false },
-            onConfirm = { name, type, currency, balance, taxRate, targetAmount, commissionFlat, commissionPercent, isVirtual ->
+            onConfirm = { name, type, currency, balance, taxRate, targetAmount, targetDate, commissionFlat, commissionPercent, isVirtual ->
                 viewModel.addAccount(
                     name,
                     type,
@@ -293,6 +295,7 @@ private fun AccountsListPage(
                     balance,
                     taxRate,
                     targetAmount,
+                    targetDate,
                     commissionFlat,
                     commissionPercent,
                     isVirtual
@@ -308,7 +311,7 @@ private fun AccountsListPage(
             allowedTypes = allowedTypes,
             otherAccounts = accounts.filter { it.id != account.id },
             onDismiss = { editingAccount = null },
-            onSave = { name, type, taxRate, newBalance, targetAmount, commissionFlat, commissionPercent, isVirtual ->
+            onSave = { name, type, taxRate, newBalance, targetAmount, targetDate, commissionFlat, commissionPercent, isVirtual ->
                 viewModel.updateAccount(
                     account.id,
                     name,
@@ -316,6 +319,7 @@ private fun AccountsListPage(
                     taxRate,
                     newBalance,
                     targetAmount,
+                    targetDate,
                     commissionFlat,
                     commissionPercent,
                     isVirtual
@@ -399,6 +403,7 @@ private fun AccountRow(
                             // Redundant within the Savings tab, which is already single-type — only
                             // Cash & Checking mixes both types, so the label still disambiguates there.
                             account.type.label.takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
+                            account.targetDate?.format(DateTimeFormatter.ISO_LOCAL_DATE),
                             "Virtual".takeIf { account.isVirtual },
                             "Closed".takeIf { account.isClosed }
                         ).joinToString(" · ")
@@ -692,10 +697,9 @@ private fun InvestmentSummaryCard(accounts: List<Account>) {
 
 /**
  * "Paid this month" — how much has been contributed so far to this Saving account's linked SAVINGS
- * budget item(s) in the current month's budget. A dedicated row, set off by a divider, in the same
- * label/value shape as [com.walley.app.feature.budget.BudgetItemRow]'s account subtitle — distinct
- * from [SavingsGoalProgress] below it, which tracks the account's overall balance against its
- * long-term target rather than this month's contribution.
+ * budget item(s) in the current month's budget. A dedicated row, set off by a divider, label on the
+ * left and the amount on the right — distinct from [SavingsGoalProgress] below it, which tracks the
+ * account's overall balance against its long-term target rather than this month's contribution.
  */
 @Composable
 private fun MonthPaidRow(amount: BigDecimal, currency: Currency) {
@@ -734,7 +738,8 @@ private fun SavingsGoalProgress(account: Account, progressPercent: BigDecimal) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = "${progressPercent.setScale(0, RoundingMode.HALF_UP)}% of " +
@@ -743,10 +748,11 @@ private fun SavingsGoalProgress(account: Account, progressPercent: BigDecimal) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (account.targetReached) {
-                Text(
-                    "Goal reached",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF2E7D32)
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = "Goal reached",
+                    tint = InvestmentGainColor,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }

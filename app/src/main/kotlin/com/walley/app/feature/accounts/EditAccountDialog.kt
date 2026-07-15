@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -25,6 +27,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +45,10 @@ import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.feature.budget.AccountEffectsToggleRow
 import java.math.BigDecimal
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +63,7 @@ fun EditAccountDialog(
         taxRate: AccountTaxRate,
         newBalance: BigDecimal,
         targetAmount: BigDecimal?,
+        targetDate: LocalDate?,
         commissionFlat: BigDecimal,
         commissionPercent: BigDecimal,
         isVirtual: Boolean
@@ -77,6 +85,8 @@ fun EditAccountDialog(
         )
     }
     var targetAmountText by remember { mutableStateOf(account.targetAmount?.toPlainString() ?: "") }
+    var targetDate by remember { mutableStateOf(account.targetDate ?: LocalDate.now()) }
+    var showTargetDatePicker by remember { mutableStateOf(false) }
     var commissionFlatText by remember { mutableStateOf(account.commissionFlat.toPlainString()) }
     var commissionPercentText by remember { mutableStateOf(account.commissionPercent.toPlainString()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -172,6 +182,18 @@ fun EditAccountDialog(
                     hint = "Doesn't exist in the real world — its balance is really an earmarked slice of " +
                         "another account's money, so it's excluded from net worth and other totals."
                 )
+                if (isSaving) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Target date")
+                        TextButton(onClick = { showTargetDatePicker = true }) {
+                            Text(targetDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                        }
+                    }
+                }
                 if (isInvestment) {
                     ExposedDropdownMenuBox(
                         expanded = taxRateMenuExpanded,
@@ -279,6 +301,7 @@ fun EditAccountDialog(
                         taxRate,
                         parsedBalance!!,
                         if (isSaving) parsedTargetAmount else null,
+                        if (isSaving) targetDate else null,
                         if (isInvestment) parsedCommissionFlat ?: BigDecimal.ZERO else BigDecimal.ZERO,
                         if (isInvestment) parsedCommissionPercent ?: BigDecimal.ZERO else BigDecimal.ZERO,
                         isVirtual
@@ -291,6 +314,30 @@ fun EditAccountDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
+
+    if (showTargetDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = targetDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showTargetDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            targetDate = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                        }
+                        showTargetDatePicker = false
+                    }
+                ) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTargetDatePicker = false }) { Text("Cancel") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     if (showDeleteConfirm) {
         AlertDialog(
