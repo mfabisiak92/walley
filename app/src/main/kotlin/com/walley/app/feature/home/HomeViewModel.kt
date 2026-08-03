@@ -9,6 +9,7 @@ import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
+import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Asset
@@ -20,6 +21,7 @@ import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.Liability
 import com.walley.app.domain.model.estimatedTaxByYear
+import com.walley.app.feature.analytics.findByYearMonth
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
@@ -34,6 +36,7 @@ import java.time.YearMonth
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -110,7 +113,10 @@ data class NetWorthState(
     val elements: List<NetWorthElement> = emptyList(),
     // projected net worth at the end of the current calendar month if this month's budget is followed
     // through to completion; null when there's no budget for the current month, or amount is null
-    val projectedAmount: BigDecimal? = null
+    val projectedAmount: BigDecimal? = null,
+    // net worth as of the end of the previous calendar month, from that month's financial snapshot;
+    // null when the previous month's budget was never marked completed (no snapshot was ever taken)
+    val previousMonthNetWorth: BigDecimal? = null
 )
 
 /** Snapshot of the current calendar month's budget, for a compact at-a-glance card on Home. */
@@ -140,7 +146,8 @@ class HomeViewModel @Inject constructor(
     budgetRepository: BudgetRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository,
-    investmentRepository: InvestmentRepository
+    investmentRepository: InvestmentRepository,
+    snapshotRepository: SnapshotRepository
 ) : ViewModel() {
 
     val homeBalances: StateFlow<HomeBalances> = accountRepository.observeAccounts()
@@ -209,6 +216,10 @@ class HomeViewModel @Inject constructor(
         settingsRepository.observeIncludeSavingsInNetWorth()
     ) { (base, rates), includeSavings -> Triple(base, rates, includeSavings) }
 
+    /** From the previous calendar month's financial snapshot, if that month's budget was ever marked completed. */
+    private val previousMonthNetWorth: Flow<BigDecimal?> = snapshotRepository.observeSnapshots()
+        .map { snapshots -> findByYearMonth(snapshots, YearMonth.now().minusMonths(1)) { it.yearMonth }?.netWorth }
+
     val netWorth: StateFlow<NetWorthState?> = combine(
         accountRepository.observeAccounts(),
         assetRepository.observeAssets(),
@@ -221,6 +232,8 @@ class HomeViewModel @Inject constructor(
         } else {
             computeNetWorth(accounts, assets, liabilities, budgetItems, base, rates, includeSavings)
         }
+    }.combine(previousMonthNetWorth) { state, previous ->
+        state?.copy(previousMonthNetWorth = previous)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val monthBudgetSummary: StateFlow<MonthBudgetSummary?> = combine(

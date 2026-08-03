@@ -40,6 +40,9 @@ fun looksLikeXtbCashOperationsExport(text: String): Boolean {
  * currency — dividing gives the real price paid per unit in that currency. XTB doesn't break out a
  * separate commission in this report, so it's always 0 here.
  *
+ * Column layout is `Type,Instrument,Ticker,Category,Time,Amount,ID,Comment,Product,Position ID`
+ * (current XTB export). `Category` holds `STOCK`/`ETF`, matching [InvestmentCategory]'s names.
+ *
  * When [includeAccountOperations] is true, every other row (deposits, withdrawals, internal transfers,
  * interest and its tax) is also parsed, as a [com.walley.app.domain.model.ParsedCashOperationRow]
  * instead of a trade — that's what lets a buy pass validation even when the account's stored balance
@@ -72,13 +75,13 @@ fun parseXtbCashOperationsCsv(
             return@forEachIndexed
         }
 
-        val ticker = field(1).uppercase()
+        val ticker = field(2).uppercase()
         if (ticker.isBlank()) {
             results += CsvRowParseResult.Invalid(rowNumber, "Missing ticker")
             return@forEachIndexed
         }
 
-        val timeText = field(3)
+        val timeText = field(4)
         val date = try {
             LocalDateTime.parse(timeText, XTB_DATE_FORMATTER).toLocalDate()
         } catch (e: DateTimeParseException) {
@@ -86,14 +89,14 @@ fun parseXtbCashOperationsCsv(
             return@forEachIndexed
         }
 
-        val amountText = field(4)
+        val amountText = field(5)
         val amount = parsePolishDecimal(amountText)
         if (amount == null) {
             results += CsvRowParseResult.Invalid(rowNumber, "Invalid amount \"$amountText\"")
             return@forEachIndexed
         }
 
-        val comment = field(6)
+        val comment = field(7)
         val match = XTB_COMMENT_REGEX.find(comment)
         if (match == null) {
             results += CsvRowParseResult.Invalid(rowNumber, "Couldn't find quantity/direction in comment \"$comment\"")
@@ -120,7 +123,9 @@ fun parseXtbCashOperationsCsv(
         }
         val price = amount.abs().divide(quantity, 8, RoundingMode.HALF_UP)
 
-        val name = field(2).ifBlank { ticker }
+        val name = field(1).ifBlank { ticker }
+        val category = InvestmentCategory.entries.firstOrNull { it.name.equals(field(3), ignoreCase = true) }
+            ?: InvestmentCategory.STOCK
 
         results += CsvRowParseResult.Parsed(
             ParsedImportRow(
@@ -129,7 +134,7 @@ fun parseXtbCashOperationsCsv(
                 accountName = accountName,
                 ticker = ticker,
                 name = name,
-                category = InvestmentCategory.STOCK,
+                category = category,
                 type = transactionType,
                 date = date,
                 quantity = quantity,
@@ -149,18 +154,18 @@ private fun parseXtbCashOperationRow(
     accountName: String,
     type: String
 ): CsvRowParseResult {
-    val timeText = field(3)
+    val timeText = field(4)
     val date = try {
         LocalDateTime.parse(timeText, XTB_DATE_FORMATTER).toLocalDate()
     } catch (e: DateTimeParseException) {
         return CsvRowParseResult.Invalid(rowNumber, "Couldn't parse date \"$timeText\"")
     }
 
-    val amountText = field(4)
+    val amountText = field(5)
     val amount = parsePolishDecimal(amountText)
         ?: return CsvRowParseResult.Invalid(rowNumber, "Invalid amount \"$amountText\"")
 
-    val comment = field(6)
+    val comment = field(7)
     val description = if (comment.isNotBlank()) "$type — $comment" else type
 
     return CsvRowParseResult.ParsedCashOperation(

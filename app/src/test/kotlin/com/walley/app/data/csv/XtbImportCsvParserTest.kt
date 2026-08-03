@@ -1,6 +1,7 @@
 package com.walley.app.data.csv
 
 import com.walley.app.domain.model.CsvRowParseResult
+import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.domain.model.InvestmentTransactionType
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -15,18 +16,19 @@ class XtbImportCsvParserTest {
     // non-trade rows (interest, transfer, deposit), two partial fills of the same order, and the
     // trailing summary row.
     private val sampleCsv = """
-        Account number,51296707,,,,,,
-        Cash Operations,,,,,,,
-        Date from (UTC),2006-01-01 00:00:00,,,,,,
-        Date to (UTC),2026-07-09 10:21:49,,,,,,
-        Type,Ticker,Instrument,Time,Amount,ID,Comment,Product
-        Free funds interest,,,2026-07-06 12:16:19,"2,88",1344408258,Free-funds Interest 2026-06,My Trades
-        Free funds interest tax,,,2026-07-06 12:11:31,"-0,55",1344389871,Free-funds Interest Tax 2026-06,My Trades
-        Stock purchase,MSTR.US,Strategy,2026-06-25 13:30:45,-2861,1328914046,OPEN BUY 8/8.2228 @ 94.42,My Trades
-        Stock purchase,MSTR.US,Strategy,2026-06-25 13:30:02,"-79,98",1328865639,OPEN BUY 0.2228/8.2228 @ 94.76,My Trades
-        Transfer,,,2026-06-12 08:50:01,500,1308837340,Transfer from 51296707 to 52725876,Investment Plans
-        Deposit,,,2026-06-10 10:17:41,2000,1304496850,"Pekao S.A. deposit, id=33907006",My Trades
-        Total,,,,"839,37",,,
+        Account number,51296707,,,,,,,,
+        Cash Operations,,,,,,,,,
+        Date from (UTC),2006-01-01 00:00:00,,,,,,,,
+        Date to (UTC),2026-07-09 10:21:49,,,,,,,,
+        Type,Instrument,Ticker,Category,Time,Amount,ID,Comment,Product,Position ID
+        Free funds interest,,,,2026-07-06 12:16:19,"2,88",1344408258,Free-funds Interest 2026-06,My Trades,
+        Free funds interest tax,,,,2026-07-06 12:11:31,"-0,55",1344389871,Free-funds Interest Tax 2026-06,My Trades,
+        Stock purchase,Strategy,MSTR.US,STOCK,2026-06-25 13:30:45,-2861,1328914046,OPEN BUY 8/8.2228 @ 94.42,My Trades,2658679627
+        Stock purchase,Strategy,MSTR.US,STOCK,2026-06-25 13:30:02,"-79,98",1328865639,OPEN BUY 0.2228/8.2228 @ 94.76,My Trades,2658679627
+        Stock purchase,Semiconductor,SMH.UK,ETF,2026-06-12 08:50:07,"-49,5",1308837471,OPEN BUY 0.1186 @ 113.14,Investment Plans,2632805563
+        Transfer,,,,2026-06-12 08:50:01,500,1308837340,Transfer from 51296707 to 52725876,Investment Plans,
+        Deposit,,,,2026-06-10 10:17:41,2000,1304496850,"Pekao S.A. deposit, id=33907006",My Trades,
+        Total,,,,,"839,37",,,,
     """.trimIndent()
 
     @Test
@@ -43,8 +45,23 @@ class XtbImportCsvParserTest {
     @Test
     fun `only stock purchase and sale rows are imported, everything else is skipped`() {
         val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB")
-        assertEquals(2, results.size)
+        assertEquals(3, results.size)
         results.forEach { assertTrue(it is CsvRowParseResult.Parsed) }
+    }
+
+    @Test
+    fun `category comes from the Category column instead of always defaulting to stock`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB")
+        val rows = results.map { (it as CsvRowParseResult.Parsed).row }
+        assertEquals(InvestmentCategory.STOCK, rows[0].category)
+        assertEquals(InvestmentCategory.ETF, rows[2].category)
+    }
+
+    @Test
+    fun `name comes from the Instrument column`() {
+        val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB")
+        val row = (results[0] as CsvRowParseResult.Parsed).row
+        assertEquals("Strategy", row.name)
     }
 
     @Test
@@ -103,15 +120,15 @@ class XtbImportCsvParserTest {
     @Test
     fun `account operations are still skipped when includeAccountOperations is false`() {
         val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB", includeAccountOperations = false)
-        assertEquals(2, results.size)
+        assertEquals(3, results.size)
         results.forEach { assertTrue(it is CsvRowParseResult.Parsed) }
     }
 
     @Test
     fun `deposits, transfers and interest become cash operations when includeAccountOperations is true`() {
         val results = parseXtbCashOperationsCsv(sampleCsv, accountId = 1, accountName = "XTB", includeAccountOperations = true)
-        // 2 trades + interest + interest tax + transfer + deposit = 6; the trailing Total row is still skipped.
-        assertEquals(6, results.size)
+        // 3 trades + interest + interest tax + transfer + deposit = 7; the trailing Total row is still skipped.
+        assertEquals(7, results.size)
         val cashOps = results.filterIsInstance<CsvRowParseResult.ParsedCashOperation>().map { it.row }
         assertEquals(4, cashOps.size)
         assertTrue(cashOps.none { it.description.startsWith("Total", ignoreCase = true) })

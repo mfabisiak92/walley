@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -41,6 +42,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -50,6 +55,9 @@ import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.ImportRowOutcome
 import com.walley.app.domain.model.ImportRowStatus
+
+private val ImportGreen = Color(0xFF2E7D32)
+private val ImportBlue = Color(0xFF42A5F5)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,16 +231,22 @@ private fun PreviewContent(
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val toImportCount = outcomes.count { it.status is ImportRowStatus.ToImport }
+    val tradeToImportCount = outcomes.count { it.status is ImportRowStatus.ToImport && it.cashOperation == null }
+    val cashOperationToImportCount = outcomes.count { it.status is ImportRowStatus.ToImport && it.cashOperation != null }
+    val toImportCount = tradeToImportCount + cashOperationToImportCount
     val duplicateCount = outcomes.count { it.status is ImportRowStatus.Duplicate }
     val rejectedCount = outcomes.count { it.status is ImportRowStatus.Rejected }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                "$toImportCount to import · $duplicateCount already imported · $rejectedCount rejected",
-                style = MaterialTheme.typography.titleMedium
-            )
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusCount(Icons.Filled.CheckCircle, ImportGreen, tradeToImportCount, "trades to import")
+            StatusCount(Icons.Filled.Paid, ImportGreen, cashOperationToImportCount, "bank operations to import")
+            StatusCount(Icons.Filled.DoneAll, ImportBlue, duplicateCount, "already imported")
+            StatusCount(Icons.Filled.Warning, MaterialTheme.colorScheme.error, rejectedCount, "rejected")
         }
         LazyColumn(
             modifier = Modifier
@@ -260,6 +274,20 @@ private fun PreviewContent(
 }
 
 @Composable
+private fun StatusCount(icon: ImageVector, tint: Color, count: Int, description: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.semantics(mergeDescendants = true) {
+            contentDescription = "$count $description"
+        }
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
+        Text(count.toString(), style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+@Composable
 private fun OutcomeRow(outcome: ImportRowOutcome) {
     val row = outcome.row
     val cashOperation = outcome.cashOperation
@@ -279,7 +307,10 @@ private fun OutcomeRow(outcome: ImportRowOutcome) {
                         cashOperation != null -> "Row ${outcome.rowNumber} · ${cashOperation.description}"
                         else -> "Row ${outcome.rowNumber}"
                     },
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 StatusIndicator(outcome.status, isCashOperation = cashOperation != null)
             }
@@ -311,14 +342,14 @@ private fun StatusIndicator(status: ImportRowStatus, isCashOperation: Boolean) {
             Icon(
                 Icons.Filled.Paid,
                 contentDescription = "Will import as a cash operation",
-                tint = Color(0xFF2E7D32),
+                tint = ImportGreen,
                 modifier = Modifier.size(20.dp)
             )
         } else {
             Icon(
                 Icons.Filled.CheckCircle,
                 contentDescription = "Will import",
-                tint = Color(0xFF2E7D32),
+                tint = ImportGreen,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -328,10 +359,11 @@ private fun StatusIndicator(status: ImportRowStatus, isCashOperation: Boolean) {
             tint = MaterialTheme.colorScheme.error,
             modifier = Modifier.size(20.dp)
         )
-        is ImportRowStatus.Duplicate -> Text(
-            "Already imported",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        is ImportRowStatus.Duplicate -> Icon(
+            Icons.Filled.DoneAll,
+            contentDescription = "Already imported",
+            tint = ImportBlue,
+            modifier = Modifier.size(20.dp)
         )
     }
 }

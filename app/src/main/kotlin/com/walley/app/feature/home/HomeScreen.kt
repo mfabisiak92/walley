@@ -43,6 +43,8 @@ import com.walley.app.core.ui.AccountBalanceContentColor
 import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.core.ui.InvestmentNeutralColor
+import com.walley.app.core.ui.NetWorthCardContainerColor
+import com.walley.app.core.ui.NetWorthCardContentColor
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.core.ui.paidProgressColor
@@ -105,8 +107,8 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = NetWorthCardContainerColor,
+            contentColor = NetWorthCardContentColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -122,10 +124,15 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                 )
                 netWorth.projectedAmount?.let { projected ->
                     Text(
-                        text = "Projected · ${formatMoney(projected, netWorth.currency)} end of month",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Projected ${formatMoney(projected, netWorth.currency)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NetWorthCardContentColor.copy(alpha = 0.75f)
                     )
                 }
+                Text(
+                    text = monthOverMonthChangeText(netWorth),
+                    style = MaterialTheme.typography.bodySmall
+                )
             } else {
                 Text(
                     text = "Exchange rates unavailable",
@@ -134,6 +141,18 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
             }
         }
     }
+}
+
+/**
+ * Change vs. the previous calendar month's net worth, as recorded in that month's financial snapshot —
+ * "-" when no snapshot exists (the previous month's budget was never marked completed). Deliberately not
+ * [NetWorthState.projectedAmount]-based: this reflects an actual month-over-month change, not a forecast.
+ */
+private fun monthOverMonthChangeText(netWorth: NetWorthState): String {
+    val now = netWorth.amount ?: return "-"
+    val previous = netWorth.previousMonthNetWorth ?: return "-"
+    val delta = now - previous
+    return (if (delta.signum() > 0) "+" else "") + formatMoney(delta, netWorth.currency)
 }
 
 @Composable
