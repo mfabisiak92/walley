@@ -9,6 +9,7 @@ import androidx.navigation.navArgument
 import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.feature.accounts.UpdateBalancesScreen
 import com.walley.app.feature.analytics.AnalyticsScreen
+import com.walley.app.feature.backup.BackupScreen
 import com.walley.app.feature.budget.AdHocBudgetDetailScreen
 import com.walley.app.feature.budget.AdHocWizardScreen
 import com.walley.app.feature.budget.BudgetDetailScreen
@@ -36,6 +37,7 @@ private object WalleyDestinations {
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
     const val UPDATE_BALANCES = "update_balances/{group}"
     const val CASH_OPERATIONS = "cash_operations/{accountId}"
+    const val BACKUP_RESTORE = "backup_restore"
 
     fun budgetDetail(budgetId: Long) = "budget_detail/$budgetId"
     fun budgetSettings(budgetId: Long) = "budget_settings/$budgetId"
@@ -104,8 +106,12 @@ fun WalleyNavHost() {
             SettingsScreen(
                 onNavigateHome = {
                     navController.popBackStack(WalleyDestinations.MAIN, inclusive = false)
-                }
+                },
+                onOpenBackupRestore = { navController.navigate(WalleyDestinations.BACKUP_RESTORE) }
             )
+        }
+        composable(WalleyDestinations.BACKUP_RESTORE) {
+            BackupScreen(onNavigateBack = { navController.popBackStack() })
         }
         composable(
             WalleyDestinations.BUDGET_WIZARD,

@@ -13,6 +13,9 @@ interface AssetDao {
     @Insert
     suspend fun insert(asset: AssetEntity): Long
 
+    @Insert
+    suspend fun insertAll(assets: List<AssetEntity>)
+
     @Query("UPDATE assets SET currentValueMinorUnits = :currentValueMinorUnits WHERE id = :assetId")
     suspend fun updateCurrentValue(assetId: Long, currentValueMinorUnits: Long)
 

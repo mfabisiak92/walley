@@ -27,7 +27,13 @@ interface WatchedEquityDao {
     suspend fun insertEquity(equity: WatchedEquityEntity): Long
 
     @Insert
+    suspend fun insertEquities(equities: List<WatchedEquityEntity>): List<Long>
+
+    @Insert
     suspend fun insertNote(note: EquityNoteEntity): Long
+
+    @Insert
+    suspend fun insertNotes(notes: List<EquityNoteEntity>)
 
     @Query("UPDATE equity_notes SET date = :date, status = :status, note = :note WHERE id = :noteId")
     suspend fun updateNote(noteId: Long, date: LocalDate, status: EquityStatus, note: String)

@@ -59,6 +59,7 @@ private val TABS = listOf("General", "Budget")
 fun SettingsScreen(
     modifier: Modifier = Modifier,
     onNavigateHome: () -> Unit,
+    onOpenBackupRestore: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val pagerState = rememberPagerState(pageCount = { TABS.size })
@@ -89,7 +90,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (page) {
-                    0 -> GeneralSettingsPage(viewModel, snackbarHostState)
+                    0 -> GeneralSettingsPage(viewModel, snackbarHostState, onOpenBackupRestore)
                     else -> BudgetSettingsPage(viewModel)
                 }
             }
@@ -99,7 +100,11 @@ fun SettingsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState: SnackbarHostState) {
+private fun GeneralSettingsPage(
+    viewModel: SettingsViewModel,
+    snackbarHostState: SnackbarHostState,
+    onOpenBackupRestore: () -> Unit
+) {
     val darkModeOverride by viewModel.darkModeOverride.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
     val includeSavingsInNetWorth by viewModel.includeSavingsInNetWorth.collectAsStateWithLifecycle()
@@ -237,6 +242,17 @@ private fun GeneralSettingsPage(viewModel: SettingsViewModel, snackbarHostState:
                 )
             }
             Switch(checked = yahooFinanceEnabled, onCheckedChange = viewModel::setYahooFinanceEnabled)
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Backup & Restore", style = MaterialTheme.typography.bodyLarge)
+            TextButton(onClick = onOpenBackupRestore) {
+                Text("Open")
+            }
         }
     }
 

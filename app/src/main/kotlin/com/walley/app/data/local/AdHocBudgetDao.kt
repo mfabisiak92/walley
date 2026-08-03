@@ -30,6 +30,9 @@ interface AdHocBudgetDao {
     suspend fun insertBudget(budget: AdHocBudgetEntity): Long
 
     @Insert
+    suspend fun insertBudgets(budgets: List<AdHocBudgetEntity>): List<Long>
+
+    @Insert
     suspend fun insertItems(items: List<AdHocBudgetItemEntity>)
 
     @Insert

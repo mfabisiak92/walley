@@ -19,6 +19,9 @@ interface LiabilityDao {
     @Insert
     suspend fun insert(liability: LiabilityEntity): Long
 
+    @Insert
+    suspend fun insertAll(liabilities: List<LiabilityEntity>)
+
     @Query("UPDATE liabilities SET currentBalanceMinorUnits = :currentBalanceMinorUnits WHERE id = :liabilityId")
     suspend fun updateCurrentBalance(liabilityId: Long, currentBalanceMinorUnits: Long)
 

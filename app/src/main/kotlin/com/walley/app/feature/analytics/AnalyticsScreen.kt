@@ -47,6 +47,7 @@ import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.StackedTrendChartCard
 import com.walley.app.core.ui.SwipeableTrendChartCard
+import com.walley.app.core.ui.TreemapChartCard
 import com.walley.app.core.ui.TrendChartCard
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
@@ -438,6 +439,7 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
     val accountBreakdown by viewModel.investmentAccountBreakdown.collectAsStateWithLifecycle()
     val currencyBreakdown by viewModel.investmentCurrencyBreakdown.collectAsStateWithLifecycle()
     val yearlyHistory by viewModel.investmentYearlyHistory.collectAsStateWithLifecycle()
+    val treemap by viewModel.investmentTreemap.collectAsStateWithLifecycle()
     val performance by viewModel.investmentPerformance.collectAsStateWithLifecycle()
     val gainsSummary by viewModel.portfolioGainsSummary.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
@@ -454,6 +456,10 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        if (treemap.isNotEmpty()) {
+            TreemapChartCard(title = "Investments by size", items = treemap)
+        }
+
         PieChartCard(title = "Investments by category", slices = categoryBreakdown)
         PieChartCard(title = "Investments by account", slices = accountBreakdown)
         PieChartCard(title = "Investments by currency", slices = currencyBreakdown)
@@ -475,7 +481,8 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
                 title = "Contributions by year",
                 labels = labels,
                 series = listOf(
-                    ChartSeries("Invested", PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() })
+                    ChartSeries("Invested", PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() }),
+                    ChartSeries("Deposited", PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() })
                 ),
                 valueFormatter = moneyFormatter
             )

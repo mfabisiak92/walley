@@ -40,6 +40,7 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountOperation
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.estimatedTaxForYear
 import com.walley.app.domain.model.netRealizedGain
@@ -236,6 +237,12 @@ private fun DetailsTab(
     val realizedGainAmount = account.realizedGain(investmentsInAccount)
     val realizedTax = account.realizedGainTax(investmentsInAccount) ?: BigDecimal.ZERO
     val netRealizedGainAmount = account.netRealizedGain(investmentsInAccount)
+    val buyTransactions = investmentsInAccount.flatMap { it.transactions }
+        .filter { it.type == InvestmentTransactionType.BUY }
+    val totalContribution = buyTransactions.fold(BigDecimal.ZERO) { acc, t -> acc + t.netAmount }
+    val contributionThisYear = buyTransactions
+        .filter { it.date.year == currentYear }
+        .fold(BigDecimal.ZERO) { acc, t -> acc + t.netAmount }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -245,6 +252,7 @@ private fun DetailsTab(
         val currentRows = listOf(
             "Current account balance" to account.balance,
             "Net deposits" to netDeposits,
+            "Total contribution" to totalContribution,
             "Cost basis" to account.investmentCostBasis,
             "Uninvested cash" to account.uninvestedCash,
             "Unrealized gain" to unrealizedGainAmount,
@@ -257,6 +265,7 @@ private fun DetailsTab(
 
         item { DetailSectionHeader("This year") }
         val thisYearRows = listOf(
+            "Contribution" to contributionThisYear,
             "Realized gain" to realizedGainThisYear,
             "Net realized gain" to netRealizedGainThisYear
         )

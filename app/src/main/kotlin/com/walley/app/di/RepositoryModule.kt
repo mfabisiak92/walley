@@ -10,6 +10,8 @@ import com.walley.app.data.repository.AdHocBudgetRepository
 import com.walley.app.data.repository.AdHocBudgetRepositoryImpl
 import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.AssetRepositoryImpl
+import com.walley.app.data.repository.BackupRepository
+import com.walley.app.data.repository.BackupRepositoryImpl
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.BudgetRepositoryImpl
 import com.walley.app.data.repository.ExchangeRateRepository
@@ -83,4 +85,7 @@ abstract class RepositoryModule {
 
     @Binds
     abstract fun bindInvestmentsPreferencesRepository(impl: InvestmentsPreferencesRepositoryImpl): InvestmentsPreferencesRepository
+
+    @Binds
+    abstract fun bindBackupRepository(impl: BackupRepositoryImpl): BackupRepository
 }

@@ -34,7 +34,13 @@ interface InvestmentDao {
     suspend fun insert(investment: InvestmentEntity): Long
 
     @Insert
+    suspend fun insertAll(investments: List<InvestmentEntity>): List<Long>
+
+    @Insert
     suspend fun insertTransaction(transaction: InvestmentTransactionEntity): Long
+
+    @Insert
+    suspend fun insertTransactions(transactions: List<InvestmentTransactionEntity>)
 
     @Query(
         """

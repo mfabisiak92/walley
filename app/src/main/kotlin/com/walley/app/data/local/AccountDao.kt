@@ -17,6 +17,9 @@ interface AccountDao {
     @Insert
     suspend fun insert(account: AccountEntity): Long
 
+    @Insert
+    suspend fun insertAll(accounts: List<AccountEntity>): List<Long>
+
     @Query(
         """
         UPDATE accounts

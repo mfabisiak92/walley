@@ -6,6 +6,8 @@ import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.InvestmentCategoryColors
 import com.walley.app.core.ui.PieChartColors
 import com.walley.app.core.ui.PieSlice
+import com.walley.app.core.ui.TreemapItem
+import com.walley.app.data.repository.AccountOperationRepository
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetRepository
@@ -61,7 +63,9 @@ data class InvestmentYearPoint(
     /** Sum of [com.walley.app.domain.model.InvestmentWithTransactions.realizedGainLossInYear] across every investment, converted to base currency. */
     val realizedGainLoss: BigDecimal,
     /** Sum of BUY transactions' net amount dated in [year] across every investment, converted to base currency. */
-    val contributions: BigDecimal
+    val contributions: BigDecimal,
+    /** Sum of positive (deposit) [com.walley.app.domain.model.AccountOperation.amount] dated in [year] across every investment account, converted to base currency. */
+    val deposits: BigDecimal
 )
 
 /** [xirr]/[cagr] are each in [currency] (the position's own) — never converted, see their KDoc. */
@@ -94,6 +98,7 @@ class AnalyticsViewModel @Inject constructor(
     snapshotRepository: SnapshotRepository,
     investmentRepository: InvestmentRepository,
     accountRepository: AccountRepository,
+    accountOperationRepository: AccountOperationRepository,
     assetRepository: AssetRepository,
     liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
@@ -227,6 +232,25 @@ class AnalyticsViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Every held investment position, individually, current value converted to base currency, largest first. */
+    val investmentTreemap: StateFlow<List<TreemapItem>> = combine(
+        investmentRepository.observeInvestments(),
+        baseCurrencyRates
+    ) { investments, (base, rates) ->
+        investments
+            .mapNotNull { data ->
+                val value = convertToCurrency(data.currentValue, data.investment.currency, base, rates) ?: return@mapNotNull null
+                if (value.signum() <= 0) return@mapNotNull null
+                TreemapItem(
+                    label = data.investment.ticker.ifBlank { data.investment.name },
+                    displayValue = formatMoney(value, base),
+                    value = value.toFloat(),
+                    color = InvestmentCategoryColors.getValue(data.investment.category)
+                )
+            }
+            .sortedByDescending { it.value }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Current value of every investment, grouped by its linked account (or "Unlinked") and converted to base currency. */
     val investmentAccountBreakdown: StateFlow<List<PieSlice>> = combine(
         investmentRepository.observeInvestments(),
@@ -259,12 +283,17 @@ class AnalyticsViewModel @Inject constructor(
         toPieSlices(totalsByCurrency, base)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** One point per calendar year spanned by the portfolio's transaction history, oldest first. */
+    /** One point per calendar year spanned by the portfolio's transaction and deposit history, oldest first. */
     val investmentYearlyHistory: StateFlow<List<InvestmentYearPoint>> = combine(
         investmentRepository.observeInvestments(),
+        accountRepository.observeAccounts(),
+        accountOperationRepository.observeAll(),
         baseCurrencyRates
-    ) { investments, (base, rates) ->
-        val years = investments.flatMap { data -> data.transactions.map { it.date.year } }
+    ) { investments, accounts, operations, (base, rates) ->
+        val currencyByAccountId = accounts.associate { it.id to it.currency }
+        val transactionYears = investments.flatMap { data -> data.transactions.map { it.date.year } }
+        val depositYears = operations.filter { it.amount.signum() > 0 }.map { it.date.year }
+        val years = transactionYears + depositYears
         if (years.isEmpty()) {
             emptyList()
         } else {
@@ -279,7 +308,13 @@ class AnalyticsViewModel @Inject constructor(
                         .fold(BigDecimal.ZERO) { sum, t -> sum + t.netAmount }
                     acc + (convertToCurrency(investedInYear, data.investment.currency, base, rates) ?: BigDecimal.ZERO)
                 }
-                InvestmentYearPoint(year, realized, contributions)
+                val deposits = operations
+                    .filter { it.amount.signum() > 0 && it.date.year == year }
+                    .fold(BigDecimal.ZERO) { acc, operation ->
+                        val currency = currencyByAccountId[operation.accountId] ?: base
+                        acc + (convertToCurrency(operation.amount, currency, base, rates) ?: BigDecimal.ZERO)
+                    }
+                InvestmentYearPoint(year, realized, contributions, deposits)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

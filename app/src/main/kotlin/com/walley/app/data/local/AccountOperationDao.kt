@@ -16,6 +16,9 @@ interface AccountOperationDao {
     @Insert
     suspend fun insert(operation: AccountOperationEntity): Long
 
+    @Insert
+    suspend fun insertAll(operations: List<AccountOperationEntity>)
+
     @Query("DELETE FROM account_operations WHERE accountId = :accountId")
     suspend fun deleteForAccount(accountId: Long)
 }

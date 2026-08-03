@@ -7,6 +7,9 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
+/** Kept in sync with [WalleyDatabase]'s `@Database(version = ...)` — referenced by backups to record the schema they were taken against. */
+const val WALLEY_DB_SCHEMA_VERSION = 35
+
 @Database(
     entities = [
         AccountEntity::class,
@@ -24,7 +27,7 @@ import java.time.LocalDate
         AccountOperationEntity::class,
         StrategyInvestmentLinkEntity::class
     ],
-    version = 35,
+    version = WALLEY_DB_SCHEMA_VERSION,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

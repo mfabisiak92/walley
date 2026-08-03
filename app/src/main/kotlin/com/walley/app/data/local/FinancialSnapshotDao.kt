@@ -22,4 +22,7 @@ interface FinancialSnapshotDao {
 
     @Insert
     suspend fun insert(snapshot: FinancialSnapshotEntity): Long
+
+    @Insert
+    suspend fun insertAll(snapshots: List<FinancialSnapshotEntity>)
 }

@@ -43,6 +43,9 @@ interface BudgetDao {
     suspend fun insertBudget(budget: BudgetEntity): Long
 
     @Insert
+    suspend fun insertBudgets(budgets: List<BudgetEntity>): List<Long>
+
+    @Insert
     suspend fun insertItems(items: List<BudgetItemEntity>)
 
     @Insert
