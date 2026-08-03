@@ -34,7 +34,7 @@ fun CloseAccountDialog(
     // For an Investment account, the stored balance column is uninvested cash — account.balance also
     // includes the market value of any linked investments, which never moves as part of closing.
     val transferAmount = if (account.type == AccountType.INVESTMENT) account.uninvestedCash else account.balance
-    val needsTransfer = !account.isVirtual && transferAmount.signum() != 0
+    val needsTransfer = transferAmount.signum() != 0
 
     if (!needsTransfer) {
         AlertDialog(
@@ -51,13 +51,18 @@ fun CloseAccountDialog(
         return
     }
 
+    // Only accounts in the same currency as the one being closed can receive the transfer. A virtual
+    // account's balance is just an earmarked slice of a real account's money, so it may only move into
+    // another virtual account; a non-virtual account's real balance can move into any other open account.
     val candidates = otherAccounts.filter {
         it.id != account.id &&
             !it.isClosed &&
             it.currency == account.currency &&
-            it.type in setOf(AccountType.CHECKING, AccountType.SAVING, AccountType.CASH)
+            (!account.isVirtual || it.isVirtual)
     }
-    var destinationId by remember { mutableStateOf(candidates.firstOrNull()?.id) }
+    // The transfer is optional — default to not transferring so money never moves without the user
+    // explicitly picking a destination.
+    var destinationId by remember { mutableStateOf<Long?>(null) }
     var menuExpanded by remember { mutableStateOf(false) }
     val destination = candidates.find { it.id == destinationId }
 
@@ -67,15 +72,18 @@ fun CloseAccountDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "The remaining ${formatMoney(transferAmount, account.currency)} in \"${account.name}\" " +
-                        "will be transferred to the account you pick below. You can reopen \"${account.name}\" " +
-                        "later from the Accounts screen, but the transfer won't be reversed automatically."
+                    "\"${account.name}\" has a remaining balance of ${formatMoney(transferAmount, account.currency)}. " +
+                        "You can optionally transfer it to another account below, or leave it in \"${account.name}\" " +
+                        "— it'll stay there but be excluded from net worth while closed. You can reopen " +
+                        "\"${account.name}\" later from the Accounts screen, but a transfer won't be reversed automatically."
                 )
                 if (candidates.isEmpty()) {
+                    val virtualQualifier = if (account.isVirtual) "virtual " else ""
                     Text(
-                        "No other account in ${account.currency.name} is available to receive the balance.",
+                        "No other ${virtualQualifier}account in ${account.currency.name} is available to receive " +
+                            "the balance — it will stay in \"${account.name}\" if you close it.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     ExposedDropdownMenuBox(
@@ -83,7 +91,7 @@ fun CloseAccountDialog(
                         onExpandedChange = { menuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = destination?.name ?: "",
+                            value = destination?.name ?: "Don't transfer",
                             onValueChange = {},
                             readOnly = true,
                             label = { Text("Transfer to") },
@@ -94,6 +102,13 @@ fun CloseAccountDialog(
                             expanded = menuExpanded,
                             onDismissRequest = { menuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("Don't transfer") },
+                                onClick = {
+                                    destinationId = null
+                                    menuExpanded = false
+                                }
+                            )
                             candidates.forEach { candidate ->
                                 DropdownMenuItem(
                                     text = { Text(candidate.name) },
@@ -109,10 +124,7 @@ fun CloseAccountDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(destination!!.id) },
-                enabled = destination != null
-            ) { Text("Close") }
+            TextButton(onClick = { onConfirm(destination?.id) }) { Text("Close") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancel") }

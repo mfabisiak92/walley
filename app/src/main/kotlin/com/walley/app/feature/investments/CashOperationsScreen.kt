@@ -41,10 +41,12 @@ import com.walley.app.domain.model.AccountOperation
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentWithTransactions
+import com.walley.app.domain.model.estimatedTaxForYear
 import com.walley.app.domain.model.netRealizedGain
 import com.walley.app.domain.model.realizedGain
 import com.walley.app.domain.model.realizedGainTax
 import java.math.BigDecimal
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 private val INVESTMENT_ACCOUNT_TABS = listOf("Details", "Investments", "Operations")
@@ -224,28 +226,62 @@ private fun DetailsTab(
 ) {
     if (account == null) return
     val currency = account.currency
+    val currentYear = LocalDate.now().year
     val netDeposits = operations.fold(BigDecimal.ZERO) { acc, operation -> acc + operation.amount }
+    val unrealizedGainAmount = account.investmentGainLoss
+    val netUnrealizedGainAmount = account.investmentNetProfit ?: unrealizedGainAmount
+    val realizedGainThisYear = investmentsInAccount.fold(BigDecimal.ZERO) { acc, data -> acc + data.realizedGainLossInYear(currentYear) }
+    val realizedTaxThisYear = account.estimatedTaxForYear(investmentsInAccount, currentYear) ?: BigDecimal.ZERO
+    val netRealizedGainThisYear = realizedGainThisYear - realizedTaxThisYear
     val realizedGainAmount = account.realizedGain(investmentsInAccount)
     val realizedTax = account.realizedGainTax(investmentsInAccount) ?: BigDecimal.ZERO
     val netRealizedGainAmount = account.netRealizedGain(investmentsInAccount)
-    val unrealizedGainAmount = account.investmentGainLoss
-    val netUnrealizedGainAmount = account.investmentNetProfit ?: unrealizedGainAmount
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        val rows = listOf(
+        item { DetailSectionHeader("Current") }
+        val currentRows = listOf(
             "Current account balance" to account.balance,
             "Net deposits" to netDeposits,
             "Cost basis" to account.investmentCostBasis,
             "Uninvested cash" to account.uninvestedCash,
-            "Realized gain" to realizedGainAmount,
-            "Net realized gain" to netRealizedGainAmount,
             "Unrealized gain" to unrealizedGainAmount,
-            "Net unrealized gain" to netUnrealizedGainAmount
+            "Current net" to netUnrealizedGainAmount
         )
-        itemsIndexed(rows, key = { _, (label, _) -> label }) { index, (label, value) ->
+        itemsIndexed(currentRows, key = { _, (label, _) -> label }) { index, (label, value) ->
+            if (index > 0) HorizontalDivider()
+            DetailRow(label = label, value = value, currency = currency)
+        }
+
+        item { DetailSectionHeader("This year") }
+        val thisYearRows = listOf(
+            "Realized gain" to realizedGainThisYear,
+            "Net realized gain" to netRealizedGainThisYear
+        )
+        itemsIndexed(thisYearRows, key = { _, (label, _) -> "thisyear_$label" }) { index, (label, value) ->
+            if (index > 0) HorizontalDivider()
+            DetailRow(label = label, value = value, currency = currency)
+        }
+        if (realizedTaxThisYear.signum() > 0) {
+            item { HorizontalDivider() }
+            item {
+                DetailRow(
+                    label = "Current tax (${account.taxRate.label})",
+                    value = realizedTaxThisYear,
+                    currency = currency,
+                    negative = true
+                )
+            }
+        }
+
+        item { DetailSectionHeader("Total") }
+        val totalRows = listOf(
+            "Realized gain" to realizedGainAmount,
+            "Net realized gain" to netRealizedGainAmount
+        )
+        itemsIndexed(totalRows, key = { _, (label, _) -> "total_$label" }) { index, (label, value) ->
             if (index > 0) HorizontalDivider()
             DetailRow(label = label, value = value, currency = currency)
         }
@@ -253,7 +289,7 @@ private fun DetailsTab(
             item { HorizontalDivider() }
             item {
                 DetailRow(
-                    label = "Tax on realized gain (${account.taxRate.label})",
+                    label = "Total tax (${account.taxRate.label})",
                     value = realizedTax,
                     currency = currency,
                     negative = true
@@ -261,6 +297,16 @@ private fun DetailsTab(
             }
         }
     }
+}
+
+@Composable
+private fun DetailSectionHeader(title: String) {
+    Text(
+        title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+    )
 }
 
 @Composable

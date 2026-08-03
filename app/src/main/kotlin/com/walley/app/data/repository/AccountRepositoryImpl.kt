@@ -156,16 +156,21 @@ class AccountRepositoryImpl @Inject constructor(
             throw AccountHasLinkedActiveBudgetException()
         }
         // For an Investment account, balanceMinorUnits is uninvested cash (see AccountMappers.toDomain),
-        // so this correctly sweeps just that — never invested positions, which are blocked above.
-        if (!entity.isVirtual && entity.balanceMinorUnits != 0L) {
-            val destinationId = requireNotNull(transferToAccountId) { "A destination account is required" }
-            val destination = requireNotNull(accountDao.getById(destinationId)) { "Destination account not found" }
+        // so this correctly sweeps just that — never invested positions, which are blocked above. The
+        // transfer itself is optional: a null transferToAccountId just leaves the balance in place. A
+        // virtual account's balance is only an earmarked slice of a real account's money, so it may only
+        // move into another virtual account (same earmarking, different bucket); a non-virtual account's
+        // real balance can move into any other open account regardless of type or virtual-ness.
+        if (entity.balanceMinorUnits != 0L && transferToAccountId != null) {
+            val destination = requireNotNull(accountDao.getById(transferToAccountId)) { "Destination account not found" }
             require(destination.id != entity.id) { "Destination must be a different account" }
             require(destination.currency == entity.currency) { "Destination must share the source's currency" }
             require(!destination.isClosed) { "Destination account can't be closed" }
-            require(destination.type in TRANSFER_DESTINATION_TYPES) { "Destination must be Checking, Saving, or Cash" }
+            if (entity.isVirtual) {
+                require(destination.isVirtual) { "A virtual account can only transfer to another virtual account" }
+            }
             accountDao.addToBalance(accountId, -entity.balanceMinorUnits)
-            accountDao.addToBalance(destinationId, entity.balanceMinorUnits)
+            accountDao.addToBalance(transferToAccountId, entity.balanceMinorUnits)
         }
         accountDao.setClosed(accountId, true)
         // Checking/Cash accounts can be the default account (see AccountsScreen's canBeDefault), so
@@ -199,9 +204,5 @@ class AccountRepositoryImpl @Inject constructor(
             AccountType.INVESTMENT to 2,
             AccountType.SAVING to 3
         )
-
-        // Investment accounts' stored balance column is uninvested cash, not a plain balance, so
-        // they're excluded as a destination when closing any account.
-        val TRANSFER_DESTINATION_TYPES = setOf(AccountType.CHECKING, AccountType.SAVING, AccountType.CASH)
     }
 }

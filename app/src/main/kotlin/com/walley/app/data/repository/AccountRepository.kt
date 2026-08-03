@@ -42,13 +42,15 @@ interface AccountRepository {
     suspend fun deleteAccount(accountId: Long)
     /**
      * Soft-closes an account: kept in the DB (reversible via [reopenAccount]), hidden from pickers
-     * used to link something new, and excluded from net worth. Non-virtual accounts with a nonzero
-     * balance (for [AccountType.INVESTMENT], its uninvested cash) require [transferToAccountId] —
-     * always [AccountType.CHECKING], [AccountType.SAVING], or [AccountType.CASH] — to sweep the
-     * leftover balance into; virtual accounts and zero-balance accounts close directly, ignoring
-     * [transferToAccountId].
-     * @throws IllegalArgumentException if [transferToAccountId] fails validation (same account,
-     * mismatched currency, closed, or an unsupported type).
+     * used to link something new, and excluded from net worth. If the account has a nonzero balance
+     * (for [AccountType.INVESTMENT], its uninvested cash), an optional [transferToAccountId] sweeps
+     * the leftover balance into that account, which must share the source's currency; passing null
+     * just closes the account with its balance left untouched (frozen, since it's now excluded from
+     * net worth). A virtual account may only transfer into another virtual account — its balance is
+     * just an earmarked slice of a real account's money, not money of its own to move anywhere else.
+     * A non-virtual account may transfer into any other open account regardless of type or virtual-ness.
+     * @throws IllegalArgumentException if [transferToAccountId] is non-null but fails validation
+     * (same account, mismatched currency, closed, or — for a virtual source — a non-virtual destination).
      * @throws AccountHasLinkedInvestmentsException if an Investment account still has linked investments.
      * @throws AccountHasLinkedActiveBudgetException if the account is still referenced by an active
      * monthly budget item or an incomplete ad-hoc budget.
