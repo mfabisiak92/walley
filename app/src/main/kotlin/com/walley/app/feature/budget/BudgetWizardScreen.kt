@@ -379,7 +379,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                         localId = initial?.localId ?: System.nanoTime(),
                         name = name,
                         amount = amount,
-                        currency = baseCurrency,
+                        currency = cashAccounts.find { it.id == accountId }?.currency ?: baseCurrency,
                         accountId = accountId,
                         paymentDay = day,
                         paymentDayIsLastOfMonth = lastOfMonth,

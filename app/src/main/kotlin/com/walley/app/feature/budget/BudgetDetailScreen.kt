@@ -379,7 +379,7 @@ fun BudgetDetailScreen(
                         section = section,
                         name = name,
                         amount = amount,
-                        currency = baseCurrency,
+                        currency = sectionAccounts.find { it.id == accountId }?.currency ?: baseCurrency,
                         accountId = accountId,
                         paymentDay = day,
                         paymentDayIsLastOfMonth = lastOfMonth,

@@ -195,7 +195,7 @@ fun AddBudgetItemDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount (${currency.symbol})") },
+                    label = { Text("Amount (${(selectedAccount?.currency ?: currency).symbol})") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && parsedAmount == null
