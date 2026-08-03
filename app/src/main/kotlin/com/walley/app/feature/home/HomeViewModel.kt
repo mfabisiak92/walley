@@ -23,10 +23,11 @@ import com.walley.app.domain.model.Liability
 import com.walley.app.domain.model.estimatedTaxByYear
 import com.walley.app.feature.analytics.findByYearMonth
 import com.walley.app.feature.budget.BudgetProgress
+import com.walley.app.feature.budget.ProjectedNetWorthBreakdown
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
 import com.walley.app.feature.budget.convertToCurrency
-import com.walley.app.feature.budget.projectedNetWorthDelta
+import com.walley.app.feature.budget.projectedNetWorthBreakdown
 import com.walley.app.feature.budget.unallocatedAmount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
@@ -114,6 +115,10 @@ data class NetWorthState(
     // projected net worth at the end of the current calendar month if this month's budget is followed
     // through to completion; null when there's no budget for the current month, or amount is null
     val projectedAmount: BigDecimal? = null,
+    // the terms behind projectedAmount (income, income-related expenses, fixed/other costs, savings
+    // adjustment), for showing the projection's math on the breakdown screen; null under the same
+    // conditions as projectedAmount
+    val projectedBreakdown: ProjectedNetWorthBreakdown? = null,
     // net worth as of the end of the previous calendar month, from that month's financial snapshot;
     // null when the previous month's budget was never marked completed (no snapshot was ever taken)
     val previousMonthNetWorth: BigDecimal? = null
@@ -356,20 +361,20 @@ class HomeViewModel @Inject constructor(
                 NetWorthByCurrency(currency, amount.setScale(2, RoundingMode.HALF_UP), percent)
             }
             .sortedByDescending { it.amountInBaseCurrency }
-        val projectedAmount = if (currentMonthBudgetItems.isEmpty()) {
+        val projectedBreakdown = if (currentMonthBudgetItems.isEmpty()) {
             null
         } else {
-            projectedNetWorthDelta(currentMonthBudgetItems, base, rates, includeSavings)?.let { delta ->
-                (total + delta).setScale(2, RoundingMode.HALF_UP)
-            }
+            projectedNetWorthBreakdown(currentMonthBudgetItems, accounts, base, rates, includeSavings)
         }
+        val projectedAmount = projectedBreakdown?.let { (total + it.total).setScale(2, RoundingMode.HALF_UP) }
         return NetWorthState(
             currency = base,
             amount = total.setScale(2, RoundingMode.HALF_UP),
             rateDate = if (usedRates) rates?.date else null,
             breakdown = breakdown,
             elements = elements.sortedByDescending { it.amountInBaseCurrency },
-            projectedAmount = projectedAmount
+            projectedAmount = projectedAmount,
+            projectedBreakdown = projectedBreakdown
         )
     }
 

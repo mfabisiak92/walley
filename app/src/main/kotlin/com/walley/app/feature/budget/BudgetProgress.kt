@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
@@ -95,6 +96,58 @@ fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: 
 }
 
 /**
+ * The individual terms behind [projectedNetWorthDelta], for showing the projection's math (as
+ * opposed to just its result) on the net worth breakdown screen. Each term is this budget's
+ * still-unpaid remainder (planned − paid) for that section; see [projectedNetWorthDelta]'s doc for
+ * why each sign is what it is. [savingsAdjustment] is null when savings are included in net worth
+ * ([projectedNetWorthDelta]'s `includeSavings` true) — there's no adjustment to show, since paying
+ * Savings/Investments items doesn't change net worth either way in that case.
+ */
+data class ProjectedNetWorthBreakdown(
+    val income: BigDecimal,
+    val incomeRelatedExpenses: BigDecimal,
+    val fixedCosts: BigDecimal,
+    val otherCosts: BigDecimal,
+    val savingsAdjustment: BigDecimal?,
+    val total: BigDecimal
+)
+
+/**
+ * The terms of the net-worth-delta projection from this budget's still-unpaid items, in
+ * [targetCurrency]; null if a needed rate is unavailable. See [projectedNetWorthDelta] (which
+ * this backs) for the full reasoning behind each term.
+ */
+fun projectedNetWorthBreakdown(
+    items: List<BudgetItem>,
+    accounts: List<Account>,
+    targetCurrency: Currency,
+    rates: ExchangeRates?,
+    includeSavings: Boolean = true
+): ProjectedNetWorthBreakdown? {
+    fun remaining(section: BudgetSectionType, predicate: (BudgetItem) -> Boolean = { true }): BigDecimal? {
+        val progress = budgetProgress(items.filterNot { it.isFinalized }.filter(predicate), setOf(section), targetCurrency, rates)
+            ?: return null
+        return progress.planned - progress.spent
+    }
+
+    val income = remaining(BudgetSectionType.INCOME) ?: return null
+    val incomeRelatedExpenses = remaining(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: return null
+    val fixedCosts = remaining(BudgetSectionType.FIXED_COSTS) ?: return null
+    val otherCosts = remaining(BudgetSectionType.OTHER_COSTS) ?: return null
+
+    val savingsAdjustment = if (includeSavings) {
+        null
+    } else {
+        val virtualAccountIds = accounts.filter { it.isVirtual }.mapTo(mutableSetOf()) { it.id }
+        val realSavings = remaining(BudgetSectionType.SAVINGS) { it.accountId !in virtualAccountIds } ?: return null
+        val virtualSavings = remaining(BudgetSectionType.SAVINGS) { it.accountId in virtualAccountIds } ?: return null
+        realSavings - virtualSavings
+    }
+    val total = income - incomeRelatedExpenses + (savingsAdjustment ?: BigDecimal.ZERO) - fixedCosts - otherCosts
+    return ProjectedNetWorthBreakdown(income, incomeRelatedExpenses, fixedCosts, otherCosts, savingsAdjustment, total)
+}
+
+/**
  * Net change to net worth from this budget's still-unpaid items, in [targetCurrency]; null if a
  * needed rate is unavailable.
  *
@@ -102,10 +155,16 @@ fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: 
  * costs subtract (they represent money actually leaving the tracked accounts). Savings and
  * Investments are excluded: paying those items just moves money from one tracked account to
  * another of the user's own (savings/investment) accounts, so it doesn't change net worth whether
- * it's paid yet or not — it's still sitting in an account either way. The one exception is a real
- * Saving account that's deliberately excluded from net worth ([includeSavings] false): its unpaid
- * remainder still counts as net worth (it hasn't left for an excluded account yet), so it has to be
- * added back to offset the exclusion.
+ * it's paid yet or not — it's still sitting in an account either way. There are two exceptions,
+ * both only when Saving accounts are deliberately excluded from net worth ([includeSavings] false),
+ * looked up via [accounts] by each unpaid Savings item's target [BudgetItem.accountId]:
+ * - A real Saving account contributes a flat zero once paid, so its unpaid remainder — still
+ *   counted today via whichever account currently holds it — has to be added back to offset that
+ *   exclusion.
+ * - A virtual Saving account's exclusion instead grows with its own balance (see
+ *   [Account.netWorthContribution]: its host is already counted in full, so its earmarked slice is
+ *   subtracted back out). Paying into it doesn't just remove it from view like a real account —
+ *   it deepens that subtraction — so its unpaid remainder has to be subtracted, not added back.
  *
  * A finalized Income/Income-related-expenses item ([BudgetItem.isFinalized]) is excluded from its
  * section's remainder entirely — it's locked in as final, so any gap between what was planned and
@@ -114,25 +173,11 @@ fun unallocatedAmount(items: List<BudgetItem>, targetCurrency: Currency, rates: 
  */
 fun projectedNetWorthDelta(
     items: List<BudgetItem>,
+    accounts: List<Account>,
     targetCurrency: Currency,
     rates: ExchangeRates?,
     includeSavings: Boolean = true
-): BigDecimal? {
-    fun remaining(section: BudgetSectionType): BigDecimal? {
-        val progress = budgetProgress(items.filterNot { it.isFinalized }, setOf(section), targetCurrency, rates)
-            ?: return null
-        return progress.planned - progress.spent
-    }
-
-    val income = remaining(BudgetSectionType.INCOME) ?: return null
-    val incomeRelatedExpenses = remaining(BudgetSectionType.INCOME_RELATED_EXPENSES) ?: return null
-    val savings = remaining(BudgetSectionType.SAVINGS) ?: return null
-    val fixedCosts = remaining(BudgetSectionType.FIXED_COSTS) ?: return null
-    val otherCosts = remaining(BudgetSectionType.OTHER_COSTS) ?: return null
-
-    val savingsAdjustment = if (includeSavings) BigDecimal.ZERO else savings
-    return income - incomeRelatedExpenses + savingsAdjustment - fixedCosts - otherCosts
-}
+): BigDecimal? = projectedNetWorthBreakdown(items, accounts, targetCurrency, rates, includeSavings)?.total
 
 /**
  * Extra budget freed up (or eaten into) by finalized Income/Income-related-expenses items' final

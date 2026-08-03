@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +35,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Currency
+import com.walley.app.feature.budget.ProjectedNetWorthBreakdown
 import java.math.BigDecimal
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -115,7 +117,90 @@ fun NetWorthDetailScreen(
                     }
                 }
             }
+
+            val projectedBreakdown = state.projectedBreakdown
+            val projectedAmount = state.projectedAmount
+            if (projectedBreakdown != null && projectedAmount != null && state.amount != null) {
+                item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+                item {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text("Projected net worth", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "If this month's budget is followed through to completion",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                item {
+                    ProjectedNetWorthCard(
+                        currentNetWorth = state.amount,
+                        breakdown = projectedBreakdown,
+                        projectedAmount = projectedAmount,
+                        currency = state.currency
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+private fun ProjectedNetWorthCard(
+    currentNetWorth: BigDecimal,
+    breakdown: ProjectedNetWorthBreakdown,
+    projectedAmount: BigDecimal,
+    currency: Currency
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ProjectedNetWorthRow("Current net worth", currentNetWorth, currency)
+            ProjectedNetWorthRow("Income", breakdown.income, currency, signed = true)
+            ProjectedNetWorthRow("Income-related expenses", -breakdown.incomeRelatedExpenses, currency, signed = true)
+            ProjectedNetWorthRow("Fixed costs", -breakdown.fixedCosts, currency, signed = true)
+            ProjectedNetWorthRow("Other costs", -breakdown.otherCosts, currency, signed = true)
+            breakdown.savingsAdjustment?.let { adjustment ->
+                ProjectedNetWorthRow("Savings adjustment", adjustment, currency, signed = true)
+            }
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            ProjectedNetWorthRow("Projected net worth", projectedAmount, currency, bold = true)
+        }
+    }
+}
+
+@Composable
+private fun ProjectedNetWorthRow(
+    label: String,
+    value: BigDecimal,
+    currency: Currency,
+    signed: Boolean = false,
+    bold: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium
+        )
+        val sign = if (signed && value.signum() > 0) "+" else ""
+        Text(
+            sign + formatMoney(value, currency),
+            style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
+            color = when {
+                !signed -> MaterialTheme.colorScheme.onSurface
+                value.signum() < 0 -> MaterialTheme.colorScheme.error
+                value.signum() > 0 -> MaterialTheme.colorScheme.primary
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+        )
     }
 }
 

@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
@@ -24,14 +25,24 @@ class BudgetProgressTest {
         amount: String,
         currency: Currency = Currency.PLN,
         paidAmount: String = "0",
-        isFinalized: Boolean = false
+        isFinalized: Boolean = false,
+        accountId: Long? = null
     ) = BudgetItem(
         section = section,
         name = "Item",
         amount = BigDecimal(amount),
         currency = currency,
         paidAmount = BigDecimal(paidAmount),
-        isFinalized = isFinalized
+        isFinalized = isFinalized,
+        accountId = accountId
+    )
+
+    private fun account(id: Long, isVirtual: Boolean, balance: String = "0") = Account(
+        id = id,
+        name = "Account",
+        currency = Currency.PLN,
+        balance = BigDecimal(balance),
+        isVirtual = isVirtual
     )
 
     @Test
@@ -164,24 +175,55 @@ class BudgetProgressTest {
         )
         // remaining: income 2000, expenses 200, fixed 300, other 100; savings/investments don't count
         // delta = 2000 - 200 - 300 - 100 = 1400
-        assertEquals(BigDecimal("1400"), projectedNetWorthDelta(items, Currency.PLN, rates))
+        assertEquals(BigDecimal("1400"), projectedNetWorthDelta(items, emptyList(), Currency.PLN, rates))
     }
 
     @Test
-    fun `projectedNetWorthDelta adds back unpaid savings when savings are excluded from net worth`() {
+    fun `projectedNetWorthDelta adds back unpaid savings targeting a real account when savings are excluded from net worth`() {
+        val realSaving = account(id = 1, isVirtual = false)
         val items = listOf(
             item(BudgetSectionType.INCOME, "3000", paidAmount = "1000"),
-            item(BudgetSectionType.SAVINGS, "500", paidAmount = "0"),
+            item(BudgetSectionType.SAVINGS, "500", paidAmount = "0", accountId = realSaving.id),
             item(BudgetSectionType.INVESTMENTS, "300", paidAmount = "0")
         )
-        // remaining: income 2000, savings 500 (added back since it hasn't left for an excluded
-        // account yet), investments still ignored
-        assertEquals(BigDecimal("2500"), projectedNetWorthDelta(items, Currency.PLN, rates, includeSavings = false))
+        // remaining: income 2000, savings 500 (added back since a real Saving account contributes a
+        // flat zero once paid, so the unpaid amount hasn't left for that excluded account yet),
+        // investments still ignored
+        assertEquals(BigDecimal("2500"), projectedNetWorthDelta(items, listOf(realSaving), Currency.PLN, rates, includeSavings = false))
+    }
+
+    @Test
+    fun `projectedNetWorthDelta subtracts unpaid savings targeting a virtual account when savings are excluded from net worth`() {
+        val virtualSaving = account(id = 1, isVirtual = true, balance = "2000")
+        val items = listOf(
+            item(BudgetSectionType.INCOME, "3000", paidAmount = "1000"),
+            item(BudgetSectionType.SAVINGS, "500", paidAmount = "0", accountId = virtualSaving.id)
+        )
+        // remaining: income 2000, savings 500 subtracted (not added back) — a virtual Saving
+        // account's exclusion grows with its own balance (its host is already counted in full), so
+        // paying into it deepens the subtraction rather than just zeroing out like a real account.
+        // delta = 2000 - 500 = 1500
+        assertEquals(BigDecimal("1500"), projectedNetWorthDelta(items, listOf(virtualSaving), Currency.PLN, rates, includeSavings = false))
+    }
+
+    @Test
+    fun `projectedNetWorthDelta combines real add-back and virtual subtraction when both are unpaid`() {
+        val realSaving = account(id = 1, isVirtual = false)
+        val virtualSaving = account(id = 2, isVirtual = true, balance = "2000")
+        val items = listOf(
+            item(BudgetSectionType.SAVINGS, "500", paidAmount = "0", accountId = realSaving.id),
+            item(BudgetSectionType.SAVINGS, "200", paidAmount = "0", accountId = virtualSaving.id)
+        )
+        // savingsAdjustment = realSavings(500) - virtualSavings(200) = 300
+        assertEquals(
+            BigDecimal("300"),
+            projectedNetWorthDelta(items, listOf(realSaving, virtualSaving), Currency.PLN, rates, includeSavings = false)
+        )
     }
 
     @Test
     fun `projectedNetWorthDelta is zero for a budget with no items`() {
-        assertEquals(BigDecimal.ZERO, projectedNetWorthDelta(emptyList(), Currency.PLN, rates))
+        assertEquals(BigDecimal.ZERO, projectedNetWorthDelta(emptyList(), emptyList(), Currency.PLN, rates))
     }
 
     @Test
@@ -193,7 +235,7 @@ class BudgetProgressTest {
             item(BudgetSectionType.INCOME, "500", paidAmount = "0")
         )
         // Only the unfinalized item's remainder (500) counts; the finalized item's 200 shortfall doesn't.
-        assertEquals(BigDecimal("500"), projectedNetWorthDelta(items, Currency.PLN, rates))
+        assertEquals(BigDecimal("500"), projectedNetWorthDelta(items, emptyList(), Currency.PLN, rates))
     }
 
     @Test

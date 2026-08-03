@@ -89,7 +89,7 @@ class BudgetDetailViewModel @Inject constructor(
         val items = budgetWithItems?.items ?: return@combine null
         val currentNetWorth = calculateNetWorth(accounts, assets, liabilities, base, rates, includeSavings)
             ?: return@combine null
-        val delta = projectedNetWorthDelta(items, base, rates, includeSavings) ?: return@combine null
+        val delta = projectedNetWorthDelta(items, accounts, base, rates, includeSavings) ?: return@combine null
         (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
