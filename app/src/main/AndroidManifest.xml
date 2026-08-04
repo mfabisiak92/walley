@@ -23,18 +23,6 @@
             </intent-filter>
         </activity>
 
-        <!-- WalleyApplication supplies its own Configuration (via Configuration.Provider) so
-             WorkManager can use HiltWorkerFactory for @HiltWorker classes like BackupWorker. -->
-        <provider
-            android:name="androidx.startup.InitializationProvider"
-            android:authorities="${applicationId}.androidx-startup"
-            android:exported="false"
-            tools:node="merge">
-            <meta-data
-                android:name="androidx.work.WorkManagerInitializer"
-                android:value="androidx.startup"
-                tools:node="remove" />
-        </provider>
     </application>
 
 </manifest>

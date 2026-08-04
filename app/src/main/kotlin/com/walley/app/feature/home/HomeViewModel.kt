@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
+import com.walley.app.data.repository.BackupWarningRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.InvestmentRepository
@@ -152,8 +153,12 @@ class HomeViewModel @Inject constructor(
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository,
     investmentRepository: InvestmentRepository,
-    snapshotRepository: SnapshotRepository
+    snapshotRepository: SnapshotRepository,
+    backupWarningRepository: BackupWarningRepository
 ) : ViewModel() {
+
+    val showBackupWarning: StateFlow<Boolean> = backupWarningRepository.shouldShowBackupWarning()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val homeBalances: StateFlow<HomeBalances> = accountRepository.observeAccounts()
         .map { accounts ->

@@ -3,32 +3,22 @@
     <!-- BackupScreen -->
     <string name="backup_title">Backup &amp; Restore</string>
     <string name="backup_back">Back</string>
-    <string name="backup_connecting">Connecting to Google Drive…</string>
-    <string name="backup_waiting_for_consent">Waiting for Drive access…</string>
-    <string name="backup_backing_up">Backing up…</string>
-    <string name="backup_restoring">Restoring…</string>
+    <string name="backup_backing_up">Creating backup…</string>
+    <string name="backup_restoring">Restoring from backup…</string>
     <string name="backup_ok">OK</string>
-    <string name="backup_sign_in_description">Back up your data to a private folder in your Google Drive, or restore it on a new device.</string>
-    <string name="backup_sign_in_with_google">Sign in with Google</string>
+    <string name="backup_manual_description">Export and import your data manually. Backups are encrypted and stored on your device or cloud storage.</string>
     <string name="backup_last_backup">Last backup: %1$s</string>
     <string name="backup_no_backup_yet">No backup yet</string>
-    <string name="backup_back_up_now">Back up now</string>
-    <string name="backup_auto_daily">Automatic daily backup</string>
-    <string name="backup_previous_backups">Previous backups</string>
-    <string name="backup_no_backups_yet">No backups yet — tap \"Back up now\" to create one.</string>
-    <string name="backup_tap_to_restore">Tap to restore</string>
-    <string name="backup_restore_dialog_title">Restore this backup?</string>
-    <string name="backup_restore_dialog_text">This replaces everything currently in the app with the data from this backup. This can\'t be undone.</string>
-    <string name="backup_restore_confirm">Restore</string>
-    <string name="backup_cancel">Cancel</string>
+    <string name="backup_back_up_now">Export backup</string>
+    <string name="backup_restore_from_file">Import backup</string>
 
-    <!-- BackupViewModel -->
-    <string name="backup_sign_in_failed">Sign-in failed: %1$s</string>
-    <string name="backup_drive_access_error">Couldn\'t get Drive access — try signing in again.</string>
-    <string name="backup_drive_unreachable">Couldn\'t reach Google Drive: %1$s</string>
-    <string name="backup_drive_access_not_granted">Drive access wasn\'t granted.</string>
-    <string name="backup_authorize_failed">Couldn\'t finish authorizing: %1$s</string>
+    <!-- Backup messages -->
+    <string name="backup_completed_successfully">Backup created successfully</string>
+    <string name="backup_restored_successfully">Backup restored successfully</string>
     <string name="backup_failed">Backup failed: %1$s</string>
-    <string name="backup_restored_from">Restored from %1$s</string>
     <string name="backup_restore_failed">Restore failed: %1$s</string>
+
+    <!-- Backup warning banner -->
+    <string name="backup_warning_reminder">Today is the last day of the month. Create a backup to protect your data.</string>
+    <string name="backup_warning_action">Back up now</string>
 </resources>

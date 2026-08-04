@@ -3,32 +3,22 @@
     <!-- BackupScreen -->
     <string name="backup_title">Kopia zapasowa i przywracanie</string>
     <string name="backup_back">Wstecz</string>
-    <string name="backup_connecting">Łączenie z Dyskiem Google…</string>
-    <string name="backup_waiting_for_consent">Oczekiwanie na dostęp do Dysku…</string>
     <string name="backup_backing_up">Tworzenie kopii zapasowej…</string>
-    <string name="backup_restoring">Przywracanie…</string>
+    <string name="backup_restoring">Przywracanie z kopii zapasowej…</string>
     <string name="backup_ok">OK</string>
-    <string name="backup_sign_in_description">Utwórz kopię zapasową swoich danych w prywatnym folderze na Dysku Google lub przywróć je na nowym urządzeniu.</string>
-    <string name="backup_sign_in_with_google">Zaloguj się przez Google</string>
+    <string name="backup_manual_description">Eksportuj i importuj swoje dane ręcznie. Kopie zapasowe są zaszyfrowane i przechowywane na twoim urządzeniu lub magazynie w chmurze.</string>
     <string name="backup_last_backup">Ostatnia kopia zapasowa: %1$s</string>
     <string name="backup_no_backup_yet">Brak kopii zapasowej</string>
-    <string name="backup_back_up_now">Utwórz kopię zapasową teraz</string>
-    <string name="backup_auto_daily">Automatyczna codzienna kopia zapasowa</string>
-    <string name="backup_previous_backups">Poprzednie kopie zapasowe</string>
-    <string name="backup_no_backups_yet">Brak kopii zapasowych — dotknij \"Utwórz kopię zapasową teraz\", aby ją utworzyć.</string>
-    <string name="backup_tap_to_restore">Dotknij, aby przywrócić</string>
-    <string name="backup_restore_dialog_title">Przywrócić tę kopię zapasową?</string>
-    <string name="backup_restore_dialog_text">Spowoduje to zastąpienie wszystkich danych obecnie znajdujących się w aplikacji danymi z tej kopii zapasowej. Tej operacji nie można cofnąć.</string>
-    <string name="backup_restore_confirm">Przywróć</string>
-    <string name="backup_cancel">Anuluj</string>
+    <string name="backup_back_up_now">Eksportuj kopię zapasową</string>
+    <string name="backup_restore_from_file">Importuj kopię zapasową</string>
 
-    <!-- BackupViewModel -->
-    <string name="backup_sign_in_failed">Logowanie nie powiodło się: %1$s</string>
-    <string name="backup_drive_access_error">Nie udało się uzyskać dostępu do Dysku — spróbuj zalogować się ponownie.</string>
-    <string name="backup_drive_unreachable">Nie udało się połączyć z Dyskiem Google: %1$s</string>
-    <string name="backup_drive_access_not_granted">Nie udzielono dostępu do Dysku.</string>
-    <string name="backup_authorize_failed">Nie udało się zakończyć autoryzacji: %1$s</string>
+    <!-- Backup messages -->
+    <string name="backup_completed_successfully">Kopia zapasowa została utworzona pomyślnie</string>
+    <string name="backup_restored_successfully">Kopia zapasowa została przywrócona pomyślnie</string>
     <string name="backup_failed">Tworzenie kopii zapasowej nie powiodło się: %1$s</string>
-    <string name="backup_restored_from">Przywrócono z %1$s</string>
     <string name="backup_restore_failed">Przywracanie nie powiodło się: %1$s</string>
+
+    <!-- Backup warning banner -->
+    <string name="backup_warning_reminder">Dzisiaj jest ostatnim dniem miesiąca. Utwórz kopię zapasową, aby chronić swoje dane.</string>
+    <string name="backup_warning_action">Wykonaj kopię zapasową</string>
 </resources>

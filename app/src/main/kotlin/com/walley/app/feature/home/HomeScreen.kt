@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -61,12 +62,14 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToNetWorthDetail: () -> Unit,
     onNavigateToAnalytics: () -> Unit,
+    onNavigateToBackup: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val homeBalances by viewModel.homeBalances.collectAsStateWithLifecycle()
     val netWorth by viewModel.netWorth.collectAsStateWithLifecycle()
     val monthBudgetSummary by viewModel.monthBudgetSummary.collectAsStateWithLifecycle()
     val upcomingItems by viewModel.upcomingItems.collectAsStateWithLifecycle()
+    val showBackupWarning by viewModel.showBackupWarning.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier,
@@ -89,16 +92,50 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            netWorth?.let { NetWorthCard(it, onClick = onNavigateToNetWorthDetail) }
-            monthBudgetSummary?.let { MonthBudgetCard(it) }
-            if (upcomingItems.isNotEmpty()) {
-                UpcomingItemsCard(upcomingItems)
+            if (showBackupWarning) {
+                BackupWarningBanner(onClick = onNavigateToBackup)
             }
-            BalanceStatsRow(homeBalances)
-            netWorth?.let { if (it.breakdown.isNotEmpty()) CurrencyBreakdownCard(it.breakdown) }
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                netWorth?.let { NetWorthCard(it, onClick = onNavigateToNetWorthDetail) }
+                monthBudgetSummary?.let { MonthBudgetCard(it) }
+                if (upcomingItems.isNotEmpty()) {
+                    UpcomingItemsCard(upcomingItems)
+                }
+                BalanceStatsRow(homeBalances)
+                netWorth?.let { if (it.breakdown.isNotEmpty()) CurrencyBreakdownCard(it.breakdown) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupWarningBanner(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.errorContainer)
+            .padding(16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.backup_warning_reminder),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+            Button(
+                onClick = onClick,
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text(stringResource(R.string.backup_warning_action))
+            }
         }
     }
 }

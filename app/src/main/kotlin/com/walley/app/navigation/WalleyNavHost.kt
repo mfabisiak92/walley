@@ -74,6 +74,7 @@ fun WalleyNavHost() {
                 },
                 onNavigateToNetWorthDetail = { navController.navigate(WalleyDestinations.NET_WORTH_DETAIL) },
                 onNavigateToAnalytics = { navController.navigate(WalleyDestinations.ANALYTICS) },
+                onNavigateToBackup = { navController.navigate(WalleyDestinations.BACKUP_RESTORE) },
                 onOpenEquity = { equityId ->
                     navController.navigate(WalleyDestinations.equityDetail(equityId))
                 },

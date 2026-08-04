@@ -19,10 +19,6 @@ android {
         versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Web client ID from the Google Cloud Console OAuth client used for Credential Manager
-        // sign-in (Backup & Restore). Replace before the sign-in flow will work.
-        buildConfigField("String", "GOOGLE_OAUTH_WEB_CLIENT_ID", "\"REPLACE_WITH_YOUR_WEB_CLIENT_ID\"")
     }
 
     buildTypes {
@@ -43,7 +39,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     packaging {
@@ -89,10 +84,6 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
     implementation(libs.play.services.auth)
-
-    implementation(libs.androidx.work.runtime.ktx)
-    implementation(libs.androidx.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
 
     testImplementation(libs.junit)
 
