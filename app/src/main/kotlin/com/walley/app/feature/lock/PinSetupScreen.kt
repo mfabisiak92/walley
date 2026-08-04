@@ -21,10 +21,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 
 const val PIN_MIN_LENGTH = 4
 const val PIN_MAX_LENGTH = 6
@@ -59,14 +61,18 @@ fun PinSetupScreen(
                 tint = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = if (confirming) "Confirm your PIN" else "Set up a PIN",
+                text = if (confirming) {
+                    stringResource(R.string.lock_setup_confirm_title)
+                } else {
+                    stringResource(R.string.lock_setup_title)
+                },
                 style = MaterialTheme.typography.headlineSmall
             )
             Text(
                 text = if (confirming) {
-                    "Enter the same PIN again to confirm."
+                    stringResource(R.string.lock_setup_confirm_body)
                 } else {
-                    "Protect access to Walley with a $PIN_MIN_LENGTH-$PIN_MAX_LENGTH digit PIN."
+                    stringResource(R.string.lock_setup_body, PIN_MIN_LENGTH, PIN_MAX_LENGTH)
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -78,13 +84,13 @@ fun PinSetupScreen(
                     pinInput = sanitizePinInput(it)
                     mismatch = false
                 },
-                label = { Text("PIN") },
+                label = { Text(stringResource(R.string.lock_pin_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 visualTransformation = PasswordVisualTransformation(),
                 isError = mismatch,
                 supportingText = if (mismatch) {
-                    { Text("PINs don't match — try again.") }
+                    { Text(stringResource(R.string.lock_setup_pin_mismatch)) }
                 } else null
             )
             Button(
@@ -105,7 +111,13 @@ fun PinSetupScreen(
                 },
                 enabled = inputValid
             ) {
-                Text(if (confirming) "Confirm PIN" else "Continue")
+                Text(
+                    if (confirming) {
+                        stringResource(R.string.lock_setup_confirm_button)
+                    } else {
+                        stringResource(R.string.lock_setup_continue_button)
+                    }
+                )
             }
         }
     }

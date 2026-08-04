@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HomeScreen -->
+    <string name="home_analytics_content_description">Analizy</string>
+    <string name="home_settings_content_description">Ustawienia</string>
+    <string name="home_net_worth">Wartość netto</string>
+    <string name="home_projected">Prognoza: %1$s</string>
+    <string name="home_exchange_rates_unavailable">Kursy wymiany niedostępne</string>
+    <string name="home_this_months_budget">Budżet tego miesiąca</string>
+    <string name="home_percent_days_left">%1$s%% · pozostało %2$d dni</string>
+    <string name="home_unallocated">%1$s nieprzydzielone</string>
+    <string name="home_exchange_rate_unavailable_progress">Kurs wymiany niedostępny — nie można teraz obliczyć postępu.</string>
+    <string name="home_due_soon">Zbliżające się terminy</string>
+    <string name="home_overdue">Zaległe</string>
+    <string name="home_due_today">Termin dziś</string>
+    <string name="home_due_tomorrow">Termin jutro</string>
+    <string name="home_due_in_days">Termin za %1$d dni</string>
+    <string name="home_checking_cash_savings">Konta bieżące, gotówka i oszczędności</string>
+    <string name="home_available">Dostępne</string>
+    <string name="home_savings">Oszczędności</string>
+    <string name="home_investments">Inwestycje</string>
+    <string name="home_net_balance">Saldo netto</string>
+    <string name="home_invested_amount">Zainwestowana kwota</string>
+    <string name="home_uninvested_cash">Niezainwestowana gotówka</string>
+    <string name="home_by_currency">Według waluty</string>
+
+    <!-- NetWorthDetailScreen -->
+    <string name="home_net_worth_breakdown">Podział wartości netto</string>
+    <string name="home_back_content_description">Wstecz</string>
+    <string name="home_total">Razem</string>
+    <string name="home_ecb_rates">Kursy EBC · %1$s</string>
+    <string name="home_projected_net_worth">Prognozowana wartość netto</string>
+    <string name="home_projected_net_worth_description">Jeśli budżet tego miesiąca zostanie zrealizowany w całości</string>
+    <string name="home_current_net_worth">Obecna wartość netto</string>
+    <string name="home_income">Przychody</string>
+    <string name="home_income_related_expenses">Wydatki związane z przychodami</string>
+    <string name="home_fixed_costs">Koszty stałe</string>
+    <string name="home_other_costs">Inne koszty</string>
+    <string name="home_savings_adjustment">Korekta oszczędności</string>
+    <string name="home_collapse_content_description">Zwiń</string>
+    <string name="home_expand_content_description">Rozwiń</string>
+</resources>

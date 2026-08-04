@@ -1,10 +1,13 @@
 package com.walley.app.feature.settings
 
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.IntegrationsRepository
 import com.walley.app.data.repository.SecurityRepository
 import com.walley.app.data.repository.SettingsRepository
+import com.walley.app.domain.model.AppLanguage
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +36,12 @@ class SettingsViewModel @Inject constructor(
 
     val includeSavingsInNetWorth: StateFlow<Boolean> = repository.observeIncludeSavingsInNetWorth()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    // AppCompatDelegate persists the per-app locale itself (its own store, applied automatically
+    // at each Activity's attachBaseContext), so this mirrors its current value rather than going
+    // through SettingsDataStore.
+    private val _language = MutableStateFlow(currentAppLanguage())
+    val language: StateFlow<AppLanguage> = _language.asStateFlow()
 
     val fingerprintUnlock: StateFlow<Boolean> = securityRepository.observeFingerprintUnlock()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -66,6 +75,18 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setIncludeSavingsInNetWorth(enabled) }
     }
 
+    fun setLanguage(language: AppLanguage) {
+        AppCompatDelegate.setApplicationLocales(
+            language.tag?.let { LocaleListCompat.forLanguageTags(it) } ?: LocaleListCompat.getEmptyLocaleList()
+        )
+        _language.value = language
+    }
+
+    private fun currentAppLanguage(): AppLanguage {
+        val tag = AppCompatDelegate.getApplicationLocales().toLanguageTags()
+        return AppLanguage.entries.find { it.tag == tag } ?: AppLanguage.SYSTEM
+    }
+
     fun setFingerprintUnlock(enabled: Boolean) {
         viewModelScope.launch { securityRepository.setFingerprintUnlock(enabled) }
     }
@@ -78,8 +99,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { repository.setCategoryTarget(section, percent) }
     }
 
-    private val _changePinError = MutableStateFlow<String?>(null)
-    val changePinError: StateFlow<String?> = _changePinError.asStateFlow()
+    private val _changePinError = MutableStateFlow(false)
+    val changePinError: StateFlow<Boolean> = _changePinError.asStateFlow()
 
     private val _changePinSuccess = MutableStateFlow(false)
     val changePinSuccess: StateFlow<Boolean> = _changePinSuccess.asStateFlow()
@@ -87,17 +108,17 @@ class SettingsViewModel @Inject constructor(
     fun changePin(currentPin: String, newPin: String) {
         viewModelScope.launch {
             if (!securityRepository.verifyPin(currentPin)) {
-                _changePinError.value = "Current PIN is incorrect"
+                _changePinError.value = true
                 return@launch
             }
             securityRepository.setPin(newPin)
-            _changePinError.value = null
+            _changePinError.value = false
             _changePinSuccess.value = true
         }
     }
 
     fun dismissChangePinResult() {
-        _changePinError.value = null
+        _changePinError.value = false
         _changePinSuccess.value = false
     }
 }

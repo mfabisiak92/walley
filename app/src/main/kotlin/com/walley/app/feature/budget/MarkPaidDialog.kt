@@ -1,5 +1,8 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -53,8 +56,8 @@ fun MarkPaidDialog(
     var paidText by remember { mutableStateOf(item.paidAmount.toPlainString()) }
     var plannedText by remember { mutableStateOf(item.amount.toPlainString()) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
-    val parsedPaid = paidText.toBigDecimalOrNull()
-    val parsedPlanned = plannedText.toBigDecimalOrNull()
+    val parsedPaid = paidText.toBigDecimalOrNullLenient()
+    val parsedPlanned = plannedText.toBigDecimalOrNullLenient()
 
     // Only relevant when this item's payment withdraws from a Saving account — how much more of the
     // (possibly edited) planned amount would still need to come out of it beyond what's already paid.
@@ -101,7 +104,7 @@ fun MarkPaidDialog(
                     OutlinedTextField(
                         value = paidText,
                         onValueChange = { paidText = it },
-                        label = { Text("Paid") },
+                        label = { Text(stringResource(R.string.budget_paid_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedPaid == null || (parsedPlanned != null && parsedPaid > parsedPlanned),
@@ -111,7 +114,7 @@ fun MarkPaidDialog(
                     OutlinedTextField(
                         value = plannedText,
                         onValueChange = { plannedText = it },
-                        label = { Text("Planned (${item.currency.symbol})") },
+                        label = { Text(stringResource(R.string.budget_planned_with_currency, item.currency.symbol)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedPlanned == null || exceedsSavingsBalance,
@@ -131,17 +134,17 @@ fun MarkPaidDialog(
             TextButton(
                 onClick = { onSave(parsedPaid!!, parsedPlanned!!) },
                 enabled = isValid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.budget_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 
     if (showCompleteConfirm) {
         AlertDialog(
             onDismissRequest = { showCompleteConfirm = false },
-            title = { Text("Complete this item?") },
+            title = { Text(stringResource(R.string.budget_complete_item_title)) },
             text = {
                 Text(
                     "This is a one-way change. Once completed, \"${item.name}\" can no longer be edited " +
@@ -154,10 +157,10 @@ fun MarkPaidDialog(
                         showCompleteConfirm = false
                         onComplete()
                     }
-                ) { Text("Complete") }
+                ) { Text(stringResource(R.string.budget_complete_button)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCompleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showCompleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }

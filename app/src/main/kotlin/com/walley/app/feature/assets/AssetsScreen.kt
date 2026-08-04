@@ -40,10 +40,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.domain.model.Asset
@@ -73,7 +75,10 @@ fun AssetsScreen(
                 .fillMaxSize()
         ) {
             TabRow(selectedTabIndex = pagerState.currentPage) {
-                listOf("Assets", "Liabilities").forEachIndexed { index, label ->
+                listOf(
+                    stringResource(R.string.assets_tab_assets),
+                    stringResource(R.string.assets_tab_liabilities)
+                ).forEachIndexed { index, label ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
@@ -103,7 +108,7 @@ private fun AssetsListPage(viewModel: AssetsViewModel = hiltViewModel()) {
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add asset")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.assets_add_asset))
             }
         }
     ) { innerPadding ->
@@ -123,7 +128,7 @@ private fun AssetsListPage(viewModel: AssetsViewModel = hiltViewModel()) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "No assets yet — tap + to add one.",
+                    stringResource(R.string.assets_no_assets_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -200,7 +205,10 @@ private fun AssetRow(asset: Asset, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Purchased for ${formatMoney(asset.purchaseValue, asset.currency)}",
+                    text = stringResource(
+                        R.string.assets_purchased_for,
+                        formatMoney(asset.purchaseValue, asset.currency)
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -241,7 +249,7 @@ private fun LiabilitiesListPage(viewModel: LiabilitiesViewModel = hiltViewModel(
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add liability")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.assets_add_liability))
             }
         }
     ) { innerPadding ->
@@ -261,7 +269,7 @@ private fun LiabilitiesListPage(viewModel: LiabilitiesViewModel = hiltViewModel(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    "No liabilities yet — tap + to add one.",
+                    stringResource(R.string.assets_no_liabilities_empty),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -322,7 +330,10 @@ private fun LiabilityRow(liability: Liability, onClick: () -> Unit) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(liability.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        text = "Since ${liability.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}",
+                        text = stringResource(
+                            R.string.assets_since_date,
+                            liability.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -335,7 +346,10 @@ private fun LiabilityRow(liability: Liability, onClick: () -> Unit) {
                 )
             }
             Text(
-                text = "Original: ${formatMoney(liability.originalAmount, liability.currency)}",
+                text = stringResource(
+                    R.string.assets_original_amount,
+                    formatMoney(liability.originalAmount, liability.currency)
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -361,8 +375,11 @@ private fun LiabilityPayoffProgress(liability: Liability, payoffPercent: BigDeci
             color = Color(0xFF2E7D32)
         )
         Text(
-            text = "${payoffPercent.setScale(0, RoundingMode.HALF_UP)}% paid off " +
-                "(${formatMoney(liability.paidOffAmount, liability.currency)})",
+            text = stringResource(
+                R.string.assets_paid_off_progress,
+                payoffPercent.setScale(0, RoundingMode.HALF_UP).toPlainString(),
+                formatMoney(liability.paidOffAmount, liability.currency)
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(top = 4.dp)

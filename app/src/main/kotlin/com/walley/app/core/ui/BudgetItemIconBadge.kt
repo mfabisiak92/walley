@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.displayName
 
 /** Small circular colored badge showing a budget item's icon, or nothing if it has none. */
 @Composable
@@ -26,7 +27,7 @@ fun BudgetItemIconBadge(icon: BudgetItemIcon?, modifier: Modifier = Modifier, si
     ) {
         Icon(
             style.vector,
-            contentDescription = icon.label,
+            contentDescription = icon.displayName(),
             tint = style.color,
             modifier = Modifier.size(size * 0.6f)
         )

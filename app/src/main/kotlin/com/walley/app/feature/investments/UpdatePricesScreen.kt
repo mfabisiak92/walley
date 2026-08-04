@@ -1,5 +1,8 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,13 +85,13 @@ fun UpdatePricesScreen(
         }
     }
 
-    val parsedPrices = investments.associate { it.id to priceTexts[it.id]?.toBigDecimalOrNull() }
+    val parsedPrices = investments.associate { it.id to priceTexts[it.id]?.toBigDecimalOrNullLenient() }
     val allValid = parsedPrices.values.all { it != null && it.signum() > 0 }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Update prices") },
+                title = { Text(stringResource(R.string.investments_update_prices_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -126,7 +129,7 @@ fun UpdatePricesScreen(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
-            ) { Text("Save all") }
+            ) { Text(stringResource(R.string.investments_action_save_all)) }
         }
     ) { innerPadding ->
         LazyColumn(
@@ -174,7 +177,7 @@ private fun UpdatePriceRow(
     refreshDisabled: Boolean,
     onRefresh: () -> Unit
 ) {
-    val parsed = priceText.toBigDecimalOrNull()
+    val parsed = priceText.toBigDecimalOrNullLenient()
     val isValid = parsed?.let { it.signum() > 0 } == true
     val hasChanged = parsed != null && parsed.compareTo(investment.currentPrice) != 0
     val isIncrease = hasChanged && parsed!!.compareTo(investment.currentPrice) > 0

@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
@@ -33,19 +35,19 @@ fun EditAdHocItemAmountDialog(
         title = { Text(item.name) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.budget_icon_label), style = MaterialTheme.typography.labelLarge)
                 BudgetItemIconPicker(options = EXPENSE_ICONS, selected = icon, onSelect = { icon = it })
                 TextButton(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete item") }
+                ) { Text(stringResource(R.string.budget_delete_item)) }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(icon) }) { Text("Save") }
+            TextButton(onClick = { onSave(icon) }) { Text(stringResource(R.string.budget_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }

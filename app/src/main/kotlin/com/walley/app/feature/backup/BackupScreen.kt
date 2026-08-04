@@ -35,9 +35,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.data.remote.DriveFile
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -60,10 +62,10 @@ fun BackupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Backup & Restore") },
+                title = { Text(stringResource(R.string.backup_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.backup_back))
                     }
                 }
             )
@@ -76,15 +78,15 @@ fun BackupScreen(
         ) {
             when (val current = state) {
                 is BackupUiState.SignedOut -> SignedOutContent(onSignIn = { viewModel.signIn(context) })
-                is BackupUiState.Authorizing -> LoadingContent("Connecting to Google Drive…")
+                is BackupUiState.Authorizing -> LoadingContent(stringResource(R.string.backup_connecting))
                 is BackupUiState.NeedsConsent -> {
-                    LoadingContent("Waiting for Drive access…")
+                    LoadingContent(stringResource(R.string.backup_waiting_for_consent))
                     LaunchedEffect(current.pendingIntent) {
                         consentLauncher.launch(IntentSenderRequest.Builder(current.pendingIntent.intentSender).build())
                     }
                 }
-                is BackupUiState.BackingUp -> LoadingContent("Backing up…")
-                is BackupUiState.Restoring -> LoadingContent("Restoring…")
+                is BackupUiState.BackingUp -> LoadingContent(stringResource(R.string.backup_backing_up))
+                is BackupUiState.Restoring -> LoadingContent(stringResource(R.string.backup_restoring))
                 is BackupUiState.SignedIn -> SignedInContent(
                     state = current,
                     onBackupNow = viewModel::backupNow,
@@ -137,7 +139,7 @@ private fun MessageContent(message: String, isError: Boolean = false, onDismiss:
             style = MaterialTheme.typography.bodyLarge,
             color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
         )
-        Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text("OK") }
+        Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.backup_ok)) }
     }
 }
 
@@ -151,11 +153,11 @@ private fun SignedOutContent(onSignIn: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "Back up your data to a private folder in your Google Drive, or restore it on a new device.",
+            stringResource(R.string.backup_sign_in_description),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 24.dp)
         )
-        Button(onClick = onSignIn) { Text("Sign in with Google") }
+        Button(onClick = onSignIn) { Text(stringResource(R.string.backup_sign_in_with_google)) }
     }
 }
 
@@ -177,26 +179,26 @@ private fun SignedInContent(
         }
 
         val lastBackupText = state.lastBackupAt?.let {
-            "Last backup: ${timestampFormatter.format(it.atZone(ZoneId.systemDefault()))}"
-        } ?: "No backup yet"
+            stringResource(R.string.backup_last_backup, timestampFormatter.format(it.atZone(ZoneId.systemDefault())))
+        } ?: stringResource(R.string.backup_no_backup_yet)
         Text(lastBackupText, style = MaterialTheme.typography.bodyMedium)
 
-        Button(onClick = onBackupNow, modifier = Modifier.fillMaxWidth()) { Text("Back up now") }
+        Button(onClick = onBackupNow, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.backup_back_up_now)) }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Automatic daily backup", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.backup_auto_daily), style = MaterialTheme.typography.bodyLarge)
             Switch(checked = state.autoBackupEnabled, onCheckedChange = onAutoBackupToggle)
         }
 
-        Text("Previous backups", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.backup_previous_backups), style = MaterialTheme.typography.titleMedium)
 
         if (state.snapshots.isEmpty()) {
             Text(
-                "No backups yet — tap \"Back up now\" to create one.",
+                stringResource(R.string.backup_no_backups_yet),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -215,7 +217,7 @@ private fun SignedInContent(
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(file.createdTime ?: file.name, style = MaterialTheme.typography.bodyLarge)
                             Text(
-                                "Tap to restore",
+                                stringResource(R.string.backup_tap_to_restore),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -231,14 +233,11 @@ private fun SignedInContent(
 private fun ConfirmRestoreDialog(file: DriveFile, onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Restore this backup?") },
+        title = { Text(stringResource(R.string.backup_restore_dialog_title)) },
         text = {
-            Text(
-                "This replaces everything currently in the app with the data from this backup. " +
-                    "This can't be undone."
-            )
+            Text(stringResource(R.string.backup_restore_dialog_text))
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Restore") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.backup_restore_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.backup_cancel)) } }
     )
 }

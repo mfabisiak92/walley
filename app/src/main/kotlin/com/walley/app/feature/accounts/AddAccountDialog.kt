@@ -1,5 +1,6 @@
 package com.walley.app.feature.accounts
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,13 +31,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import com.walley.app.R
 import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.displayName
 import com.walley.app.feature.budget.AccountEffectsToggleRow
 import java.math.BigDecimal
 import java.time.Instant
@@ -77,14 +81,14 @@ fun AddAccountDialog(
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     var taxRateMenuExpanded by remember { mutableStateOf(false) }
 
-    val parsedBalance = balanceText.toBigDecimalOrNull()
+    val parsedBalance = balanceText.toBigDecimalOrNullLenient()
     val isInvestment = type == AccountType.INVESTMENT
     val isSaving = type == AccountType.SAVING
-    val parsedTargetAmount = targetAmountText.toBigDecimalOrNull()
+    val parsedTargetAmount = targetAmountText.toBigDecimalOrNullLenient()
     val targetAmountValid = targetAmountText.isBlank() || parsedTargetAmount != null
-    val parsedCommissionFlat = commissionFlatText.toBigDecimalOrNull()
+    val parsedCommissionFlat = commissionFlatText.toBigDecimalOrNullLenient()
     val commissionFlatValid = commissionFlatText.isBlank() || parsedCommissionFlat != null
-    val parsedCommissionPercent = commissionPercentText.toBigDecimalOrNull()
+    val parsedCommissionPercent = commissionPercentText.toBigDecimalOrNullLenient()
     val commissionPercentValid = commissionPercentText.isBlank() || parsedCommissionPercent != null
     val isValid = name.isNotBlank() && parsedBalance != null && targetAmountValid &&
         commissionFlatValid && commissionPercentValid
@@ -92,7 +96,15 @@ fun AddAccountDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(decorFitsSystemWindows = false),
-        title = { Text(if (allowedTypes.size == 1) "Add ${allowedTypes.first().label.lowercase()} account" else "Add account") },
+        title = {
+            Text(
+                if (allowedTypes.size == 1) {
+                    stringResource(R.string.accounts_add_typed_account, allowedTypes.first().displayName().lowercase())
+                } else {
+                    stringResource(R.string.accounts_add_account)
+                }
+            )
+        },
         text = {
             Column(
                 modifier = Modifier
@@ -104,7 +116,7 @@ fun AddAccountDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.accounts_name)) },
                     singleLine = true
                 )
                 if (allowedTypes.size > 1) {
@@ -113,10 +125,10 @@ fun AddAccountDialog(
                         onExpandedChange = { typeMenuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = type.label,
+                            value = type.displayName(),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Type") },
+                            label = { Text(stringResource(R.string.accounts_type)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
@@ -126,7 +138,7 @@ fun AddAccountDialog(
                         ) {
                             allowedTypes.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option.label) },
+                                    text = { Text(option.displayName()) },
                                     onClick = {
                                         type = option
                                         typeMenuExpanded = false
@@ -144,7 +156,7 @@ fun AddAccountDialog(
                         value = currency.name,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Currency") },
+                        label = { Text(stringResource(R.string.accounts_currency)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyMenuExpanded) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
@@ -164,11 +176,10 @@ fun AddAccountDialog(
                     }
                 }
                 AccountEffectsToggleRow(
-                    label = "Virtual account",
+                    label = stringResource(R.string.accounts_virtual_account_label),
                     checked = isVirtual,
                     onCheckedChange = { isVirtual = it },
-                    hint = "Doesn't exist in the real world — its balance is really an earmarked slice of " +
-                        "another account's money, so it's excluded from net worth and other totals."
+                    hint = stringResource(R.string.accounts_virtual_account_hint)
                 )
                 if (isSaving) {
                     Row(
@@ -176,7 +187,7 @@ fun AddAccountDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Target date")
+                        Text(stringResource(R.string.accounts_target_date))
                         TextButton(onClick = { showTargetDatePicker = true }) {
                             Text(targetDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
                         }
@@ -188,10 +199,10 @@ fun AddAccountDialog(
                         onExpandedChange = { taxRateMenuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = taxRate.label,
+                            value = taxRate.displayName(),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Tax rate") },
+                            label = { Text(stringResource(R.string.accounts_tax_rate)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = taxRateMenuExpanded) },
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
@@ -201,7 +212,7 @@ fun AddAccountDialog(
                         ) {
                             AccountTaxRate.entries.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option.label) },
+                                    text = { Text(option.displayName()) },
                                     onClick = {
                                         taxRate = option
                                         taxRateMenuExpanded = false
@@ -213,14 +224,11 @@ fun AddAccountDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "Uninvested cash",
+                                stringResource(R.string.accounts_uninvested_cash),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            FieldHint(
-                                "This is cash not yet invested. The account's total balance also includes " +
-                                    "the current value of any linked investments."
-                            )
+                            FieldHint(stringResource(R.string.accounts_uninvested_cash_hint))
                         }
                         OutlinedTextField(
                             value = balanceText,
@@ -233,14 +241,11 @@ fun AddAccountDialog(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "Flat commission (optional)",
+                                stringResource(R.string.accounts_flat_commission_optional),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            FieldHint(
-                                "Commission charged per buy/sell trade — whichever of the two is higher. " +
-                                    "Used as the default when logging an event, but you can override it per trade."
-                            )
+                            FieldHint(stringResource(R.string.accounts_commission_hint))
                         }
                         OutlinedTextField(
                             value = commissionFlatText,
@@ -253,7 +258,7 @@ fun AddAccountDialog(
                     OutlinedTextField(
                         value = commissionPercentText,
                         onValueChange = { commissionPercentText = it },
-                        label = { Text("Commission % of trade value (optional)") },
+                        label = { Text(stringResource(R.string.accounts_commission_percent_optional)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = !commissionPercentValid
@@ -262,7 +267,7 @@ fun AddAccountDialog(
                     OutlinedTextField(
                         value = balanceText,
                         onValueChange = { balanceText = it },
-                        label = { Text("Initial balance") },
+                        label = { Text(stringResource(R.string.accounts_initial_balance)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedBalance == null
@@ -272,7 +277,7 @@ fun AddAccountDialog(
                     OutlinedTextField(
                         value = targetAmountText,
                         onValueChange = { targetAmountText = it },
-                        label = { Text("Target amount (optional)") },
+                        label = { Text(stringResource(R.string.accounts_target_amount_optional)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = !targetAmountValid
@@ -297,10 +302,10 @@ fun AddAccountDialog(
                     )
                 },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text(stringResource(R.string.accounts_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.accounts_cancel)) }
         }
     )
 
@@ -318,10 +323,10 @@ fun AddAccountDialog(
                         }
                         showTargetDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.accounts_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showTargetDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showTargetDatePicker = false }) { Text(stringResource(R.string.accounts_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

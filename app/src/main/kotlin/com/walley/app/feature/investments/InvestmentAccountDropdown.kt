@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -39,10 +41,10 @@ fun InvestmentAccountDropdown(
             value = selectedName,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Account") },
+            label = { Text(stringResource(R.string.investments_label_account)) },
             isError = isError,
             supportingText = if (isError) {
-                { Text("Select an account") }
+                { Text(stringResource(R.string.investments_hint_select_account)) }
             } else null,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)

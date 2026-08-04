@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,9 +24,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Liability
 import java.math.BigDecimal
@@ -41,7 +44,7 @@ fun EditLiabilityDialog(
     var currentBalanceText by remember { mutableStateOf(liability.currentBalance.toPlainString()) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
-    val parsedCurrentBalance = currentBalanceText.toBigDecimalOrNull()
+    val parsedCurrentBalance = currentBalanceText.toBigDecimalOrNullLenient()
     val isValid = parsedCurrentBalance != null
     // Once fully paid there's nothing left to owe, so the balance is locked rather than editable again.
     val isFullyPaid = liability.currentBalance.signum() == 0
@@ -64,14 +67,14 @@ fun EditLiabilityDialog(
                     IconButton(onClick = { onSave(BigDecimal.ZERO) }) {
                         Icon(
                             Icons.Filled.Check,
-                            contentDescription = "Mark as fully paid"
+                            contentDescription = stringResource(R.string.assets_mark_fully_paid_description)
                         )
                     }
                 }
                 IconButton(onClick = { showDeleteConfirm = true }) {
                     Icon(
                         Icons.Filled.Delete,
-                        contentDescription = "Delete liability",
+                        contentDescription = stringResource(R.string.assets_delete_liability_description),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -80,15 +83,25 @@ fun EditLiabilityDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "Started ${liability.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE)} at " +
-                        formatMoney(liability.originalAmount, liability.currency),
+                    stringResource(
+                        R.string.assets_started_info,
+                        liability.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                        formatMoney(liability.originalAmount, liability.currency)
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = currentBalanceText,
                     onValueChange = { currentBalanceText = it },
-                    label = { Text("Current balance (${liability.currency.symbol})") },
+                    label = {
+                        Text(
+                            stringResource(
+                                R.string.assets_label_current_balance_with_currency,
+                                liability.currency.symbol
+                            )
+                        )
+                    },
                     singleLine = true,
                     enabled = !isFullyPaid,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -96,7 +109,7 @@ fun EditLiabilityDialog(
                 )
                 if (isFullyPaid) {
                     Text(
-                        "This liability is fully paid and can no longer be edited.",
+                        stringResource(R.string.assets_liability_fully_paid),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -107,26 +120,26 @@ fun EditLiabilityDialog(
             TextButton(
                 onClick = { onSave(parsedCurrentBalance!!) },
                 enabled = isValid && !isFullyPaid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.assets_action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.assets_action_cancel)) }
         }
     )
 
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete liability?") },
-            text = { Text("This will permanently delete \"${liability.name}\". This cannot be undone.") },
+            title = { Text(stringResource(R.string.assets_delete_liability_title)) },
+            text = { Text(stringResource(R.string.assets_delete_confirm_message, liability.name)) },
             confirmButton = {
                 TextButton(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.assets_action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.assets_action_cancel)) }
             }
         )
     }

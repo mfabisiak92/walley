@@ -1,8 +1,10 @@
 package com.walley.app.feature.budget
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AdHocBudgetRepository
@@ -16,6 +18,7 @@ import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.effectiveAccountId
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +34,8 @@ import kotlinx.coroutines.launch
 class AdHocBudgetDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: AdHocBudgetRepository,
-    accountRepository: AccountRepository
+    accountRepository: AccountRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val budgetId: Long = checkNotNull(savedStateHandle["adHocBudgetId"])
@@ -129,7 +133,7 @@ class AdHocBudgetDetailViewModel @Inject constructor(
     }
 
     private fun insufficientBalanceMessageFor(e: InsufficientAccountBalanceException): String =
-        "Not enough balance in \"${e.accountName}\": only ${formatMoney(e.available, e.currency)} available."
+        context.getString(R.string.budget_insufficient_balance, e.accountName, formatMoney(e.available, e.currency))
 
     fun deleteBudget(onDeleted: () -> Unit) {
         viewModelScope.launch {
@@ -137,7 +141,7 @@ class AdHocBudgetDetailViewModel @Inject constructor(
                 repository.deleteAdHocBudget(budgetId)
                 onDeleted()
             } catch (e: BudgetIsCompletedException) {
-                _deleteBlockedMessage.value = "This budget is marked as completed and can't be deleted."
+                _deleteBlockedMessage.value = context.getString(R.string.budget_delete_blocked_completed)
             }
         }
     }

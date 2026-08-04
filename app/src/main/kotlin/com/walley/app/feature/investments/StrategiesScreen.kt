@@ -33,6 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.ui.EquityStatusIconBadge
 import com.walley.app.domain.model.WatchedEquityWithNotes
+import com.walley.app.domain.model.displayName
 
 @Composable
 fun StrategiesListPage(
@@ -118,8 +119,8 @@ private fun EquityRow(item: WatchedEquityWithNotes, onClick: () -> Unit) {
                 val latest = item.latestStatus
                 val statusText = when {
                     latest == null -> null
-                    previous != null && previous != latest -> "${previous.label} → ${latest.label}"
-                    else -> latest.label
+                    previous != null && previous != latest -> "${previous.displayName()} → ${latest.displayName()}"
+                    else -> latest.displayName()
                 }
                 val subtitle = listOfNotNull(
                     item.equity.ticker,

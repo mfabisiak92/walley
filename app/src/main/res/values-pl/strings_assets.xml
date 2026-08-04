@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assets_tab_assets">Aktywa</string>
+    <string name="assets_tab_liabilities">Zobowiązania</string>
+
+    <string name="assets_add_asset">Dodaj aktywo</string>
+    <string name="assets_add_liability">Dodaj zobowiązanie</string>
+    <string name="assets_no_assets_empty">Brak aktywów — dotknij +, aby dodać.</string>
+    <string name="assets_no_liabilities_empty">Brak zobowiązań — dotknij +, aby dodać.</string>
+
+    <string name="assets_purchased_for">Kupione za %1$s</string>
+    <string name="assets_since_date">Od %1$s</string>
+    <string name="assets_original_amount">Kwota pierwotna: %1$s</string>
+    <string name="assets_paid_off_progress">Spłacono %1$s%% (%2$s)</string>
+
+    <string name="assets_label_name">Nazwa</string>
+    <string name="assets_label_currency">Waluta</string>
+    <string name="assets_label_purchase_value">Wartość zakupu</string>
+    <string name="assets_label_current_value_optional">Wartość bieżąca (opcjonalnie, domyślnie wartość zakupu)</string>
+    <string name="assets_label_purchase_date">Data zakupu</string>
+    <string name="assets_label_original_amount">Kwota pierwotna</string>
+    <string name="assets_label_current_balance_optional">Bieżące saldo (opcjonalnie, domyślnie kwota pierwotna)</string>
+    <string name="assets_label_start_date">Data rozpoczęcia</string>
+    <string name="assets_label_current_value_with_currency">Wartość bieżąca (%1$s)</string>
+    <string name="assets_label_current_balance_with_currency">Bieżące saldo (%1$s)</string>
+
+    <string name="assets_action_add">Dodaj</string>
+    <string name="assets_action_cancel">Anuluj</string>
+    <string name="assets_action_ok">OK</string>
+    <string name="assets_action_save">Zapisz</string>
+    <string name="assets_action_delete">Usuń</string>
+
+    <string name="assets_delete_asset_description">Usuń aktywo</string>
+    <string name="assets_delete_liability_description">Usuń zobowiązanie</string>
+    <string name="assets_mark_fully_paid_description">Oznacz jako w pełni spłacone</string>
+
+    <string name="assets_delete_asset_title">Usunąć aktywo?</string>
+    <string name="assets_delete_liability_title">Usunąć zobowiązanie?</string>
+    <string name="assets_delete_confirm_message">To trwale usunie \"%1$s\". Tej operacji nie można cofnąć.</string>
+
+    <string name="assets_purchased_info">Kupione %1$s za %2$s</string>
+    <string name="assets_started_info">Rozpoczęto %1$s od %2$s</string>
+    <string name="assets_liability_fully_paid">To zobowiązanie jest w pełni spłacone i nie można go już edytować.</string>
+</resources>

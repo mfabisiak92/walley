@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -70,6 +72,7 @@ import com.walley.app.domain.model.InvestmentsFilterState
 import com.walley.app.domain.model.InvestmentsSortState
 import com.walley.app.domain.model.PositionStatusFilter
 import com.walley.app.domain.model.SortDirection
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.WatchedEquityWithNotes
 import java.math.RoundingMode
 import kotlinx.coroutines.launch
@@ -218,7 +221,7 @@ private fun ActiveInvestmentFiltersRow(
             RemovableChip(label = label, onRemove = onStatusReset)
         }
         filterState.categories.forEach { category ->
-            RemovableChip(label = category.label, onRemove = { onCategoryToggled(category) })
+            RemovableChip(label = category.displayName(), onRemove = { onCategoryToggled(category) })
         }
         filterState.currencies.forEach { currency ->
             RemovableChip(label = currency.name, onRemove = { onCurrencyToggled(currency) })
@@ -226,7 +229,7 @@ private fun ActiveInvestmentFiltersRow(
         filterState.accountIds.forEach { accountId ->
             RemovableChip(label = accountName(accountId), onRemove = { onAccountToggled(accountId) })
         }
-        TextButton(onClick = onResetAll) { Text("Reset all") }
+        TextButton(onClick = onResetAll) { Text(stringResource(R.string.investments_action_reset_all)) }
     }
 }
 
@@ -328,7 +331,7 @@ private fun PortfolioListPage(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     TextButton(onClick = { viewModel.resetFilters() }) {
-                        Text("Reset filters")
+                        Text(stringResource(R.string.investments_action_reset_filters))
                     }
                 }
             } else {

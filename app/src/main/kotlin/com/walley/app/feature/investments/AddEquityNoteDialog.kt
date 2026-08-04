@@ -24,9 +24,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.domain.model.EquityNote
 import com.walley.app.domain.model.EquityStatus
+import com.walley.app.domain.model.displayName
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -47,7 +50,15 @@ fun AddEquityNoteDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial != null) "Edit note" else "Add note") },
+        title = {
+            Text(
+                if (initial != null) {
+                    stringResource(R.string.investments_note_dialog_title_edit)
+                } else {
+                    stringResource(R.string.investments_note_dialog_title_add)
+                }
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -57,7 +68,7 @@ fun AddEquityNoteDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Date")
+                    Text(stringResource(R.string.investments_label_date))
                     TextButton(onClick = { showDatePicker = true }) {
                         Text(date.format(DateTimeFormatter.ISO_LOCAL_DATE))
                     }
@@ -67,10 +78,10 @@ fun AddEquityNoteDialog(
                     onExpandedChange = { statusMenuExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = status.label,
+                        value = status.displayName(),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Status") },
+                        label = { Text(stringResource(R.string.investments_label_status)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusMenuExpanded) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
@@ -80,7 +91,7 @@ fun AddEquityNoteDialog(
                     ) {
                         EquityStatus.entries.forEach { option ->
                             DropdownMenuItem(
-                                text = { Text(option.label) },
+                                text = { Text(option.displayName()) },
                                 onClick = {
                                     status = option
                                     statusMenuExpanded = false
@@ -92,18 +103,24 @@ fun AddEquityNoteDialog(
                 OutlinedTextField(
                     value = note,
                     onValueChange = { note = it },
-                    label = { Text("Note (optional)") },
+                    label = { Text(stringResource(R.string.investments_label_note_optional)) },
                     minLines = 3
                 )
             }
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(date, status, note.trim()) }) {
-                Text(if (initial != null) "Save" else "Add")
+                Text(
+                    if (initial != null) {
+                        stringResource(R.string.investments_action_save)
+                    } else {
+                        stringResource(R.string.investments_action_add)
+                    }
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.investments_action_cancel)) }
         }
     )
 
@@ -121,10 +138,10 @@ fun AddEquityNoteDialog(
                         }
                         showDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.investments_action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

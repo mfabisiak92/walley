@@ -31,16 +31,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountOperation
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentTransactionType
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.estimatedTaxForYear
 import com.walley.app.domain.model.netRealizedGain
@@ -49,9 +52,6 @@ import com.walley.app.domain.model.realizedGainTax
 import java.math.BigDecimal
 import java.time.LocalDate
 import kotlinx.coroutines.launch
-
-private val INVESTMENT_ACCOUNT_TABS = listOf("Details", "Investments", "Operations")
-private val OTHER_ACCOUNT_TABS = listOf("Operations")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +64,15 @@ fun CashOperationsScreen(
     val operations by viewModel.operations.collectAsStateWithLifecycle()
     val investmentsInAccount by viewModel.investmentsInAccount.collectAsStateWithLifecycle()
     val isInvestmentAccount = account?.type == AccountType.INVESTMENT
-    val tabs = if (isInvestmentAccount) INVESTMENT_ACCOUNT_TABS else OTHER_ACCOUNT_TABS
+    val tabs = if (isInvestmentAccount) {
+        listOf(
+            stringResource(R.string.investments_tab_details),
+            stringResource(R.string.investments_tab_investments),
+            stringResource(R.string.investments_tab_operations)
+        )
+    } else {
+        listOf(stringResource(R.string.investments_tab_operations))
+    }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
@@ -74,7 +82,7 @@ fun CashOperationsScreen(
                 title = { Text(account?.name ?: "") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.investments_cd_back))
                     }
                 }
             )
@@ -128,7 +136,7 @@ private fun InvestmentsTab(investmentsInAccount: List<InvestmentWithTransactions
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "No investments linked to this account yet.",
+                stringResource(R.string.investments_empty_linked_investments),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -170,7 +178,7 @@ private fun OperationsTab(operations: List<AccountOperation>, currency: Currency
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "No cash operations imported yet.",
+                stringResource(R.string.investments_empty_cash_operations),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -244,31 +252,38 @@ private fun DetailsTab(
         .filter { it.date.year == currentYear }
         .fold(BigDecimal.ZERO) { acc, t -> acc + t.netAmount }
 
+    val currentRows = listOf(
+        stringResource(R.string.investments_label_current_account_balance) to account.balance,
+        stringResource(R.string.investments_label_net_deposits) to netDeposits,
+        stringResource(R.string.investments_label_total_contribution) to totalContribution,
+        stringResource(R.string.investments_label_cost_basis) to account.investmentCostBasis,
+        stringResource(R.string.investments_label_uninvested_cash) to account.uninvestedCash,
+        stringResource(R.string.investments_label_unrealized_gain) to unrealizedGainAmount,
+        stringResource(R.string.investments_label_current_net) to netUnrealizedGainAmount
+    )
+    val thisYearRows = listOf(
+        stringResource(R.string.investments_label_contribution) to contributionThisYear,
+        stringResource(R.string.investments_label_realized_gain) to realizedGainThisYear,
+        stringResource(R.string.investments_label_net_realized_gain) to netRealizedGainThisYear
+    )
+    val totalRows = listOf(
+        stringResource(R.string.investments_label_realized_gain) to realizedGainAmount,
+        stringResource(R.string.investments_label_net_realized_gain) to netRealizedGainAmount
+    )
+    val currentTaxLabel = stringResource(R.string.investments_label_current_tax, account.taxRate.displayName())
+    val totalTaxLabel = stringResource(R.string.investments_label_total_tax, account.taxRate.displayName())
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        item { DetailSectionHeader("Current") }
-        val currentRows = listOf(
-            "Current account balance" to account.balance,
-            "Net deposits" to netDeposits,
-            "Total contribution" to totalContribution,
-            "Cost basis" to account.investmentCostBasis,
-            "Uninvested cash" to account.uninvestedCash,
-            "Unrealized gain" to unrealizedGainAmount,
-            "Current net" to netUnrealizedGainAmount
-        )
+        item { DetailSectionHeader(stringResource(R.string.investments_section_current)) }
         itemsIndexed(currentRows, key = { _, (label, _) -> label }) { index, (label, value) ->
             if (index > 0) HorizontalDivider()
             DetailRow(label = label, value = value, currency = currency)
         }
 
-        item { DetailSectionHeader("This year") }
-        val thisYearRows = listOf(
-            "Contribution" to contributionThisYear,
-            "Realized gain" to realizedGainThisYear,
-            "Net realized gain" to netRealizedGainThisYear
-        )
+        item { DetailSectionHeader(stringResource(R.string.investments_section_this_year)) }
         itemsIndexed(thisYearRows, key = { _, (label, _) -> "thisyear_$label" }) { index, (label, value) ->
             if (index > 0) HorizontalDivider()
             DetailRow(label = label, value = value, currency = currency)
@@ -277,7 +292,7 @@ private fun DetailsTab(
             item { HorizontalDivider() }
             item {
                 DetailRow(
-                    label = "Current tax (${account.taxRate.label})",
+                    label = currentTaxLabel,
                     value = realizedTaxThisYear,
                     currency = currency,
                     negative = true
@@ -285,11 +300,7 @@ private fun DetailsTab(
             }
         }
 
-        item { DetailSectionHeader("Total") }
-        val totalRows = listOf(
-            "Realized gain" to realizedGainAmount,
-            "Net realized gain" to netRealizedGainAmount
-        )
+        item { DetailSectionHeader(stringResource(R.string.investments_section_total)) }
         itemsIndexed(totalRows, key = { _, (label, _) -> "total_$label" }) { index, (label, value) ->
             if (index > 0) HorizontalDivider()
             DetailRow(label = label, value = value, currency = currency)
@@ -298,7 +309,7 @@ private fun DetailsTab(
             item { HorizontalDivider() }
             item {
                 DetailRow(
-                    label = "Total tax (${account.taxRate.label})",
+                    label = totalTaxLabel,
                     value = realizedTax,
                     currency = currency,
                     negative = true

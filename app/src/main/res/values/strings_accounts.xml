@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared / generic terms reused across accounts screens and dialogs -->
+    <string name="accounts_name">Name</string>
+    <string name="accounts_type">Type</string>
+    <string name="accounts_currency">Currency</string>
+    <string name="accounts_balance">Balance</string>
+    <string name="accounts_date_added">Date added</string>
+    <string name="accounts_closed">Closed</string>
+    <string name="accounts_virtual">Virtual</string>
+    <string name="accounts_real">Real</string>
+    <string name="accounts_all">All</string>
+    <string name="accounts_reopen">Reopen</string>
+    <string name="accounts_net_balance">Net balance</string>
+    <string name="accounts_invested_amount">Invested amount</string>
+    <string name="accounts_uninvested_cash">Uninvested cash</string>
+    <string name="accounts_target_date">Target date</string>
+    <string name="accounts_tax_rate">Tax rate</string>
+    <string name="accounts_cancel">Cancel</string>
+    <string name="accounts_ok">OK</string>
+    <string name="accounts_virtual_account_label">Virtual account</string>
+    <string name="accounts_virtual_account_hint">Doesn\'t exist in the real world — its balance is really an earmarked slice of another account\'s money, so it\'s excluded from net worth and other totals.</string>
+    <string name="accounts_uninvested_cash_hint">This is cash not yet invested. The account\'s total balance also includes the current value of any linked investments.</string>
+    <string name="accounts_commission_hint">Commission charged per buy/sell trade — whichever of the two is higher. Used as the default when logging an event, but you can override it per trade.</string>
+    <string name="accounts_target_amount_optional">Target amount (optional)</string>
+    <string name="accounts_close_account_confirm_title">Close account?</string>
+    <string name="accounts_close">Close</string>
+    <string name="accounts_dont_transfer">Don\'t transfer</string>
+
+    <!-- Sort chip / sort field labels -->
+    <string name="accounts_sort_chip_default_first">Default first</string>
+    <string name="accounts_sort_field_default_account_first">Default account first</string>
+    <string name="accounts_sort_asc_az">A→Z</string>
+    <string name="accounts_sort_desc_za">Z→A</string>
+    <string name="accounts_sort_asc_low_high">Low→High</string>
+    <string name="accounts_sort_desc_high_low">High→Low</string>
+    <string name="accounts_sort_asc_oldest_first">Oldest first</string>
+    <string name="accounts_sort_desc_newest_first">Newest first</string>
+
+    <!-- AccountsScreen.kt -->
+    <string name="accounts_cd_sort_and_filter">Sort and filter</string>
+    <string name="accounts_filter_status_all">All statuses</string>
+    <string name="accounts_reset_all">Reset all</string>
+    <string name="accounts_update_balances">Update balances</string>
+    <string name="accounts_add_account">Add account</string>
+    <string name="accounts_add_typed_account">Add %1$s account</string>
+    <string name="accounts_empty_state_no_type_accounts">No %1$s accounts yet — tap + to add one.</string>
+    <string name="accounts_empty_state_no_match_filters">No accounts match your filters.</string>
+    <string name="accounts_reset_filters">Reset filters</string>
+    <string name="accounts_total">Total</string>
+    <string name="accounts_available">Available</string>
+    <string name="accounts_standard_accounts">Standard accounts</string>
+    <string name="accounts_virtual_accounts">Virtual accounts</string>
+    <string name="accounts_cant_delete_account_title">Can\'t delete account</string>
+    <string name="accounts_cant_close_account_title">Can\'t close account</string>
+    <string name="accounts_cd_default_account">Default account</string>
+    <string name="accounts_cd_set_as_default_account">Set as default account</string>
+    <string name="accounts_paid_this_month">Paid this month</string>
+    <string name="accounts_progress_percent_of">%1$s%% of %2$s</string>
+    <string name="accounts_cd_goal_reached">Goal reached</string>
+
+    <!-- AccountsSortFilterSheet.kt -->
+    <string name="accounts_sort_filter_title">Sort &amp; filter</string>
+    <string name="accounts_sort_filter_hint">Changes apply immediately and are remembered next time you open this tab.</string>
+    <string name="accounts_sort_by">Sort by</string>
+    <string name="accounts_status">Status</string>
+    <string name="accounts_status_active">Active</string>
+    <string name="accounts_account_type">Account type</string>
+    <string name="accounts_kind">Kind</string>
+    <string name="accounts_reset">Reset</string>
+    <string name="accounts_done">Done</string>
+
+    <!-- AddAccountDialog.kt / EditAccountDialog.kt -->
+    <string name="accounts_flat_commission_optional">Flat commission (optional)</string>
+    <string name="accounts_commission_percent_optional">Commission % of trade value (optional)</string>
+    <string name="accounts_initial_balance">Initial balance</string>
+    <string name="accounts_add">Add</string>
+    <string name="accounts_edit_account_title">Edit account</string>
+    <string name="accounts_cd_close_account">Close account</string>
+    <string name="accounts_cd_delete_account">Delete account</string>
+    <string name="accounts_uninvested_cash_with_currency">Uninvested cash (%1$s)</string>
+    <string name="accounts_flat_commission_with_currency">Flat commission (%1$s)</string>
+    <string name="accounts_commission_percent">Commission % of trade value</string>
+    <string name="accounts_balance_with_currency">Balance (%1$s)</string>
+    <string name="accounts_save">Save</string>
+    <string name="accounts_delete_account_confirm_title">Delete account?</string>
+    <string name="accounts_delete_account_confirm_text">This will permanently delete \"%1$s\". This cannot be undone.</string>
+    <string name="accounts_delete">Delete</string>
+
+    <!-- CloseAccountDialog.kt -->
+    <string name="accounts_close_account_confirm_text_simple">Close \"%1$s\"? You can reopen it later from the Accounts screen.</string>
+    <string name="accounts_close_account_transfer_text">\"%1$s\" has a remaining balance of %2$s. You can optionally transfer it to another account below, or leave it in \"%1$s\" — it\'ll stay there but be excluded from net worth while closed. You can reopen \"%1$s\" later from the Accounts screen, but a transfer won\'t be reversed automatically.</string>
+    <string name="accounts_no_other_account_available">No other account in %1$s is available to receive the balance — it will stay in \"%2$s\" if you close it.</string>
+    <string name="accounts_no_other_virtual_account_available">No other virtual account in %1$s is available to receive the balance — it will stay in \"%2$s\" if you close it.</string>
+    <string name="accounts_transfer_to">Transfer to</string>
+
+    <!-- UpdateBalancesScreen.kt -->
+    <string name="accounts_cd_back">Back</string>
+    <string name="accounts_save_all">Save all</string>
+    <string name="accounts_uninvested_cash_only_hint">Uninvested cash only — an account\'s total balance also includes the current market value of its linked investments, updated from the Investments tab.</string>
+    <string name="accounts_cd_increased">Increased</string>
+    <string name="accounts_cd_decreased">Decreased</string>
+    <string name="accounts_was_amount">was %1$s</string>
+
+    <!-- AccountsViewModel.kt (error messages surfaced via dialogs) -->
+    <string name="accounts_error_linked_investments">This account still has linked investments. Delete or move them first.</string>
+    <string name="accounts_error_linked_budget_item">This account is linked to an active budget item. Remove it from the budget first, or mark the budget completed.</string>
+</resources>

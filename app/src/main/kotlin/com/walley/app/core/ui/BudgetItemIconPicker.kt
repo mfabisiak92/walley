@@ -23,8 +23,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.domain.model.BudgetItemIcon
+import com.walley.app.domain.model.displayName
 
 /**
  * A horizontally-scrollable row of selectable icon chips, plus a "None" option. Shows the
@@ -50,7 +53,7 @@ fun BudgetItemIconPicker(
 
     Column(modifier = modifier) {
         Text(
-            text = selected?.label ?: "No icon",
+            text = selected?.displayName() ?: stringResource(R.string.picker_no_icon),
             style = MaterialTheme.typography.bodyMedium,
             color = selected?.let { BudgetItemIconStyles.getValue(it).color } ?: MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -82,7 +85,7 @@ private fun IconChip(icon: BudgetItemIcon, isSelected: Boolean, onClick: () -> U
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(style.vector, contentDescription = icon.label, tint = style.color, modifier = Modifier.size(24.dp))
+        Icon(style.vector, contentDescription = icon.displayName(), tint = style.color, modifier = Modifier.size(24.dp))
     }
 }
 

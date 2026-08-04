@@ -1,5 +1,8 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -24,12 +27,12 @@ fun UpdateCurrentPriceDialog(
     onSave: (currentPrice: BigDecimal) -> Unit
 ) {
     var currentPriceText by remember { mutableStateOf(investment.currentPrice.toPlainString()) }
-    val parsedCurrentPrice = currentPriceText.toBigDecimalOrNull()
+    val parsedCurrentPrice = currentPriceText.toBigDecimalOrNullLenient()
     val isValid = parsedCurrentPrice != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Update current price") },
+        title = { Text(stringResource(R.string.investments_update_current_price_title)) },
         text = {
             Column {
                 Text(
@@ -40,7 +43,7 @@ fun UpdateCurrentPriceDialog(
                 OutlinedTextField(
                     value = currentPriceText,
                     onValueChange = { currentPriceText = it },
-                    label = { Text("Current price (${investment.currency.symbol})") },
+                    label = { Text(stringResource(R.string.investments_label_current_price_currency, investment.currency.symbol)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = !isValid
@@ -51,10 +54,10 @@ fun UpdateCurrentPriceDialog(
             TextButton(
                 onClick = { onSave(parsedCurrentPrice!!) },
                 enabled = isValid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.investments_action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.investments_action_cancel)) }
         }
     )
 }

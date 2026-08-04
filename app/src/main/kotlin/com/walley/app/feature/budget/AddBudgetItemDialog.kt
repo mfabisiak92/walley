@@ -1,5 +1,8 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -32,6 +35,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.EXPENSE_ICONS
 import com.walley.app.domain.model.INCOME_ICONS
 import com.walley.app.domain.model.IncomeCategory
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.suggestIconForName
 import com.walley.app.domain.model.toIcon
 import java.math.BigDecimal
@@ -80,7 +84,7 @@ fun AddBudgetItemDialog(
     val iconOptions = if (showCategoryPicker) INCOME_ICONS else EXPENSE_ICONS
 
     val selectedAccount = accounts.find { it.id == accountId }
-    val parsedAmount = amountText.toBigDecimalOrNull()
+    val parsedAmount = amountText.toBigDecimalOrNullLenient()
     val exceedsSavingsBalance = selectedAccount?.type == AccountType.SAVING &&
         parsedAmount != null && parsedAmount > selectedAccount.balance
     val isValid = name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0 &&
@@ -102,7 +106,7 @@ fun AddBudgetItemDialog(
                             suggestIconForName(it)?.let { suggested -> icon = suggested }
                         }
                     },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.budget_name_label)) },
                     singleLine = true
                 )
                 if (showAccountPicker && accounts.isNotEmpty()) {
@@ -114,7 +118,7 @@ fun AddBudgetItemDialog(
                             value = selectedAccount?.name ?: if (requireAccount) "" else "None",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Account") },
+                            label = { Text(stringResource(R.string.budget_account_label)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
                             isError = requireAccount && selectedAccount == null,
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
@@ -125,7 +129,7 @@ fun AddBudgetItemDialog(
                         ) {
                             if (!requireAccount) {
                                 DropdownMenuItem(
-                                    text = { Text("None") },
+                                    text = { Text(stringResource(R.string.budget_none)) },
                                     onClick = {
                                         accountId = null
                                         accountMenuExpanded = false
@@ -168,10 +172,10 @@ fun AddBudgetItemDialog(
                         onExpandedChange = { categoryMenuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = category.label,
+                            value = category.displayName(),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Category") },
+                            label = { Text(stringResource(R.string.budget_category_label)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
@@ -181,7 +185,7 @@ fun AddBudgetItemDialog(
                         ) {
                             IncomeCategory.entries.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option.label) },
+                                    text = { Text(option.displayName()) },
                                     onClick = {
                                         category = option
                                         icon = option.toIcon()
@@ -195,7 +199,7 @@ fun AddBudgetItemDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount (${(selectedAccount?.currency ?: currency).symbol})") },
+                    label = { Text(stringResource(R.string.budget_amount_with_currency, (selectedAccount?.currency ?: currency).symbol)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && parsedAmount == null
@@ -208,7 +212,7 @@ fun AddBudgetItemDialog(
                         isLastOfMonth = lastOfMonth
                     }
                 )
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.budget_icon_label), style = MaterialTheme.typography.labelLarge)
                 BudgetItemIconPicker(
                     options = iconOptions,
                     selected = icon,
@@ -236,7 +240,7 @@ fun AddBudgetItemDialog(
             ) { Text(if (initial != null) "Save" else "Add") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }

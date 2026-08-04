@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +57,7 @@ import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.ImportRowOutcome
 import com.walley.app.domain.model.ImportRowStatus
+import com.walley.app.domain.model.displayName
 
 private val ImportGreen = Color(0xFF2E7D32)
 private val ImportBlue = Color(0xFF42A5F5)
@@ -78,7 +81,7 @@ fun ImportInvestmentsDialog(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("Import investments") },
+                        title = { Text(stringResource(R.string.investments_import_title)) },
                         navigationIcon = {
                             IconButton(onClick = onDismiss) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close")
@@ -141,7 +144,7 @@ private fun ErrorContent(message: String, onDismiss: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
-        TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text("Close") }
+        TextButton(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.investments_action_close)) }
     }
 }
 
@@ -158,7 +161,7 @@ private fun DoneContent(importedCount: Int, onDismiss: () -> Unit) {
             if (importedCount == 1) "Imported 1 event" else "Imported $importedCount events",
             style = MaterialTheme.typography.headlineSmall
         )
-        Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text("Done") }
+        Button(onClick = onDismiss, modifier = Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.investments_action_done)) }
     }
 }
 
@@ -265,7 +268,7 @@ private fun PreviewContent(
                 .padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancel") }
+            TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.investments_action_cancel)) }
             Button(onClick = onConfirm, enabled = toImportCount > 0, modifier = Modifier.weight(1f)) {
                 Text(if (toImportCount > 0) "Import $toImportCount" else "Nothing to import")
             }
@@ -303,7 +306,7 @@ private fun OutcomeRow(outcome: ImportRowOutcome) {
             ) {
                 Text(
                     when {
-                        row != null -> "Row ${outcome.rowNumber} · ${row.type.label} ${row.ticker}"
+                        row != null -> "Row ${outcome.rowNumber} · ${row.type.displayName()} ${row.ticker}"
                         cashOperation != null -> "Row ${outcome.rowNumber} · ${cashOperation.description}"
                         else -> "Row ${outcome.rowNumber}"
                     },

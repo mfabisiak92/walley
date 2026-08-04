@@ -5,10 +5,12 @@ import android.content.Context
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.R
 import com.walley.app.data.remote.DriveFile
 import com.walley.app.data.repository.BackupRepository
 import com.walley.app.work.BackupScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +39,7 @@ sealed interface BackupUiState {
 
 @HiltViewModel
 class BackupViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val backupRepository: BackupRepository,
     private val backupScheduler: BackupScheduler
 ) : ViewModel() {
@@ -62,7 +65,7 @@ class BackupViewModel @Inject constructor(
                 backupRepository.signIn(activityContext)
                 authorize()
             } catch (e: Exception) {
-                _uiState.value = BackupUiState.Error("Sign-in failed: ${e.message}")
+                _uiState.value = BackupUiState.Error(context.getString(R.string.backup_sign_in_failed, (e.message ?: e.toString())))
             }
         }
     }
@@ -77,14 +80,14 @@ class BackupViewModel @Inject constructor(
                 _uiState.value = if (pendingIntent != null) {
                     BackupUiState.NeedsConsent(pendingIntent)
                 } else {
-                    BackupUiState.Error("Couldn't get Drive access — try signing in again.")
+                    BackupUiState.Error(context.getString(R.string.backup_drive_access_error))
                 }
                 return
             }
             cachedAccessToken = token
             loadSignedInState(token)
         } catch (e: Exception) {
-            _uiState.value = BackupUiState.Error("Couldn't reach Google Drive: ${e.message}")
+            _uiState.value = BackupUiState.Error(context.getString(R.string.backup_drive_unreachable, (e.message ?: e.toString())))
         }
     }
 
@@ -95,13 +98,13 @@ class BackupViewModel @Inject constructor(
                 val result = backupRepository.authorizationResultFromIntent(intent)
                 val token = result.accessToken
                 if (token == null) {
-                    _uiState.value = BackupUiState.Error("Drive access wasn't granted.")
+                    _uiState.value = BackupUiState.Error(context.getString(R.string.backup_drive_access_not_granted))
                     return@launch
                 }
                 cachedAccessToken = token
                 loadSignedInState(token)
             } catch (e: Exception) {
-                _uiState.value = BackupUiState.Error("Couldn't finish authorizing: ${e.message}")
+                _uiState.value = BackupUiState.Error(context.getString(R.string.backup_authorize_failed, (e.message ?: e.toString())))
             }
         }
     }
@@ -114,7 +117,7 @@ class BackupViewModel @Inject constructor(
                 backupRepository.backupNow(token)
                 loadSignedInState(token)
             } catch (e: Exception) {
-                _uiState.value = BackupUiState.Error("Backup failed: ${e.message}")
+                _uiState.value = BackupUiState.Error(context.getString(R.string.backup_failed, (e.message ?: e.toString())))
             }
         }
     }
@@ -133,9 +136,9 @@ class BackupViewModel @Inject constructor(
             _uiState.value = BackupUiState.Restoring
             try {
                 backupRepository.restoreSnapshot(token, file.id)
-                _uiState.value = BackupUiState.Done("Restored from ${file.name}")
+                _uiState.value = BackupUiState.Done(context.getString(R.string.backup_restored_from, file.name))
             } catch (e: Exception) {
-                _uiState.value = BackupUiState.Error("Restore failed: ${e.message}")
+                _uiState.value = BackupUiState.Error(context.getString(R.string.backup_restore_failed, (e.message ?: e.toString())))
             }
         }
     }

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="assets_tab_assets">Assets</string>
+    <string name="assets_tab_liabilities">Liabilities</string>
+
+    <string name="assets_add_asset">Add asset</string>
+    <string name="assets_add_liability">Add liability</string>
+    <string name="assets_no_assets_empty">No assets yet — tap + to add one.</string>
+    <string name="assets_no_liabilities_empty">No liabilities yet — tap + to add one.</string>
+
+    <string name="assets_purchased_for">Purchased for %1$s</string>
+    <string name="assets_since_date">Since %1$s</string>
+    <string name="assets_original_amount">Original: %1$s</string>
+    <string name="assets_paid_off_progress">%1$s%% paid off (%2$s)</string>
+
+    <string name="assets_label_name">Name</string>
+    <string name="assets_label_currency">Currency</string>
+    <string name="assets_label_purchase_value">Purchase value</string>
+    <string name="assets_label_current_value_optional">Current value (optional, defaults to purchase value)</string>
+    <string name="assets_label_purchase_date">Purchase date</string>
+    <string name="assets_label_original_amount">Original amount</string>
+    <string name="assets_label_current_balance_optional">Current balance (optional, defaults to original amount)</string>
+    <string name="assets_label_start_date">Start date</string>
+    <string name="assets_label_current_value_with_currency">Current value (%1$s)</string>
+    <string name="assets_label_current_balance_with_currency">Current balance (%1$s)</string>
+
+    <string name="assets_action_add">Add</string>
+    <string name="assets_action_cancel">Cancel</string>
+    <string name="assets_action_ok">OK</string>
+    <string name="assets_action_save">Save</string>
+    <string name="assets_action_delete">Delete</string>
+
+    <string name="assets_delete_asset_description">Delete asset</string>
+    <string name="assets_delete_liability_description">Delete liability</string>
+    <string name="assets_mark_fully_paid_description">Mark as fully paid</string>
+
+    <string name="assets_delete_asset_title">Delete asset?</string>
+    <string name="assets_delete_liability_title">Delete liability?</string>
+    <string name="assets_delete_confirm_message">This will permanently delete \"%1$s\". This cannot be undone.</string>
+
+    <string name="assets_purchased_info">Purchased %1$s for %2$s</string>
+    <string name="assets_started_info">Started %1$s at %2$s</string>
+    <string name="assets_liability_fully_paid">This liability is fully paid and can no longer be edited.</string>
+</resources>

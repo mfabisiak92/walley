@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.domain.model.AccountEffectsGroup
 import com.walley.app.domain.model.BudgetStatus
+import com.walley.app.domain.model.displayName
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +41,7 @@ fun BudgetSettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Budget settings") },
+                title = { Text(stringResource(R.string.budget_settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -55,7 +58,7 @@ fun BudgetSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text("Draw from linked accounts", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.budget_draw_from_linked_accounts_title), style = MaterialTheme.typography.titleMedium)
             Text(
                 "When off for a category, paying its items won't move money in any account. " +
                     "Only affects future actions — balance changes already applied are left as-is.",
@@ -65,25 +68,25 @@ fun BudgetSettingsScreen(
             HorizontalDivider()
             if (budget != null) {
                 AccountEffectsToggleRow(
-                    label = AccountEffectsGroup.INCOME.label,
+                    label = AccountEffectsGroup.INCOME.displayName(),
                     checked = budget.applyIncomeAccountEffects,
                     onCheckedChange = viewModel::updateIncomeAccountEffects,
                     enabled = isEditable
                 )
                 AccountEffectsToggleRow(
-                    label = AccountEffectsGroup.COSTS.label,
+                    label = AccountEffectsGroup.COSTS.displayName(),
                     checked = budget.applyCostsAccountEffects,
                     onCheckedChange = viewModel::updateCostsAccountEffects,
                     enabled = isEditable
                 )
                 AccountEffectsToggleRow(
-                    label = AccountEffectsGroup.SAVINGS.label,
+                    label = AccountEffectsGroup.SAVINGS.displayName(),
                     checked = budget.applySavingsAccountEffects,
                     onCheckedChange = viewModel::updateSavingsAccountEffects,
                     enabled = isEditable
                 )
                 AccountEffectsToggleRow(
-                    label = AccountEffectsGroup.INVESTMENTS.label,
+                    label = AccountEffectsGroup.INVESTMENTS.displayName(),
                     checked = budget.applyInvestmentsAccountEffects,
                     onCheckedChange = viewModel::updateInvestmentsAccountEffects,
                     enabled = isEditable

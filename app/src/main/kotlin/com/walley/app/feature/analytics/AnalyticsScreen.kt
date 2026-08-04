@@ -38,9 +38,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.ChartSeries
 import com.walley.app.core.ui.PieChartCard
@@ -53,17 +55,26 @@ import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
-private enum class HistoryHorizon(val label: String, val months: Int?) {
-    SIX_MONTHS("6M", 6),
-    ONE_YEAR("1Y", 12),
-    TWO_YEARS("2Y", 24),
-    FIVE_YEARS("5Y", 60),
-    ALL("∞", null)
+private enum class HistoryHorizon(val months: Int?) {
+    SIX_MONTHS(6),
+    ONE_YEAR(12),
+    TWO_YEARS(24),
+    FIVE_YEARS(60),
+    ALL(null)
 }
 
 private fun <T> HistoryHorizon.applyTo(items: List<T>): List<T> = months?.let { items.takeLast(it) } ?: items
 
-private val TABS = listOf("Budget", "History", "Investments")
+@Composable
+private fun HistoryHorizon.displayName(): String = when (this) {
+    HistoryHorizon.SIX_MONTHS -> stringResource(R.string.analytics_horizon_6m)
+    HistoryHorizon.ONE_YEAR -> stringResource(R.string.analytics_horizon_1y)
+    HistoryHorizon.TWO_YEARS -> stringResource(R.string.analytics_horizon_2y)
+    HistoryHorizon.FIVE_YEARS -> stringResource(R.string.analytics_horizon_5y)
+    HistoryHorizon.ALL -> stringResource(R.string.analytics_horizon_all)
+}
+
+private const val TAB_COUNT = 3
 
 private val GainColor = Color(0xFF2E7D32)
 
@@ -73,16 +84,21 @@ fun AnalyticsScreen(
     onNavigateBack: () -> Unit,
     viewModel: AnalyticsViewModel = hiltViewModel()
 ) {
-    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val pagerState = rememberPagerState(pageCount = { TAB_COUNT })
     val scope = rememberCoroutineScope()
+    val tabs = listOf(
+        stringResource(R.string.analytics_tab_budget),
+        stringResource(R.string.analytics_tab_history),
+        stringResource(R.string.analytics_label_investments)
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Analytics") },
+                title = { Text(stringResource(R.string.analytics_title)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.analytics_back))
                     }
                 }
             )
@@ -94,7 +110,7 @@ fun AnalyticsScreen(
                 .fillMaxSize()
         ) {
             TabRow(selectedTabIndex = pagerState.currentPage) {
-                TABS.forEachIndexed { index, label ->
+                tabs.forEachIndexed { index, label ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
@@ -148,7 +164,7 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
     val yearOverYear by viewModel.yearOverYear.collectAsStateWithLifecycle()
 
     if (history.isEmpty()) {
-        EmptyState("No budgets yet — create one to see analytics.")
+        EmptyState(stringResource(R.string.analytics_empty_no_budgets))
         return
     }
 
@@ -162,40 +178,46 @@ private fun BudgetHistoryPage(viewModel: AnalyticsViewModel) {
         val labels = history.map { it.label }
         val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
 
+        val incomeLabel = stringResource(R.string.analytics_label_income)
+        val expensesLabel = stringResource(R.string.analytics_label_expenses)
+        val savingsLabel = stringResource(R.string.analytics_label_savings)
+        val savingsRateLabel = stringResource(R.string.analytics_savings_rate)
+        val spentLabel = stringResource(R.string.analytics_label_spent)
+
         PeriodComparisonSection(monthOverMonth, yearOverYear, baseCurrency)
 
         TrendChartCard(
-            title = "Income vs Expenses vs Savings",
+            title = stringResource(R.string.analytics_chart_income_vs_expenses_vs_savings),
             labels = labels,
             series = listOf(
-                ChartSeries("Income", PieChartColors[0], history.map { it.income?.toFloat() }),
-                ChartSeries("Expenses", PieChartColors[3], history.map { it.expenses?.toFloat() }),
-                ChartSeries("Savings", PieChartColors[5], history.map { it.savings?.toFloat() })
+                ChartSeries(incomeLabel, PieChartColors[0], history.map { it.income?.toFloat() }),
+                ChartSeries(expensesLabel, PieChartColors[3], history.map { it.expenses?.toFloat() }),
+                ChartSeries(savingsLabel, PieChartColors[5], history.map { it.savings?.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
 
         TrendChartCard(
-            title = "Savings rate",
+            title = savingsRateLabel,
             labels = labels,
             series = listOf(
-                ChartSeries("Savings rate", PieChartColors[5], history.map { it.savingsRatePercent?.toFloat() })
+                ChartSeries(savingsRateLabel, PieChartColors[5], history.map { it.savingsRatePercent?.toFloat() })
             ),
             valueFormatter = { value -> "${value.toInt()}%" }
         )
 
         TrendChartCard(
-            title = "Budget adherence (spent vs planned)",
+            title = stringResource(R.string.analytics_chart_budget_adherence),
             labels = labels,
             series = listOf(
-                ChartSeries("Spent", PieChartColors[2], history.map { it.progress?.percent?.toFloat() })
+                ChartSeries(spentLabel, PieChartColors[2], history.map { it.progress?.percent?.toFloat() })
             ),
             valueFormatter = { value -> "${value.toInt()}%" }
         )
 
         if (categorySpending.categoryLabels.isNotEmpty()) {
             StackedTrendChartCard(
-                title = "Spending by category",
+                title = stringResource(R.string.analytics_chart_spending_by_category),
                 labels = categorySpendPoints.map { it.label },
                 series = categorySpending.categoryLabels.mapIndexed { index, label ->
                     ChartSeries(label, PieChartColors[index % PieChartColors.size], categorySpending.seriesByCategory[index])
@@ -233,20 +255,26 @@ private fun CategoryVarianceSection(points: List<CategorySpendPoint>, moneyForma
         }
 
         TrendChartCard(
-            title = "Planned vs actual — $selected",
+            title = stringResource(R.string.analytics_planned_vs_actual, selected),
             labels = variance.monthLabels,
             series = listOf(
-                ChartSeries("Planned", PieChartColors[0], variance.planned),
-                ChartSeries("Actual", PieChartColors[3], variance.actual)
+                ChartSeries(stringResource(R.string.analytics_label_planned), PieChartColors[0], variance.planned),
+                ChartSeries(stringResource(R.string.analytics_label_actual), PieChartColors[3], variance.actual)
             ),
             valueFormatter = moneyFormatter
         )
     }
 }
 
-private enum class ComparisonPeriod(val label: String) {
-    LAST_MONTH("vs last month"),
-    LAST_YEAR("vs last year")
+private enum class ComparisonPeriod {
+    LAST_MONTH,
+    LAST_YEAR
+}
+
+@Composable
+private fun ComparisonPeriod.displayName(): String = when (this) {
+    ComparisonPeriod.LAST_MONTH -> stringResource(R.string.analytics_period_last_month)
+    ComparisonPeriod.LAST_YEAR -> stringResource(R.string.analytics_period_last_year)
 }
 
 @Composable
@@ -265,22 +293,22 @@ private fun PeriodComparisonSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ComparisonPeriod.entries.forEach { p ->
-                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.label) })
+                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.displayName()) })
             }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ComparisonStatCard("Income", comparisons?.income, moneyFormatter, Modifier.weight(1f))
-            ComparisonStatCard("Expenses", comparisons?.expenses, moneyFormatter, Modifier.weight(1f))
+            ComparisonStatCard(stringResource(R.string.analytics_label_income), comparisons?.income, moneyFormatter, Modifier.weight(1f))
+            ComparisonStatCard(stringResource(R.string.analytics_label_expenses), comparisons?.expenses, moneyFormatter, Modifier.weight(1f))
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            ComparisonStatCard("Savings", comparisons?.savings, moneyFormatter, Modifier.weight(1f))
-            ComparisonStatCard("Savings rate", comparisons?.savingsRatePercent, percentFormatter, Modifier.weight(1f))
+            ComparisonStatCard(stringResource(R.string.analytics_label_savings), comparisons?.savings, moneyFormatter, Modifier.weight(1f))
+            ComparisonStatCard(stringResource(R.string.analytics_savings_rate), comparisons?.savingsRatePercent, percentFormatter, Modifier.weight(1f))
         }
     }
 }
@@ -340,10 +368,10 @@ private fun NetWorthComparisonCard(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ComparisonPeriod.entries.forEach { p ->
-                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.label) })
+                FilterChip(selected = period == p, onClick = { period = p }, label = { Text(p.displayName()) })
             }
         }
-        ComparisonStatCard("Net worth", comparisons?.netWorth, { value -> formatMoney(value, currency) })
+        ComparisonStatCard(stringResource(R.string.analytics_label_net_worth), comparisons?.netWorth, { value -> formatMoney(value, currency) })
     }
 }
 
@@ -357,7 +385,7 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
     var horizon by remember { mutableStateOf(HistoryHorizon.ONE_YEAR) }
 
     if (snapshots.isEmpty()) {
-        EmptyState("No history yet — mark a budget as completed to record your first snapshot.")
+        EmptyState(stringResource(R.string.analytics_empty_no_history))
         return
     }
 
@@ -375,14 +403,15 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
 
         val labels = visible.map { it.label }
         val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), currency) }
+        val netWorthLabel = stringResource(R.string.analytics_label_net_worth)
 
         SwipeableTrendChartCard(
-            title = "Account balances",
+            title = stringResource(R.string.analytics_chart_account_balances),
             labels = labels,
             series = listOf(
-                ChartSeries("Cash & Checking", PieChartColors[0], visible.map { it.cashAndChecking.toFloat() }),
-                ChartSeries("Savings", PieChartColors[1], visible.map { it.savings.toFloat() }),
-                ChartSeries("Investments", PieChartColors[2], visible.map { it.investments.toFloat() })
+                ChartSeries(stringResource(R.string.analytics_label_cash_and_checking), PieChartColors[0], visible.map { it.cashAndChecking.toFloat() }),
+                ChartSeries(stringResource(R.string.analytics_label_savings), PieChartColors[1], visible.map { it.savings.toFloat() }),
+                ChartSeries(stringResource(R.string.analytics_label_investments), PieChartColors[2], visible.map { it.investments.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
@@ -390,43 +419,43 @@ private fun SnapshotHistoryPage(viewModel: AnalyticsViewModel) {
         NetWorthComparisonCard(monthOverMonth, yearOverYear, currency)
 
         SwipeableTrendChartCard(
-            title = "Net worth",
+            title = netWorthLabel,
             labels = labels,
             series = listOf(
-                ChartSeries("Net worth", PieChartColors[4], visible.map { it.netWorth.toFloat() })
+                ChartSeries(netWorthLabel, PieChartColors[4], visible.map { it.netWorth.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
 
         if (visibleGrowth.isNotEmpty()) {
             SwipeableTrendChartCard(
-                title = "Net worth growth rate",
+                title = stringResource(R.string.analytics_chart_net_worth_growth_rate),
                 labels = visibleGrowth.map { it.label },
                 series = listOf(
-                    ChartSeries("MoM %", PieChartColors[2], visibleGrowth.map { it.momPercent?.toFloat() }),
-                    ChartSeries("YoY %", PieChartColors[4], visibleGrowth.map { it.yoyPercent?.toFloat() })
+                    ChartSeries(stringResource(R.string.analytics_label_mom_percent), PieChartColors[2], visibleGrowth.map { it.momPercent?.toFloat() }),
+                    ChartSeries(stringResource(R.string.analytics_label_yoy_percent), PieChartColors[4], visibleGrowth.map { it.yoyPercent?.toFloat() })
                 ),
                 valueFormatter = { value -> "${value.toInt()}%" }
             )
         }
 
         SwipeableTrendChartCard(
-            title = "Income by source",
+            title = stringResource(R.string.analytics_chart_income_by_source),
             labels = labels,
             series = listOf(
-                ChartSeries("Salary", PieChartColors[0], visible.map { it.salaryIncome.toFloat() }),
-                ChartSeries("Dividends", PieChartColors[1], visible.map { it.dividendsIncome.toFloat() }),
-                ChartSeries("Interest", PieChartColors[3], visible.map { it.interestIncome.toFloat() }),
-                ChartSeries("Other", PieChartColors[5], visible.map { it.otherIncome.toFloat() })
+                ChartSeries(stringResource(R.string.analytics_label_salary), PieChartColors[0], visible.map { it.salaryIncome.toFloat() }),
+                ChartSeries(stringResource(R.string.analytics_label_dividends), PieChartColors[1], visible.map { it.dividendsIncome.toFloat() }),
+                ChartSeries(stringResource(R.string.analytics_label_interest), PieChartColors[3], visible.map { it.interestIncome.toFloat() }),
+                ChartSeries(stringResource(R.string.analytics_label_other), PieChartColors[5], visible.map { it.otherIncome.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
 
         SwipeableTrendChartCard(
-            title = "Investment growth (net of contributions)",
+            title = stringResource(R.string.analytics_chart_investment_growth),
             labels = labels,
             series = listOf(
-                ChartSeries("Growth", PieChartColors[5], visible.map { it.investmentGrowth?.toFloat() })
+                ChartSeries(stringResource(R.string.analytics_label_growth), PieChartColors[5], visible.map { it.investmentGrowth?.toFloat() })
             ),
             valueFormatter = moneyFormatter
         )
@@ -445,7 +474,7 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
 
     if (categoryBreakdown.isEmpty() && accountBreakdown.isEmpty() && currencyBreakdown.isEmpty() && yearlyHistory.isEmpty()) {
-        EmptyState("No investments yet — add one from the Investments tab to see a breakdown.")
+        EmptyState(stringResource(R.string.analytics_empty_no_investments))
         return
     }
 
@@ -457,32 +486,32 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         if (treemap.isNotEmpty()) {
-            TreemapChartCard(title = "Investments by size", items = treemap)
+            TreemapChartCard(title = stringResource(R.string.analytics_chart_investments_by_size), items = treemap)
         }
 
-        PieChartCard(title = "Investments by category", slices = categoryBreakdown)
-        PieChartCard(title = "Investments by account", slices = accountBreakdown)
-        PieChartCard(title = "Investments by currency", slices = currencyBreakdown)
+        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_category), slices = categoryBreakdown)
+        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_account), slices = accountBreakdown)
+        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_currency), slices = currencyBreakdown)
 
         if (yearlyHistory.isNotEmpty()) {
             val labels = yearlyHistory.map { it.year.toString() }
             val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
 
             SwipeableTrendChartCard(
-                title = "Realized gains/losses by year",
+                title = stringResource(R.string.analytics_chart_realized_gains_by_year),
                 labels = labels,
                 series = listOf(
-                    ChartSeries("Realized", PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
+                    ChartSeries(stringResource(R.string.analytics_label_realized), PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
                 ),
                 valueFormatter = moneyFormatter
             )
 
             TrendChartCard(
-                title = "Contributions by year",
+                title = stringResource(R.string.analytics_chart_contributions_by_year),
                 labels = labels,
                 series = listOf(
-                    ChartSeries("Invested", PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() }),
-                    ChartSeries("Deposited", PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() })
+                    ChartSeries(stringResource(R.string.analytics_label_invested), PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() }),
+                    ChartSeries(stringResource(R.string.analytics_label_deposited), PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() })
                 ),
                 valueFormatter = moneyFormatter
             )
@@ -505,15 +534,15 @@ private fun AllTimeGainsCard(summary: PortfolioGainsSummary, baseCurrency: Curre
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("All-time gains", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.analytics_all_time_gains), style = MaterialTheme.typography.titleMedium)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                GainStat("Realized", summary.realizedGainLoss, baseCurrency)
-                GainStat("Unrealized", summary.unrealizedGainLoss, baseCurrency)
+                GainStat(stringResource(R.string.analytics_label_realized), summary.realizedGainLoss, baseCurrency)
+                GainStat(stringResource(R.string.analytics_label_unrealized), summary.unrealizedGainLoss, baseCurrency)
             }
         }
     }
@@ -542,7 +571,7 @@ private fun PerformanceByPositionCard(performance: List<InvestmentPerformancePoi
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("Performance by position", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.analytics_performance_by_position), style = MaterialTheme.typography.titleMedium)
             performance.forEach { point ->
                 Row(
                     modifier = Modifier
@@ -560,12 +589,12 @@ private fun PerformanceByPositionCard(performance: List<InvestmentPerformancePoi
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Text(
-                            "XIRR ${point.xirr?.let { "${it.toInt()}%" } ?: "—"}",
+                            stringResource(R.string.analytics_xirr_value, point.xirr?.let { "${it.toInt()}%" } ?: "—"),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            "CAGR ${point.cagr?.let { "${it.toInt()}%" } ?: "—"} (${point.currency.name})",
+                            stringResource(R.string.analytics_cagr_value, point.cagr?.let { "${it.toInt()}%" } ?: "—", point.currency.name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -588,7 +617,7 @@ private fun HistoryHorizonSelector(selected: HistoryHorizon, onSelect: (HistoryH
             FilterChip(
                 selected = selected == horizon,
                 onClick = { onSelect(horizon) },
-                label = { Text(horizon.label) }
+                label = { Text(horizon.displayName()) }
             )
         }
     }

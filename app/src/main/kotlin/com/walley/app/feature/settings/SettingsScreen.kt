@@ -39,20 +39,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.biometric.biometricsAvailable
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import com.walley.app.core.ui.FieldHint
 import com.walley.app.core.ui.WalleyTopBar
+import com.walley.app.domain.model.AppLanguage
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.CATEGORY_TARGET_SECTIONS
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
-private val TABS = listOf("General", "Budget")
+private val TAB_LABELS = listOf(R.string.settings_tab_general, R.string.settings_tab_budget)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +67,7 @@ fun SettingsScreen(
     onOpenBackupRestore: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val pagerState = rememberPagerState(pageCount = { TABS.size })
+    val pagerState = rememberPagerState(pageCount = { TAB_LABELS.size })
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -77,11 +82,11 @@ fun SettingsScreen(
                 .fillMaxSize()
         ) {
             TabRow(selectedTabIndex = pagerState.currentPage) {
-                TABS.forEachIndexed { index, label ->
+                TAB_LABELS.forEachIndexed { index, labelRes ->
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(label) }
+                        text = { Text(stringResource(labelRes)) }
                     )
                 }
             }
@@ -107,6 +112,7 @@ private fun GeneralSettingsPage(
 ) {
     val darkModeOverride by viewModel.darkModeOverride.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val language by viewModel.language.collectAsStateWithLifecycle()
     val includeSavingsInNetWorth by viewModel.includeSavingsInNetWorth.collectAsStateWithLifecycle()
     val fingerprintUnlock by viewModel.fingerprintUnlock.collectAsStateWithLifecycle()
     val changePinError by viewModel.changePinError.collectAsStateWithLifecycle()
@@ -114,16 +120,18 @@ private fun GeneralSettingsPage(
     val yahooFinanceEnabled by viewModel.yahooFinanceEnabled.collectAsStateWithLifecycle()
     val isDarkMode = darkModeOverride ?: isSystemInDarkTheme()
     var currencyMenuExpanded by remember { mutableStateOf(false) }
+    var languageMenuExpanded by remember { mutableStateOf(false) }
     var showChangePinDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     val context = LocalContext.current
     val biometricsAvailable = remember { biometricsAvailable(context) }
+    val pinChangedMessage = stringResource(R.string.settings_pin_changed)
 
     LaunchedEffect(changePinSuccess) {
         if (changePinSuccess) {
             showChangePinDialog = false
-            scope.launch { snackbarHostState.showSnackbar("PIN changed") }
+            scope.launch { snackbarHostState.showSnackbar(pinChangedMessage) }
             viewModel.dismissChangePinResult()
         }
     }
@@ -139,7 +147,7 @@ private fun GeneralSettingsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Dark mode", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_dark_mode), style = MaterialTheme.typography.bodyLarge)
             Switch(checked = isDarkMode, onCheckedChange = viewModel::setDarkMode)
         }
 
@@ -149,10 +157,10 @@ private fun GeneralSettingsPage(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Fingerprint unlock", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.settings_fingerprint_unlock), style = MaterialTheme.typography.bodyLarge)
                 if (!biometricsAvailable) {
                     Text(
-                        "No fingerprint enrolled on this device",
+                        stringResource(R.string.settings_no_fingerprint_enrolled),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -170,7 +178,7 @@ private fun GeneralSettingsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Base currency", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_base_currency), style = MaterialTheme.typography.bodyLarge)
             ExposedDropdownMenuBox(
                 expanded = currencyMenuExpanded,
                 onExpandedChange = { currencyMenuExpanded = it }
@@ -207,12 +215,46 @@ private fun GeneralSettingsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Include savings in net worth", style = MaterialTheme.typography.bodyLarge)
-                FieldHint(
-                    "Virtual Saving accounts are always excluded, since their balance already " +
-                        "sits in another account."
+            Text(stringResource(R.string.settings_language), style = MaterialTheme.typography.bodyLarge)
+            ExposedDropdownMenuBox(
+                expanded = languageMenuExpanded,
+                onExpandedChange = { languageMenuExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = language.displayLabel(),
+                    onValueChange = {},
+                    readOnly = true,
+                    singleLine = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = languageMenuExpanded) },
+                    modifier = Modifier
+                        .width(160.dp)
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
+                ExposedDropdownMenu(
+                    expanded = languageMenuExpanded,
+                    onDismissRequest = { languageMenuExpanded = false }
+                ) {
+                    AppLanguage.entries.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option.displayLabel()) },
+                            onClick = {
+                                viewModel.setLanguage(option)
+                                languageMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.settings_include_savings_in_net_worth), style = MaterialTheme.typography.bodyLarge)
+                FieldHint(stringResource(R.string.settings_include_savings_hint))
             }
             Switch(checked = includeSavingsInNetWorth, onCheckedChange = viewModel::setIncludeSavingsInNetWorth)
         }
@@ -222,9 +264,9 @@ private fun GeneralSettingsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("PIN", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_pin), style = MaterialTheme.typography.bodyLarge)
             TextButton(onClick = { showChangePinDialog = true }) {
-                Text("Change PIN")
+                Text(stringResource(R.string.settings_change_pin))
             }
         }
 
@@ -234,12 +276,8 @@ private fun GeneralSettingsPage(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(modifier = Modifier.weight(1f).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Yahoo Finance integration", style = MaterialTheme.typography.bodyLarge)
-                FieldHint(
-                    "Lets Update Prices fetch current market prices automatically. Uses an unofficial, " +
-                        "free Yahoo Finance endpoint — no account or key needed, but it isn't guaranteed " +
-                        "to stay working."
-                )
+                Text(stringResource(R.string.settings_yahoo_finance_integration), style = MaterialTheme.typography.bodyLarge)
+                FieldHint(stringResource(R.string.settings_yahoo_finance_hint))
             }
             Switch(checked = yahooFinanceEnabled, onCheckedChange = viewModel::setYahooFinanceEnabled)
         }
@@ -249,16 +287,16 @@ private fun GeneralSettingsPage(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Backup & Restore", style = MaterialTheme.typography.bodyLarge)
+            Text(stringResource(R.string.settings_backup_restore), style = MaterialTheme.typography.bodyLarge)
             TextButton(onClick = onOpenBackupRestore) {
-                Text("Open")
+                Text(stringResource(R.string.settings_open))
             }
         }
     }
 
     if (showChangePinDialog) {
         ChangePinDialog(
-            errorMessage = changePinError,
+            hasError = changePinError,
             onCurrentPinChanged = viewModel::dismissChangePinResult,
             onDismiss = {
                 showChangePinDialog = false
@@ -282,8 +320,7 @@ private fun BudgetSettingsPage(viewModel: SettingsViewModel) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "Set a target % of disposable income for each category. Fixed/Other costs and Savings " +
-                "warn you if you go over; Investments shows a checkmark once you reach the goal.",
+            stringResource(R.string.settings_category_target_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -297,6 +334,14 @@ private fun BudgetSettingsPage(viewModel: SettingsViewModel) {
     }
 }
 
+/** English/Polish are shown as autonyms (each in its own language), matching standard language-picker UX. */
+@Composable
+private fun AppLanguage.displayLabel(): String = when (this) {
+    AppLanguage.SYSTEM -> stringResource(R.string.settings_language_system)
+    AppLanguage.ENGLISH -> "English"
+    AppLanguage.POLISH -> "Polski"
+}
+
 @Composable
 private fun CategoryTargetField(
     section: BudgetSectionType,
@@ -306,21 +351,21 @@ private fun CategoryTargetField(
     // Not re-keyed on `value` — this field is the source of truth while typing; re-keying would
     // reset the text mid-edit once the debounced persistence round-trips back through the flow.
     var text by remember { mutableStateOf(value?.toPlainString() ?: "") }
-    val parsed = text.toBigDecimalOrNull()
+    val parsed = text.toBigDecimalOrNullLenient()
     val isError = text.isNotBlank() && parsed == null
 
     OutlinedTextField(
         value = text,
         onValueChange = { newText ->
             text = newText
-            val newParsed = newText.toBigDecimalOrNull()
+            val newParsed = newText.toBigDecimalOrNullLenient()
             if (newText.isBlank()) {
                 onValueChange(null)
             } else if (newParsed != null) {
                 onValueChange(newParsed)
             }
         },
-        label = { Text("${section.label} target %") },
+        label = { Text(stringResource(R.string.settings_category_target_label, section.displayName())) },
         singleLine = true,
         isError = isError,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),

@@ -1,8 +1,10 @@
 package com.walley.app.feature.budget
 
+import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.R
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetIsCompletedException
@@ -21,6 +23,7 @@ import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.IncomeCategory
 import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import javax.inject.Inject
@@ -44,7 +47,8 @@ class BudgetDetailViewModel @Inject constructor(
     assetRepository: AssetRepository,
     liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
-    exchangeRateRepository: ExchangeRateRepository
+    exchangeRateRepository: ExchangeRateRepository,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val budgetId: Long = checkNotNull(savedStateHandle["budgetId"])
@@ -142,7 +146,7 @@ class BudgetDetailViewModel @Inject constructor(
                 budgetRepository.deleteBudget(budgetId)
                 onDeleted()
             } catch (e: BudgetIsCompletedException) {
-                _deleteBlockedMessage.value = "This budget is marked as completed and can't be deleted."
+                _deleteBlockedMessage.value = context.getString(R.string.budget_delete_blocked_completed)
             }
         }
     }

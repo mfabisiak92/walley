@@ -1,7 +1,9 @@
 package com.walley.app.feature.accounts
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.R
 import com.walley.app.data.repository.AccountHasLinkedActiveBudgetException
 import com.walley.app.data.repository.AccountHasLinkedInvestmentsException
 import com.walley.app.data.repository.AccountRepository
@@ -23,6 +25,7 @@ import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.SortDirection
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.time.LocalDate
 import javax.inject.Inject
@@ -39,6 +42,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AccountsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val repository: AccountRepository,
     settingsRepository: SettingsRepository,
     budgetRepository: BudgetRepository,

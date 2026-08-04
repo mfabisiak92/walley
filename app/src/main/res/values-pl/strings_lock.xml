@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LockScreen -->
+    <string name="lock_unlock_walley">Odblokuj Walley</string>
+    <string name="lock_use_pin">Użyj PIN-u</string>
+    <string name="lock_screen_title">Walley jest zablokowana</string>
+    <string name="lock_pin_label">PIN</string>
+    <string name="lock_wrong_pin">Nieprawidłowy PIN — spróbuj ponownie.</string>
+    <string name="lock_unlock_button">Odblokuj</string>
+    <string name="lock_use_fingerprint">Użyj odcisku palca</string>
+
+    <!-- PinSetupScreen -->
+    <string name="lock_setup_confirm_title">Potwierdź swój PIN</string>
+    <string name="lock_setup_title">Ustaw PIN</string>
+    <string name="lock_setup_confirm_body">Wprowadź ten sam PIN ponownie, aby potwierdzić.</string>
+    <string name="lock_setup_body">Zabezpiecz dostęp do Walley %1$d-%2$d cyfrowym PIN-em.</string>
+    <string name="lock_setup_pin_mismatch">PIN-y się nie zgadzają — spróbuj ponownie.</string>
+    <string name="lock_setup_confirm_button">Potwierdź PIN</string>
+    <string name="lock_setup_continue_button">Dalej</string>
+</resources>

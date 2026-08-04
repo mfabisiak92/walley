@@ -1,5 +1,7 @@
 package com.walley.app.feature.analytics
 
+import android.content.Context
+import com.walley.app.R
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.BudgetWithItems
 import com.walley.app.domain.model.Currency
@@ -11,15 +13,13 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val CATEGORIZED_SECTIONS = setOf(BudgetSectionType.FIXED_COSTS, BudgetSectionType.OTHER_COSTS)
-private const val UNCATEGORIZED_LABEL = "Uncategorized"
-private const val OTHER_LABEL = "Other"
 
 data class CategoryAmounts(val planned: BigDecimal, val paid: BigDecimal)
 
 data class CategorySpendPoint(
     val yearMonth: YearMonth,
     val label: String,
-    /** Keyed by the item's icon label (or [UNCATEGORIZED_LABEL]); only categories with an item that month appear. */
+    /** Keyed by the item's icon label (or the "uncategorized" placeholder); only categories with an item that month appear. */
     val amountsByCategory: Map<String, CategoryAmounts>
 )
 
@@ -33,7 +33,8 @@ data class CategorySpendPoint(
 fun categorySpendHistory(
     budgetsWithItems: List<BudgetWithItems>,
     targetCurrency: Currency,
-    rates: ExchangeRates?
+    rates: ExchangeRates?,
+    context: Context
 ): List<CategorySpendPoint> = budgetsWithItems.map { budgetWithItems ->
     val amounts = mutableMapOf<String, CategoryAmounts>()
     for (item in budgetWithItems.items) {
@@ -41,7 +42,7 @@ fun categorySpendHistory(
         val plannedConverted = convertToCurrency(item.amount, item.currency, targetCurrency, rates)
         val paidConverted = convertToCurrency(item.paidAmount, item.currency, targetCurrency, rates)
         if (plannedConverted == null && paidConverted == null) continue
-        val category = item.icon?.label ?: UNCATEGORIZED_LABEL
+        val category = item.icon?.label ?: context.getString(R.string.analytics_uncategorized)
         val existing = amounts[category] ?: CategoryAmounts(BigDecimal.ZERO, BigDecimal.ZERO)
         amounts[category] = CategoryAmounts(
             planned = existing.planned + (plannedConverted ?: BigDecimal.ZERO),
@@ -76,7 +77,7 @@ data class CappedCategorySpend(
  * bucket appended last. A month with no item for a category contributes 0, not null — a stacked
  * chart can't skip a slice without changing what the bar's total height means.
  */
-fun capToTopCategories(points: List<CategorySpendPoint>, topN: Int = 5): CappedCategorySpend {
+fun capToTopCategories(points: List<CategorySpendPoint>, context: Context, topN: Int = 5): CappedCategorySpend {
     val ranked = distinctCategories(points)
     val topCategories = ranked.take(topN)
     val hasOther = ranked.size > topN
@@ -84,7 +85,7 @@ fun capToTopCategories(points: List<CategorySpendPoint>, topN: Int = 5): CappedC
     val topSeries = topCategories.map { category ->
         points.map { point -> (point.amountsByCategory[category]?.paid ?: BigDecimal.ZERO).toFloat() }
     }
-    val labels = if (hasOther) topCategories + OTHER_LABEL else topCategories
+    val labels = if (hasOther) topCategories + context.getString(R.string.analytics_label_other) else topCategories
     val series = if (hasOther) {
         val otherSeries = points.map { point ->
             point.amountsByCategory

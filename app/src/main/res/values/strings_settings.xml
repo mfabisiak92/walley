@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tab_general">General</string>
+    <string name="settings_tab_budget">Budget</string>
+
+    <string name="settings_dark_mode">Dark mode</string>
+    <string name="settings_fingerprint_unlock">Fingerprint unlock</string>
+    <string name="settings_no_fingerprint_enrolled">No fingerprint enrolled on this device</string>
+    <string name="settings_base_currency">Base currency</string>
+    <string name="settings_language">Language</string>
+    <string name="settings_language_system">System default</string>
+    <string name="settings_include_savings_in_net_worth">Include savings in net worth</string>
+    <string name="settings_include_savings_hint">Virtual Saving accounts are always excluded, since their balance already sits in another account.</string>
+    <string name="settings_pin">PIN</string>
+    <string name="settings_change_pin">Change PIN</string>
+    <string name="settings_yahoo_finance_integration">Yahoo Finance integration</string>
+    <string name="settings_yahoo_finance_hint">Lets Update Prices fetch current market prices automatically. Uses an unofficial, free Yahoo Finance endpoint — no account or key needed, but it isn\'t guaranteed to stay working.</string>
+    <string name="settings_backup_restore">Backup &amp; Restore</string>
+    <string name="settings_open">Open</string>
+    <string name="settings_pin_changed">PIN changed</string>
+
+    <string name="settings_category_target_hint">Set a target % of disposable income for each category. Fixed/Other costs and Savings warn you if you go over; Investments shows a checkmark once you reach the goal.</string>
+    <string name="settings_category_target_label">%1$s target %%</string>
+
+    <string name="settings_current_pin">Current PIN</string>
+    <string name="settings_new_pin_hint">New PIN (%1$d-%2$d digits)</string>
+    <string name="settings_confirm_new_pin">Confirm new PIN</string>
+    <string name="settings_pins_dont_match">PINs don\'t match</string>
+    <string name="settings_change">Change</string>
+    <string name="settings_cancel">Cancel</string>
+    <string name="settings_pin_incorrect">Current PIN is incorrect</string>
+</resources>

@@ -18,6 +18,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -25,8 +26,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.domain.model.Currency
 import java.math.BigDecimal
 import java.time.Instant
@@ -54,13 +57,13 @@ fun AddLiabilityDialog(
     var currencyMenuExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val parsedOriginalAmount = originalAmountText.toBigDecimalOrNull()
-    val parsedCurrentBalance = currentBalanceText.toBigDecimalOrNull() ?: parsedOriginalAmount
+    val parsedOriginalAmount = originalAmountText.toBigDecimalOrNullLenient()
+    val parsedCurrentBalance = currentBalanceText.toBigDecimalOrNullLenient() ?: parsedOriginalAmount
     val isValid = name.isNotBlank() && parsedOriginalAmount != null && parsedCurrentBalance != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add liability") },
+        title = { Text(stringResource(R.string.assets_add_liability)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -69,7 +72,7 @@ fun AddLiabilityDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.assets_label_name)) },
                     singleLine = true
                 )
                 ExposedDropdownMenuBox(
@@ -80,7 +83,7 @@ fun AddLiabilityDialog(
                         value = currency.name,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Currency") },
+                        label = { Text(stringResource(R.string.assets_label_currency)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyMenuExpanded) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
@@ -102,7 +105,7 @@ fun AddLiabilityDialog(
                 OutlinedTextField(
                     value = originalAmountText,
                     onValueChange = { originalAmountText = it },
-                    label = { Text("Original amount") },
+                    label = { Text(stringResource(R.string.assets_label_original_amount)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = originalAmountText.isNotBlank() && parsedOriginalAmount == null
@@ -110,16 +113,16 @@ fun AddLiabilityDialog(
                 OutlinedTextField(
                     value = currentBalanceText,
                     onValueChange = { currentBalanceText = it },
-                    label = { Text("Current balance (optional, defaults to original amount)") },
+                    label = { Text(stringResource(R.string.assets_label_current_balance_optional)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    isError = currentBalanceText.isNotBlank() && currentBalanceText.toBigDecimalOrNull() == null
+                    isError = currentBalanceText.isNotBlank() && currentBalanceText.toBigDecimalOrNullLenient() == null
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Start date")
+                    Text(stringResource(R.string.assets_label_start_date))
                     TextButton(onClick = { showDatePicker = true }) {
                         Text(startDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
                     }
@@ -132,10 +135,10 @@ fun AddLiabilityDialog(
                     onConfirm(name.trim(), currency, parsedOriginalAmount!!, parsedCurrentBalance!!, startDate)
                 },
                 enabled = isValid
-            ) { Text("Add") }
+            ) { Text(stringResource(R.string.assets_action_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.assets_action_cancel)) }
         }
     )
 
@@ -153,10 +156,10 @@ fun AddLiabilityDialog(
                         }
                         showDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.assets_action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.assets_action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

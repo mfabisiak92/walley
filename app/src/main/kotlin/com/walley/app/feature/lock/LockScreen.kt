@@ -24,11 +24,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.biometric.biometricsAvailable
 import com.walley.app.core.biometric.promptBiometrics
 
@@ -46,12 +48,15 @@ fun LockScreen(
     val biometricsAvailable = remember { biometricsAvailable(context) }
     val showFingerprint = fingerprintEnabled && biometricsAvailable && activity != null
 
+    val unlockWalleyTitle = stringResource(R.string.lock_unlock_walley)
+    val usePinLabel = stringResource(R.string.lock_use_pin)
+
     fun promptBiometrics() {
         promptBiometrics(
             activity = activity!!,
             context = context,
-            title = "Unlock Walley",
-            negativeButtonText = "Use PIN",
+            title = unlockWalleyTitle,
+            negativeButtonText = usePinLabel,
             onSuccess = viewModel::unlockWithBiometrics
         )
     }
@@ -75,20 +80,20 @@ fun LockScreen(
                 modifier = Modifier.size(48.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-            Text("Walley is locked", style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(R.string.lock_screen_title), style = MaterialTheme.typography.headlineSmall)
             OutlinedTextField(
                 value = pinInput,
                 onValueChange = {
                     pinInput = sanitizePinInput(it)
                     viewModel.clearPinError()
                 },
-                label = { Text("PIN") },
+                label = { Text(stringResource(R.string.lock_pin_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 visualTransformation = PasswordVisualTransformation(),
                 isError = pinError,
                 supportingText = if (pinError) {
-                    { Text("Wrong PIN — try again.") }
+                    { Text(stringResource(R.string.lock_wrong_pin)) }
                 } else null
             )
             Button(
@@ -98,11 +103,11 @@ fun LockScreen(
                 },
                 enabled = pinInput.length in PIN_MIN_LENGTH..PIN_MAX_LENGTH
             ) {
-                Text("Unlock")
+                Text(stringResource(R.string.lock_unlock_button))
             }
             if (showFingerprint) {
                 TextButton(onClick = { promptBiometrics() }) {
-                    Text("Use fingerprint")
+                    Text(stringResource(R.string.lock_use_fingerprint))
                 }
             }
         }

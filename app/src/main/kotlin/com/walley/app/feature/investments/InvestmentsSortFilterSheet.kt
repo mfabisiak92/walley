@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +37,7 @@ import com.walley.app.domain.model.InvestmentsFilterState
 import com.walley.app.domain.model.InvestmentsSortState
 import com.walley.app.domain.model.PositionStatusFilter
 import com.walley.app.domain.model.SortDirection
+import com.walley.app.domain.model.displayName
 
 /**
  * Combined sort/filter sheet for the Portfolio list, opened from the funnel icon next to the tabs in
@@ -68,7 +71,7 @@ fun InvestmentsSortFilterSheet(
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 24.dp)
         ) {
-            Text("Sort & filter", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.investments_sort_filter_title), style = MaterialTheme.typography.titleLarge)
             Text(
                 "Changes apply immediately and are remembered next time you open Portfolio.",
                 style = MaterialTheme.typography.bodySmall,
@@ -113,7 +116,7 @@ fun InvestmentsSortFilterSheet(
                         FilterChip(
                             selected = category in filterState.categories,
                             onClick = { onCategoryToggled(category) },
-                            label = { Text(category.label) }
+                            label = { Text(category.displayName()) }
                         )
                     }
                 }
@@ -163,8 +166,8 @@ fun InvestmentsSortFilterSheet(
                     .padding(top = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(onClick = onReset) { Text("Reset") }
-                Button(onClick = onDismiss) { Text("Done") }
+                TextButton(onClick = onReset) { Text(stringResource(R.string.investments_action_reset)) }
+                Button(onClick = onDismiss) { Text(stringResource(R.string.investments_action_done)) }
             }
         }
     }

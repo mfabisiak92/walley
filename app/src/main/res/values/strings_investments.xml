@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common actions -->
+    <string name="investments_action_cancel">Cancel</string>
+    <string name="investments_action_ok">OK</string>
+    <string name="investments_action_save">Save</string>
+    <string name="investments_action_add">Add</string>
+    <string name="investments_action_close">Close</string>
+    <string name="investments_action_done">Done</string>
+    <string name="investments_action_reset">Reset</string>
+    <string name="investments_action_delete">Delete</string>
+    <string name="investments_action_reset_all">Reset all</string>
+    <string name="investments_action_reset_filters">Reset filters</string>
+    <string name="investments_action_save_all">Save all</string>
+    <string name="investments_action_buy">Buy</string>
+    <string name="investments_action_sell">Sell</string>
+
+    <!-- Common field labels -->
+    <string name="investments_label_name">Name</string>
+    <string name="investments_label_date">Date</string>
+    <string name="investments_label_status">Status</string>
+    <string name="investments_label_category">Category</string>
+    <string name="investments_label_account">Account</string>
+    <string name="investments_label_ticker">Ticker</string>
+    <string name="investments_label_ticker_optional">Ticker (optional)</string>
+    <string name="investments_label_note_optional">Note (optional)</string>
+    <string name="investments_label_external_ticker_optional">External ticker (optional, e.g. PZU.WA)</string>
+    <string name="investments_hint_external_ticker">Yahoo Finance symbol, for automatic price refresh</string>
+    <string name="investments_label_quantity">Quantity</string>
+    <string name="investments_label_type">Type</string>
+
+    <!-- Common content descriptions -->
+    <string name="investments_cd_back">Back</string>
+
+    <!-- AddEquityDialog -->
+    <string name="investments_add_equity_title">Add equity</string>
+
+    <!-- AddEquityNoteDialog -->
+    <string name="investments_note_dialog_title_add">Add note</string>
+    <string name="investments_note_dialog_title_edit">Edit note</string>
+
+    <!-- AddInvestmentDialog -->
+    <string name="investments_add_investment_title">Add investment</string>
+    <string name="investments_add_investment_no_account_warning">You need an investment account before adding an investment. Create one from the Accounts screen first.</string>
+    <string name="investments_label_purchase_date">Purchase date</string>
+    <string name="investments_label_price_per_unit">Price per unit</string>
+    <string name="investments_label_price_per_unit_currency">Price per unit (%1$s)</string>
+    <string name="investments_label_current_price_optional">Current price (optional, defaults to price per unit)</string>
+    <string name="investments_label_commission">Commission</string>
+    <string name="investments_label_commission_currency">Commission (%1$s)</string>
+    <string name="investments_hint_defaults_to_commission">Defaults to %1$s from account settings</string>
+    <string name="investments_hint_defaults_to_commission_currency">Defaults to %1$s %2$s from account settings</string>
+    <string name="investments_hint_optional_default_commission">Optional — leave blank to use the account\'s default</string>
+
+    <!-- AddInvestmentTransactionDialog -->
+    <string name="investments_edit_event_title">Edit event</string>
+    <string name="investments_add_type_title">Add %1$s</string>
+    <string name="investments_hint_only_available_to_sell">Only %1$s available to sell as of this date</string>
+    <string name="investments_hint_only_cash_available">Only %1$s %2$s available in this account as of this date</string>
+
+    <!-- CashOperationsScreen -->
+    <string name="investments_tab_details">Details</string>
+    <string name="investments_tab_investments">Investments</string>
+    <string name="investments_tab_operations">Operations</string>
+    <string name="investments_empty_linked_investments">No investments linked to this account yet.</string>
+    <string name="investments_empty_cash_operations">No cash operations imported yet.</string>
+    <string name="investments_section_current">Current</string>
+    <string name="investments_section_this_year">This year</string>
+    <string name="investments_section_total">Total</string>
+    <string name="investments_label_current_account_balance">Current account balance</string>
+    <string name="investments_label_net_deposits">Net deposits</string>
+    <string name="investments_label_total_contribution">Total contribution</string>
+    <string name="investments_label_cost_basis">Cost basis</string>
+    <string name="investments_label_uninvested_cash">Uninvested cash</string>
+    <string name="investments_label_unrealized_gain">Unrealized gain</string>
+    <string name="investments_label_current_net">Current net</string>
+    <string name="investments_label_contribution">Contribution</string>
+    <string name="investments_label_realized_gain">Realized gain</string>
+    <string name="investments_label_net_realized_gain">Net realized gain</string>
+    <string name="investments_label_current_tax">Current tax (%1$s)</string>
+    <string name="investments_label_total_tax">Total tax (%1$s)</string>
+
+    <!-- EditInvestmentDialog -->
+    <string name="investments_edit_investment_title">Edit investment</string>
+    <string name="investments_edit_investment_no_account_warning">No investment account in %1$s exists yet. Create one from the Accounts screen to keep this investment.</string>
+
+    <!-- EquityDetailScreen -->
+    <string name="investments_equity_title_fallback">Equity</string>
+    <string name="investments_cd_delete_equity">Delete equity</string>
+    <string name="investments_cd_add_note">Add note</string>
+    <string name="investments_empty_notes">No notes yet — tap + to add one.</string>
+    <string name="investments_delete_note_title">Delete note?</string>
+    <string name="investments_delete_note_message">This will permanently delete this note. This cannot be undone.</string>
+    <string name="investments_delete_equity_title">Delete equity?</string>
+    <string name="investments_equity_fallback_name">this equity</string>
+    <string name="investments_delete_equity_message">This will permanently delete \"%1$s\" and all its notes. This cannot be undone.</string>
+    <string name="investments_label_linked_investments">Linked investments</string>
+    <string name="investments_none_yet">None yet</string>
+    <string name="investments_cd_edit_linked_investments">Edit linked investments</string>
+
+    <!-- ImportInvestmentsDialog -->
+    <string name="investments_import_title">Import investments</string>
+    <string name="investments_loading_reading_file">Reading file…</string>
+    <string name="investments_loading_importing">Importing…</string>
+    <string name="investments_import_done_singular">Imported 1 event</string>
+    <string name="investments_import_done_plural">Imported %1$d events</string>
+    <string name="investments_select_account_prompt">This file doesn\'t say which account it\'s for. Which investment account should these events be added to?</string>
+    <string name="investments_toggle_include_operations_label">Include deposits, transfers &amp; interest</string>
+    <string name="investments_toggle_include_operations_hint">Adjusts this account\'s balance by each deposit/transfer/interest amount and by what\'s spent on buys (including commission), so the ending balance matches the statement even starting from zero. Only import a file once with this on.</string>
+    <string name="investments_toggle_ignore_balance_label">Ignore account balance</string>
+    <string name="investments_toggle_ignore_balance_hint">This file doesn\'t record deposits, so the account\'s balance can\'t be trusted to cover these buys. Turn this on to import every buy/sell regardless of the account\'s recorded cash — its balance is left untouched either way.</string>
+    <string name="investments_status_trades_to_import">trades to import</string>
+    <string name="investments_status_bank_operations_to_import">bank operations to import</string>
+    <string name="investments_status_already_imported">already imported</string>
+    <string name="investments_status_rejected">rejected</string>
+    <string name="investments_import_button_count">Import %1$d</string>
+    <string name="investments_import_nothing">Nothing to import</string>
+    <string name="investments_import_row_trade">Row %1$d · %2$s %3$s</string>
+    <string name="investments_import_row_cash_operation">Row %1$d · %2$s</string>
+    <string name="investments_import_row_plain">Row %1$d</string>
+    <string name="investments_import_row_trade_detail">%1$s · %2$s · %3$s @ %4$s</string>
+    <string name="investments_import_row_cash_detail">%1$s · %2$s · %3$s</string>
+    <string name="investments_cd_will_import_cash">Will import as a cash operation</string>
+    <string name="investments_cd_will_import">Will import</string>
+    <string name="investments_cd_rejected">Rejected</string>
+    <string name="investments_cd_already_imported">Already imported</string>
+
+    <!-- InvestmentDetailScreen -->
+    <string name="investments_tab_overview">Overview</string>
+    <string name="investments_tab_events">Events</string>
+    <string name="investments_investment_title_fallback">Investment</string>
+    <string name="investments_cd_delete_investment">Delete investment</string>
+    <string name="investments_price_fallback_label">Price</string>
+    <string name="investments_price_snackbar_message">%1$s: %2$s</string>
+    <string name="investments_delete_event_title">Delete event?</string>
+    <string name="investments_delete_event_message">This will permanently delete this %1$s event. This cannot be undone.</string>
+    <string name="investments_investment_fallback_name">this investment</string>
+    <string name="investments_delete_investment_title">Delete investment?</string>
+    <string name="investments_delete_investment_message">This will permanently delete \"%1$s\" and all its buy/sell events. This cannot be undone.</string>
+    <string name="investments_label_current_value">Current value</string>
+    <string name="investments_label_current_price">Current price</string>
+    <string name="investments_label_avg_cost">Avg cost</string>
+    <string name="investments_label_first_purchase">First purchase</string>
+    <string name="investments_label_commission_paid">Commission paid</string>
+    <string name="investments_cd_refresh_price">Refresh price</string>
+    <string name="investments_label_realized_gain_loss">Realized gain/loss</string>
+    <string name="investments_unrealized_gain_text">%1$s unrealized</string>
+    <string name="investments_cd_edit_label">Edit %1$s</string>
+    <string name="investments_empty_events">No buy/sell events yet — tap Buy or Sell to add one.</string>
+    <string name="investments_year_events_one">%1$d · %2$d event</string>
+    <string name="investments_year_events_other">%1$d · %2$d events</string>
+
+    <!-- InvestmentsScreen -->
+    <string name="investments_tab_portfolio">Portfolio</string>
+    <string name="investments_tab_strategies">Strategies</string>
+    <string name="investments_cd_sort_filter">Sort and filter</string>
+    <string name="investments_status_closed">Closed</string>
+    <string name="investments_status_all">All statuses</string>
+    <string name="investments_sort_field_name">Name</string>
+    <string name="investments_sort_field_value">Value</string>
+    <string name="investments_sort_field_gain_loss_percent">Gain/loss %</string>
+    <string name="investments_sort_field_date_added">Date added</string>
+    <string name="investments_cd_import_file">Import from file</string>
+    <string name="investments_cd_update_prices">Update prices</string>
+    <string name="investments_cd_add_investment">Add investment</string>
+    <string name="investments_empty_investments">No investments yet — tap + to add one.</string>
+    <string name="investments_empty_filtered_positions">No positions match your filters.</string>
+
+    <!-- InvestmentsSortFilterSheet -->
+    <string name="investments_sort_filter_title">Sort &amp; filter</string>
+    <string name="investments_sort_filter_subtitle">Changes apply immediately and are remembered next time you open Portfolio.</string>
+    <string name="investments_section_sort_by">Sort by</string>
+    <string name="investments_section_status">Status</string>
+    <string name="investments_section_currency">Currency</string>
+    <string name="investments_sort_asc_alpha">A→Z</string>
+    <string name="investments_sort_desc_alpha">Z→A</string>
+    <string name="investments_sort_asc_value">Low→High</string>
+    <string name="investments_sort_desc_value">High→Low</string>
+    <string name="investments_sort_asc_gain">Worst first</string>
+    <string name="investments_sort_desc_gain">Best first</string>
+    <string name="investments_sort_asc_date">Oldest first</string>
+    <string name="investments_sort_desc_date">Newest first</string>
+    <string name="investments_status_open">Open</string>
+    <string name="investments_status_all_short">All</string>
+
+    <!-- LinkInvestmentsDialog -->
+    <string name="investments_link_investments_title">Link investments</string>
+    <string name="investments_empty_portfolio_for_linking">No investments in your portfolio yet.</string>
+
+    <!-- InvestmentAccountDropdown -->
+    <string name="investments_hint_select_account">Select an account</string>
+
+    <!-- StrategiesScreen -->
+    <string name="investments_cd_add_equity">Add equity</string>
+    <string name="investments_empty_equities">No equities tracked yet — tap + to add one.</string>
+    <string name="investments_status_transition">%1$s → %2$s</string>
+    <string name="investments_note_count_singular">%1$d note</string>
+    <string name="investments_note_count_plural">%1$d notes</string>
+
+    <!-- UpdatePricesScreen -->
+    <string name="investments_update_prices_title">Update prices</string>
+    <string name="investments_cd_refresh_all_prices">Refresh all prices from market</string>
+    <string name="investments_hint_enable_yahoo_finance">Enable Yahoo Finance integration in Settings to refresh prices automatically.</string>
+    <string name="investments_cd_refresh_price_for">Refresh price for %1$s</string>
+    <string name="investments_cd_warning">Warning</string>
+    <string name="investments_price_never_updated">Price never updated</string>
+    <string name="investments_price_not_updated_days_one">Not updated in %1$d day</string>
+    <string name="investments_price_not_updated_days_other">Not updated in %1$d days</string>
+    <string name="investments_cd_increased">Increased</string>
+    <string name="investments_cd_decreased">Decreased</string>
+    <string name="investments_price_was">was %1$s</string>
+
+    <!-- UpdateCurrentPriceDialog -->
+    <string name="investments_update_current_price_title">Update current price</string>
+    <string name="investments_label_current_price_currency">Current price (%1$s)</string>
+
+    <!-- ImportInvestmentsViewModel -->
+    <string name="investments_import_error_read_file">Couldn\'t read that file. Make sure it\'s a CSV file and try again.</string>
+    <string name="investments_import_error_no_account">Create an investment account first, then import into it.</string>
+    <string name="investments_import_error_no_rows">That file has no rows to import.</string>
+</resources>

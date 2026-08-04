@@ -1,7 +1,9 @@
 package com.walley.app.feature.analytics
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.InvestmentCategoryColors
 import com.walley.app.core.ui.PieChartColors
@@ -25,6 +27,7 @@ import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.cagr
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.xirr
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
@@ -34,6 +37,7 @@ import com.walley.app.feature.budget.plannedDisposableIncome
 import com.walley.app.feature.budget.sectionTotal
 import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.YearMonth
@@ -94,6 +98,7 @@ data class SnapshotPoint(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class AnalyticsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     budgetRepository: BudgetRepository,
     snapshotRepository: SnapshotRepository,
     investmentRepository: InvestmentRepository,
@@ -132,12 +137,12 @@ class AnalyticsViewModel @Inject constructor(
         nonDraftBudgetsWithItems,
         baseCurrencyRates
     ) { budgetsWithItems, (base, rates) ->
-        categorySpendHistory(budgetsWithItems, base, rates)
+        categorySpendHistory(budgetsWithItems, base, rates, context)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** [categorySpendPoints] reduced to the top 5 categories by total spend, plus an "Other" bucket. */
     val categorySpending: StateFlow<CappedCategorySpend> = categorySpendPoints
-        .map { points -> capToTopCategories(points) }
+        .map { points -> capToTopCategories(points, context) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CappedCategorySpend(emptyList(), emptyList()))
 
     /** Currency snapshot amounts are shown in — the most recently recorded snapshot's base currency. */
@@ -222,7 +227,7 @@ class AnalyticsViewModel @Inject constructor(
                 .filter { (_, value) -> value.signum() > 0 }
                 .map { (category, value) ->
                     PieSlice(
-                        label = category.label,
+                        label = category.displayName(context),
                         value = formatMoney(value, base),
                         percent = (value.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)).toFloat(),
                         color = InvestmentCategoryColors.getValue(category)
@@ -258,8 +263,9 @@ class AnalyticsViewModel @Inject constructor(
         baseCurrencyRates
     ) { investments, accounts, (base, rates) ->
         val accountNamesById = accounts.associate { it.id to it.name }
+        val unlinkedLabel = context.getString(R.string.analytics_unlinked_account)
         val totalsByAccountName = investments
-            .groupBy { data -> data.investment.accountId?.let { accountNamesById[it] } ?: "Unlinked" }
+            .groupBy { data -> data.investment.accountId?.let { accountNamesById[it] } ?: unlinkedLabel }
             .mapValues { (_, data) ->
                 data.fold(BigDecimal.ZERO) { acc, investment ->
                     acc + (convertToCurrency(investment.currentValue, investment.investment.currency, base, rates) ?: BigDecimal.ZERO)

@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +74,7 @@ import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.allowedAccountTypes
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.requiresAccount
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -198,7 +201,7 @@ fun BudgetDetailScreen(
                         Tab(
                             selected = pagerState.currentPage == index,
                             onClick = { tabScope.launch { pagerState.animateScrollToPage(index) } },
-                            text = { Text(tab.label) }
+                            text = { Text(tab.displayName()) }
                         )
                     }
                 }
@@ -309,7 +312,7 @@ fun BudgetDetailScreen(
     if (showAddSectionPicker) {
         AlertDialog(
             onDismissRequest = { showAddSectionPicker = false },
-            title = { Text("Add item") },
+            title = { Text(stringResource(R.string.budget_add_item)) },
             text = {
                 Column {
                     currentTab.sections.forEach { section ->
@@ -318,13 +321,13 @@ fun BudgetDetailScreen(
                                 addItemSection = section
                                 showAddSectionPicker = false
                             }
-                        ) { Text(section.label) }
+                        ) { Text(section.displayName()) }
                     }
                 }
             },
             confirmButton = {},
             dismissButton = {
-                TextButton(onClick = { showAddSectionPicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showAddSectionPicker = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -395,8 +398,8 @@ fun BudgetDetailScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete budget?") },
-            text = { Text("This will permanently delete this budget and all its items. This cannot be undone.") },
+            title = { Text(stringResource(R.string.budget_delete_budget_title)) },
+            text = { Text(stringResource(R.string.budget_delete_budget_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -404,10 +407,10 @@ fun BudgetDetailScreen(
                         viewModel.deleteBudget(onNavigateBack)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.budget_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -415,10 +418,10 @@ fun BudgetDetailScreen(
     deleteBlockedMessage?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteBlockedMessage,
-            title = { Text("Can't delete budget") },
+            title = { Text(stringResource(R.string.budget_cant_delete_budget_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text(stringResource(R.string.budget_ok)) }
             }
         )
     }
@@ -427,7 +430,7 @@ fun BudgetDetailScreen(
         val isEarly = budgetWithItems?.budget?.yearMonth?.atEndOfMonth()?.let { LocalDate.now().isBefore(it) } == true
         AlertDialog(
             onDismissRequest = { showCompleteConfirm = false },
-            title = { Text("Mark budget as completed?") },
+            title = { Text(stringResource(R.string.budget_mark_completed_title)) },
             text = {
                 Text(
                     (if (isEarly) {
@@ -447,10 +450,10 @@ fun BudgetDetailScreen(
                         showCompleteConfirm = false
                         viewModel.markCompleted()
                     }
-                ) { Text("Mark completed") }
+                ) { Text(stringResource(R.string.budget_mark_completed_button)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCompleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showCompleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -487,7 +490,7 @@ private fun SectionTabContent(
                     if (tab.sections.size > 1) {
                         item(key = "header_${section.name}") {
                             Text(
-                                section.label,
+                                section.displayName(),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                             )

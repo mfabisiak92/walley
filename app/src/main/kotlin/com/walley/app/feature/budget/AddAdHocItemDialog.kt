@@ -1,5 +1,8 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -51,7 +54,7 @@ fun AddAdHocItemDialog(
     var iconAutoAssigned by remember { mutableStateOf(initial?.icon == null) }
 
     val selectedAccount = accounts.find { it.id == selectedAccountId } ?: defaultAccount
-    val parsedAmount = amountText.toBigDecimalOrNull()
+    val parsedAmount = amountText.toBigDecimalOrNullLenient()
     val isValid = name.isNotBlank() && parsedAmount != null && parsedAmount.signum() > 0
 
     AlertDialog(
@@ -70,7 +73,7 @@ fun AddAdHocItemDialog(
                             suggestIconForName(it)?.let { suggested -> icon = suggested }
                         }
                     },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.budget_name_label)) },
                     singleLine = true
                 )
                 if (accounts.size > 1) {
@@ -84,12 +87,12 @@ fun AddAdHocItemDialog(
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount (${selectedAccount.currency.symbol})") },
+                    label = { Text(stringResource(R.string.budget_amount_with_currency, selectedAccount.currency.symbol)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && parsedAmount == null
                 )
-                Text("Icon", style = MaterialTheme.typography.labelLarge)
+                Text(stringResource(R.string.budget_icon_label), style = MaterialTheme.typography.labelLarge)
                 BudgetItemIconPicker(
                     options = EXPENSE_ICONS,
                     selected = icon,
@@ -107,7 +110,7 @@ fun AddAdHocItemDialog(
             ) { Text(if (initial != null) "Save" else "Add") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }
@@ -131,7 +134,7 @@ private fun AccountPicker(
             value = selectedAccount.name + if (selectedAccount.id == defaultAccount.id) " (default)" else "",
             onValueChange = {},
             readOnly = true,
-            label = { Text("Draw from") },
+            label = { Text(stringResource(R.string.budget_draw_from_label)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
         )

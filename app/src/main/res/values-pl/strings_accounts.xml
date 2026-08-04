@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Shared / generic terms reused across accounts screens and dialogs -->
+    <string name="accounts_name">Nazwa</string>
+    <string name="accounts_type">Typ</string>
+    <string name="accounts_currency">Waluta</string>
+    <string name="accounts_balance">Saldo</string>
+    <string name="accounts_date_added">Data dodania</string>
+    <string name="accounts_closed">Zamknięte</string>
+    <string name="accounts_virtual">Wirtualne</string>
+    <string name="accounts_real">Rzeczywiste</string>
+    <string name="accounts_all">Wszystkie</string>
+    <string name="accounts_reopen">Otwórz ponownie</string>
+    <string name="accounts_net_balance">Saldo netto</string>
+    <string name="accounts_invested_amount">Kwota zainwestowana</string>
+    <string name="accounts_uninvested_cash">Niezainwestowana gotówka</string>
+    <string name="accounts_target_date">Data docelowa</string>
+    <string name="accounts_tax_rate">Stawka podatkowa</string>
+    <string name="accounts_cancel">Anuluj</string>
+    <string name="accounts_ok">OK</string>
+    <string name="accounts_virtual_account_label">Konto wirtualne</string>
+    <string name="accounts_virtual_account_hint">Nie istnieje w rzeczywistości — jego saldo to w rzeczywistości wydzielona część środków innego konta, dlatego jest wykluczone z wartości netto i innych sum.</string>
+    <string name="accounts_uninvested_cash_hint">To gotówka, która nie została jeszcze zainwestowana. Całkowite saldo konta obejmuje również bieżącą wartość powiązanych inwestycji.</string>
+    <string name="accounts_commission_hint">Prowizja pobierana za każdą transakcję kupna/sprzedaży — w zależności, która z dwóch wartości jest wyższa. Używana domyślnie przy rejestrowaniu zdarzenia, ale można ją zmienić dla każdej transakcji.</string>
+    <string name="accounts_target_amount_optional">Kwota docelowa (opcjonalnie)</string>
+    <string name="accounts_close_account_confirm_title">Zamknąć konto?</string>
+    <string name="accounts_close">Zamknij</string>
+    <string name="accounts_dont_transfer">Nie przenoś</string>
+
+    <!-- Sort chip / sort field labels -->
+    <string name="accounts_sort_chip_default_first">Domyślne najpierw</string>
+    <string name="accounts_sort_field_default_account_first">Domyślne konto najpierw</string>
+    <string name="accounts_sort_asc_az">A→Z</string>
+    <string name="accounts_sort_desc_za">Z→A</string>
+    <string name="accounts_sort_asc_low_high">Rosnąco</string>
+    <string name="accounts_sort_desc_high_low">Malejąco</string>
+    <string name="accounts_sort_asc_oldest_first">Od najstarszych</string>
+    <string name="accounts_sort_desc_newest_first">Od najnowszych</string>
+
+    <!-- AccountsScreen.kt -->
+    <string name="accounts_cd_sort_and_filter">Sortuj i filtruj</string>
+    <string name="accounts_filter_status_all">Wszystkie statusy</string>
+    <string name="accounts_reset_all">Wyczyść wszystko</string>
+    <string name="accounts_update_balances">Aktualizuj salda</string>
+    <string name="accounts_add_account">Dodaj konto</string>
+    <string name="accounts_add_typed_account">Dodaj konto: %1$s</string>
+    <string name="accounts_empty_state_no_type_accounts">Brak kont w tej zakładce (%1$s) — dotknij +, aby dodać.</string>
+    <string name="accounts_empty_state_no_match_filters">Żadne konto nie pasuje do filtrów.</string>
+    <string name="accounts_reset_filters">Wyczyść filtry</string>
+    <string name="accounts_total">Razem</string>
+    <string name="accounts_available">Dostępne</string>
+    <string name="accounts_standard_accounts">Konta standardowe</string>
+    <string name="accounts_virtual_accounts">Konta wirtualne</string>
+    <string name="accounts_cant_delete_account_title">Nie można usunąć konta</string>
+    <string name="accounts_cant_close_account_title">Nie można zamknąć konta</string>
+    <string name="accounts_cd_default_account">Konto domyślne</string>
+    <string name="accounts_cd_set_as_default_account">Ustaw jako konto domyślne</string>
+    <string name="accounts_paid_this_month">Wpłacono w tym miesiącu</string>
+    <string name="accounts_progress_percent_of">%1$s%% z %2$s</string>
+    <string name="accounts_cd_goal_reached">Cel osiągnięty</string>
+
+    <!-- AccountsSortFilterSheet.kt -->
+    <string name="accounts_sort_filter_title">Sortowanie i filtry</string>
+    <string name="accounts_sort_filter_hint">Zmiany są stosowane od razu i zapamiętywane przy następnym otwarciu tej zakładki.</string>
+    <string name="accounts_sort_by">Sortuj według</string>
+    <string name="accounts_status">Status</string>
+    <string name="accounts_status_active">Aktywne</string>
+    <string name="accounts_account_type">Typ konta</string>
+    <string name="accounts_kind">Rodzaj</string>
+    <string name="accounts_reset">Wyczyść</string>
+    <string name="accounts_done">Gotowe</string>
+
+    <!-- AddAccountDialog.kt / EditAccountDialog.kt -->
+    <string name="accounts_flat_commission_optional">Prowizja stała (opcjonalnie)</string>
+    <string name="accounts_commission_percent_optional">Prowizja % wartości transakcji (opcjonalnie)</string>
+    <string name="accounts_initial_balance">Saldo początkowe</string>
+    <string name="accounts_add">Dodaj</string>
+    <string name="accounts_edit_account_title">Edytuj konto</string>
+    <string name="accounts_cd_close_account">Zamknij konto</string>
+    <string name="accounts_cd_delete_account">Usuń konto</string>
+    <string name="accounts_uninvested_cash_with_currency">Niezainwestowana gotówka (%1$s)</string>
+    <string name="accounts_flat_commission_with_currency">Prowizja stała (%1$s)</string>
+    <string name="accounts_commission_percent">Prowizja % wartości transakcji</string>
+    <string name="accounts_balance_with_currency">Saldo (%1$s)</string>
+    <string name="accounts_save">Zapisz</string>
+    <string name="accounts_delete_account_confirm_title">Usunąć konto?</string>
+    <string name="accounts_delete_account_confirm_text">Spowoduje to trwałe usunięcie konta „%1$s”. Tej operacji nie można cofnąć.</string>
+    <string name="accounts_delete">Usuń</string>
+
+    <!-- CloseAccountDialog.kt -->
+    <string name="accounts_close_account_confirm_text_simple">Zamknąć „%1$s”? Możesz je później ponownie otworzyć z ekranu Konta.</string>
+    <string name="accounts_close_account_transfer_text">Konto „%1$s” ma pozostałe saldo w wysokości %2$s. Możesz opcjonalnie przenieść je na inne konto poniżej lub pozostawić na koncie „%1$s” — środki pozostaną tam, ale zostaną wykluczone z wartości netto na czas zamknięcia. Konto „%1$s” możesz później ponownie otworzyć z ekranu Konta, ale przelew nie zostanie cofnięty automatycznie.</string>
+    <string name="accounts_no_other_account_available">Brak innego konta w walucie %1$s, na które można przenieść środki — pozostaną one na koncie „%2$s” po zamknięciu.</string>
+    <string name="accounts_no_other_virtual_account_available">Brak innego konta wirtualnego w walucie %1$s, na które można przenieść środki — pozostaną one na koncie „%2$s” po zamknięciu.</string>
+    <string name="accounts_transfer_to">Przenieś na</string>
+
+    <!-- UpdateBalancesScreen.kt -->
+    <string name="accounts_cd_back">Wstecz</string>
+    <string name="accounts_save_all">Zapisz wszystko</string>
+    <string name="accounts_uninvested_cash_only_hint">Tylko niezainwestowana gotówka — całkowite saldo konta obejmuje również bieżącą wartość rynkową powiązanych inwestycji, aktualizowaną w zakładce Inwestycje.</string>
+    <string name="accounts_cd_increased">Wzrost</string>
+    <string name="accounts_cd_decreased">Spadek</string>
+    <string name="accounts_was_amount">było %1$s</string>
+
+    <!-- AccountsViewModel.kt (error messages surfaced via dialogs) -->
+    <string name="accounts_error_linked_investments">To konto ma nadal powiązane inwestycje. Usuń je lub przenieś w inne miejsce.</string>
+    <string name="accounts_error_linked_budget_item">To konto jest powiązane z aktywną pozycją budżetu. Najpierw usuń je z budżetu lub oznacz budżet jako zakończony.</string>
+</resources>

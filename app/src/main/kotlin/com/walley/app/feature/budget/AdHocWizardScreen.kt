@@ -47,9 +47,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.domain.model.Currency
@@ -75,9 +77,9 @@ fun AdHocWizardScreen(
     }
 
     val title = when (step) {
-        AD_HOC_STEP_DETAILS -> "New ad-hoc budget"
-        AD_HOC_STEP_ITEMS -> "Expenses"
-        else -> "Summary"
+        AD_HOC_STEP_DETAILS -> stringResource(R.string.budget_new_adhoc_budget_title)
+        AD_HOC_STEP_ITEMS -> stringResource(R.string.budget_step_expenses_title)
+        else -> stringResource(R.string.budget_summary_title)
     }
     val nextEnabled = when (step) {
         AD_HOC_STEP_DETAILS -> viewModel.detailsValid
@@ -92,14 +94,14 @@ fun AdHocWizardScreen(
                     IconButton(onClick = { if (step == AD_HOC_STEP_DETAILS) onCancel() else viewModel.goBack() }) {
                         Icon(
                             if (step == AD_HOC_STEP_DETAILS) Icons.Filled.Close else Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.budget_cd_back)
                         )
                     }
                 },
                 actions = {
                     if (step != AD_HOC_STEP_DETAILS) {
                         IconButton(onClick = onCancel) {
-                            Icon(Icons.Filled.Close, contentDescription = "Close")
+                            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.budget_cd_close))
                         }
                     }
                 }
@@ -126,7 +128,7 @@ fun AdHocWizardScreen(
                     enabled = nextEnabled,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(if (step == AD_HOC_STEP_SUMMARY) "Create budget" else "Next")
+                    Text(stringResource(if (step == AD_HOC_STEP_SUMMARY) R.string.budget_create_budget_button else R.string.budget_next_button))
                 }
             }
         }
@@ -147,15 +149,19 @@ fun AdHocWizardScreen(
     if (showExceedsBalanceConfirm) {
         AlertDialog(
             onDismissRequest = { showExceedsBalanceConfirm = false },
-            title = { Text("Create budget anyway?") },
+            title = { Text(stringResource(R.string.budget_create_budget_anyway_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("This budget's total exceeds what's currently available in one or more accounts:")
+                    Text(stringResource(R.string.budget_exceeds_balance_list_intro))
                     viewModel.totalsByAccount.forEach { (account, planned) ->
                         if (planned > account.balance) {
                             Text(
-                                "${account.name}: needs ${formatMoney(planned, account.currency)}, " +
-                                    "has ${formatMoney(account.balance, account.currency)}",
+                                stringResource(
+                                    R.string.budget_account_needs_has,
+                                    account.name,
+                                    formatMoney(planned, account.currency),
+                                    formatMoney(account.balance, account.currency)
+                                ),
                                 style = MaterialTheme.typography.bodySmall
                             )
                         }
@@ -168,10 +174,10 @@ fun AdHocWizardScreen(
                         showExceedsBalanceConfirm = false
                         scope.launch { onDone(viewModel.createBudget()) }
                     }
-                ) { Text("Create anyway") }
+                ) { Text(stringResource(R.string.budget_create_anyway_button)) }
             },
             dismissButton = {
-                TextButton(onClick = { showExceedsBalanceConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showExceedsBalanceConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -196,7 +202,7 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
         OutlinedTextField(
             value = viewModel.name,
             onValueChange = { viewModel.name = it },
-            label = { Text("Name") },
+            label = { Text(stringResource(R.string.budget_name_label)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -204,7 +210,7 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("Start date")
+            Text(stringResource(R.string.budget_start_date_label))
             TextButton(onClick = { showStartDatePicker = true }) {
                 Text(viewModel.startDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
             }
@@ -213,21 +219,21 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text("End date")
+            Text(stringResource(R.string.budget_end_date_label))
             TextButton(onClick = { showEndDatePicker = true }) {
                 Text(viewModel.endDate.format(DateTimeFormatter.ISO_LOCAL_DATE))
             }
         }
         if (viewModel.endDate.isBefore(viewModel.startDate)) {
             Text(
-                "End date can't be before the start date.",
+                stringResource(R.string.budget_end_date_before_start_error),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error
             )
         }
         if (savingAccounts.isEmpty()) {
             Text(
-                "No saving accounts yet — create one from the Accounts tab first.",
+                stringResource(R.string.budget_no_saving_accounts_yet),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -240,7 +246,7 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
                     value = selectedAccount?.name ?: "",
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Draw money from") },
+                    label = { Text(stringResource(R.string.budget_draw_money_from_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -263,7 +269,7 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
             }
             selectedAccount?.let { account ->
                 Text(
-                    "Currently: ${formatMoney(account.balance, account.currency)}",
+                    stringResource(R.string.budget_currently_amount, formatMoney(account.balance, account.currency)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -285,10 +291,10 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
                         }
                         showStartDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.budget_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showStartDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showStartDatePicker = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -309,10 +315,10 @@ private fun DetailsStep(viewModel: AdHocWizardViewModel) {
                         }
                         showEndDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.budget_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showEndDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showEndDatePicker = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)
@@ -355,7 +361,7 @@ private fun ItemsStep(viewModel: AdHocWizardViewModel) {
                     .padding(top = 12.dp)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("Add item", modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.budget_add_item), modifier = Modifier.padding(start = 8.dp))
             }
         }
         if (account != null) {

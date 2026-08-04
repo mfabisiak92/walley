@@ -30,11 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.displayName
 import com.walley.app.feature.budget.ProjectedNetWorthBreakdown
 import java.math.BigDecimal
 
@@ -50,10 +53,10 @@ fun NetWorthDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Net worth breakdown") },
+                title = { Text(stringResource(R.string.home_net_worth_breakdown)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.home_back_content_description))
                     }
                 }
             )
@@ -79,18 +82,18 @@ fun NetWorthDetailScreen(
         ) {
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text("Total", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.home_total), style = MaterialTheme.typography.titleMedium)
                     if (state.amount != null) {
                         Text(formatMoney(state.amount, state.currency), style = MaterialTheme.typography.headlineMedium)
                         state.rateDate?.let { date ->
                             Text(
-                                "ECB rates · $date",
+                                stringResource(R.string.home_ecb_rates, date),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     } else {
-                        Text("Exchange rates unavailable", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.home_exchange_rates_unavailable), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
             }
@@ -124,9 +127,9 @@ fun NetWorthDetailScreen(
                 item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
                 item {
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Text("Projected net worth", style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.home_projected_net_worth), style = MaterialTheme.typography.titleMedium)
                         Text(
-                            "If this month's budget is followed through to completion",
+                            stringResource(R.string.home_projected_net_worth_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -157,16 +160,16 @@ private fun ProjectedNetWorthCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            ProjectedNetWorthRow("Current net worth", currentNetWorth, currency)
-            ProjectedNetWorthRow("Income", breakdown.income, currency, signed = true)
-            ProjectedNetWorthRow("Income-related expenses", -breakdown.incomeRelatedExpenses, currency, signed = true)
-            ProjectedNetWorthRow("Fixed costs", -breakdown.fixedCosts, currency, signed = true)
-            ProjectedNetWorthRow("Other costs", -breakdown.otherCosts, currency, signed = true)
+            ProjectedNetWorthRow(stringResource(R.string.home_current_net_worth), currentNetWorth, currency)
+            ProjectedNetWorthRow(stringResource(R.string.home_income), breakdown.income, currency, signed = true)
+            ProjectedNetWorthRow(stringResource(R.string.home_income_related_expenses), -breakdown.incomeRelatedExpenses, currency, signed = true)
+            ProjectedNetWorthRow(stringResource(R.string.home_fixed_costs), -breakdown.fixedCosts, currency, signed = true)
+            ProjectedNetWorthRow(stringResource(R.string.home_other_costs), -breakdown.otherCosts, currency, signed = true)
             breakdown.savingsAdjustment?.let { adjustment ->
-                ProjectedNetWorthRow("Savings adjustment", adjustment, currency, signed = true)
+                ProjectedNetWorthRow(stringResource(R.string.home_savings_adjustment), adjustment, currency, signed = true)
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            ProjectedNetWorthRow("Projected net worth", projectedAmount, currency, bold = true)
+            ProjectedNetWorthRow(stringResource(R.string.home_projected_net_worth), projectedAmount, currency, bold = true)
         }
     }
 }
@@ -224,7 +227,7 @@ private fun NetWorthCategoryHeaderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(category.label, style = MaterialTheme.typography.bodyLarge)
+            Text(category.displayName(), style = MaterialTheme.typography.bodyLarge)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     formatMoney(total, baseCurrency),
@@ -233,7 +236,11 @@ private fun NetWorthCategoryHeaderRow(
                 )
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.home_collapse_content_description)
+                    } else {
+                        stringResource(R.string.home_expand_content_description)
+                    },
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

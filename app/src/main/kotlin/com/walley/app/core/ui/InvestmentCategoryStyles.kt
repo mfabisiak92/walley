@@ -11,6 +11,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.displayName
 
 val InvestmentCategoryColors: Map<InvestmentCategory, Color> = mapOf(
     InvestmentCategory.STOCK to Color(0xFF1565C0),
@@ -26,7 +27,7 @@ val InvestmentCategoryColors: Map<InvestmentCategory, Color> = mapOf(
 fun InvestmentCategoryChip(category: InvestmentCategory, modifier: Modifier = Modifier) {
     val color = InvestmentCategoryColors.getValue(category)
     Text(
-        text = category.label,
+        text = category.displayName(),
         style = MaterialTheme.typography.labelSmall,
         color = color,
         modifier = modifier

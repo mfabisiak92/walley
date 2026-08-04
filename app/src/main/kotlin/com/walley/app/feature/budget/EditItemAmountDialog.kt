@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
@@ -89,7 +91,7 @@ fun EditItemAmountDialog(
                             value = selectedAccount?.name ?: if (accountRequired) "" else "None",
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Account") },
+                            label = { Text(stringResource(R.string.budget_account_label)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
                             isError = (accountRequired && selectedAccount == null) || exceedsSavingsBalance,
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
@@ -100,7 +102,7 @@ fun EditItemAmountDialog(
                         ) {
                             if (!accountRequired) {
                                 DropdownMenuItem(
-                                    text = { Text("None") },
+                                    text = { Text(stringResource(R.string.budget_none)) },
                                     onClick = {
                                         accountId = null
                                         accountMenuExpanded = false
@@ -145,23 +147,23 @@ fun EditItemAmountDialog(
                     }
                 }
                 if (iconOptions != null) {
-                    Text("Icon", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.budget_icon_label), style = MaterialTheme.typography.labelLarge)
                     BudgetItemIconPicker(options = iconOptions, selected = icon, onSelect = { icon = it })
                 }
                 TextButton(
                     onClick = onDelete,
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete item") }
+                ) { Text(stringResource(R.string.budget_delete_item)) }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = { onSave(icon, accountId) },
                 enabled = isValid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.budget_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }

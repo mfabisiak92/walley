@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common / shared across budget screens -->
+    <string name="budget_cancel">Anuluj</string>
+    <string name="budget_ok">OK</string>
+    <string name="budget_save">Zapisz</string>
+    <string name="budget_add_button">Dodaj</string>
+    <string name="budget_add_item">Dodaj pozycję</string>
+    <string name="budget_edit_item">Edytuj pozycję</string>
+    <string name="budget_delete">Usuń</string>
+    <string name="budget_delete_item">Usuń pozycję</string>
+    <string name="budget_name_label">Nazwa</string>
+    <string name="budget_account_label">Konto</string>
+    <string name="budget_none">Brak</string>
+    <string name="budget_icon_label">Ikona</string>
+    <string name="budget_completed_label">Zakończony</string>
+    <string name="budget_draft_label">Szkic</string>
+    <string name="budget_undo">Cofnij</string>
+    <string name="budget_cd_back">Wstecz</string>
+    <string name="budget_cd_close">Zamknij</string>
+    <string name="budget_amount_label">Kwota</string>
+    <string name="budget_amount_with_currency">Kwota (%1$s)</string>
+    <string name="budget_currently_amount">Obecnie: %1$s</string>
+    <string name="budget_currently_amount_target">Obecnie: %1$s · Cel: %2$s</string>
+    <string name="budget_target_not_set">nie ustawiono</string>
+    <string name="budget_target_reached_cd">Cel osiągnięty</string>
+    <string name="budget_from_account">Z konta %1$s</string>
+    <string name="budget_remove_item_cd">Usuń %1$s</string>
+    <string name="budget_last_day_of_month">Ostatni dzień miesiąca</string>
+    <string name="budget_day_number">Dzień %1$d</string>
+    <string name="budget_total_label">Razem</string>
+    <string name="budget_total_for_account">Razem (%1$s)</string>
+    <string name="budget_currently_in_account">Obecnie na koncie %1$s: %2$s</string>
+    <string name="budget_pie_chart_title">Podział budżetu</string>
+    <string name="budget_amount_unavailable">—</string>
+    <string name="budget_paid_of_planned">%1$s / %2$s</string>
+    <string name="budget_percent_value">%1$s%%</string>
+    <string name="budget_delete_budget_title">Usunąć budżet?</string>
+    <string name="budget_delete_budget_message">Spowoduje to trwałe usunięcie tego budżetu i wszystkich jego pozycji. Tej operacji nie można cofnąć.</string>
+    <string name="budget_cant_delete_budget_title">Nie można usunąć budżetu</string>
+    <string name="budget_mark_completed_title">Oznaczyć budżet jako zakończony?</string>
+    <string name="budget_mark_completed_common_note">To jednokierunkowa zmiana. Po zakończeniu ten budżet i jego pozycje staną się tylko do odczytu — nie będzie można niczego opłacić, usunąć ani zmienić, a sam budżet nie będzie już mógł zostać usunięty.</string>
+    <string name="budget_mark_completed_button">Oznacz jako zakończony</string>
+
+    <!-- Summary row labels (BudgetDetailScreen, BudgetWizardScreen) -->
+    <string name="budget_summary_projected_net_worth">Prognozowana wartość netto</string>
+    <string name="budget_summary_planned_disposable_income">Planowany dochód rozporządzalny</string>
+    <string name="budget_summary_disposable_income">Dochód rozporządzalny</string>
+    <string name="budget_summary_unallocated">Nieprzydzielone</string>
+    <string name="budget_summary_fixed_costs">Koszty stałe</string>
+    <string name="budget_summary_other_costs">Inne koszty</string>
+    <string name="budget_summary_savings">Oszczędności</string>
+    <string name="budget_summary_investments">Inwestycje</string>
+    <string name="budget_summary_income">Przychód</string>
+    <string name="budget_summary_income_related_expenses">Wydatki związane z przychodem</string>
+
+    <!-- AdHocBudgetDetailScreen / AdHocBudgetDetailViewModel -->
+    <string name="budget_item_deleted_snackbar">„%1$s” usunięto</string>
+    <string name="budget_item_marked_paid_snackbar">„%1$s” oznaczono jako opłacone</string>
+    <string name="budget_adhoc_default_name">Budżet doraźny</string>
+    <string name="budget_cd_mark_completed">Oznacz jako zakończony</string>
+    <string name="budget_cd_delete_budget">Usuń budżet</string>
+    <string name="budget_adhoc_default_account_with_balance">Konto domyślne: %1$s (pozostało %2$s)</string>
+    <string name="budget_cant_complete_payment_title">Nie można dokończyć płatności</string>
+    <string name="budget_adhoc_mark_completed_early_note">Data końcowa tego budżetu jeszcze nie minęła — wszystko, czego nie opłacisz, po prostu przestanie być śledzone.</string>
+    <string name="budget_insufficient_balance">Za mało środków na koncie „%1$s”: dostępne tylko %2$s.</string>
+    <string name="budget_delete_blocked_completed">Ten budżet jest oznaczony jako zakończony i nie można go usunąć.</string>
+
+    <!-- AdHocWizardScreen -->
+    <string name="budget_new_adhoc_budget_title">Nowy budżet doraźny</string>
+    <string name="budget_step_expenses_title">Wydatki</string>
+    <string name="budget_summary_title">Podsumowanie</string>
+    <string name="budget_create_budget_button">Utwórz budżet</string>
+    <string name="budget_next_button">Dalej</string>
+    <string name="budget_create_budget_anyway_title">Mimo to utworzyć budżet?</string>
+    <string name="budget_exceeds_balance_list_intro">Łączna kwota tego budżetu przekracza to, co jest obecnie dostępne na jednym lub kilku kontach:</string>
+    <string name="budget_account_needs_has">%1$s: potrzeba %2$s, dostępne %3$s</string>
+    <string name="budget_create_anyway_button">Utwórz mimo to</string>
+    <string name="budget_start_date_label">Data rozpoczęcia</string>
+    <string name="budget_end_date_label">Data zakończenia</string>
+    <string name="budget_end_date_before_start_error">Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.</string>
+    <string name="budget_no_saving_accounts_yet">Brak kont oszczędnościowych — najpierw utwórz jedno w zakładce Konta.</string>
+    <string name="budget_draw_money_from_label">Pobierz środki z</string>
+    <string name="budget_total_in_account_has">Razem na koncie %1$s: %2$s · dostępne %3$s</string>
+    <string name="budget_exceeds_available_note">To więcej niż jest obecnie dostępne na jednym lub kilku kontach.</string>
+    <string name="budget_adhoc_default_account">Konto domyślne: %1$s</string>
+    <string name="budget_exceeds_available_total_note">Łączna kwota tego budżetu przekracza to, co jest obecnie dostępne na jednym lub kilku kontach.</string>
+
+    <!-- AddAdHocItemDialog -->
+    <string name="budget_draw_from_label">Pobierz z</string>
+    <string name="budget_account_name_default">%1$s (domyślne)</string>
+
+    <!-- AddBudgetItemDialog -->
+    <string name="budget_amount_exceeds_balance">Kwota przekracza saldo tego konta</string>
+    <string name="budget_category_label">Kategoria</string>
+
+    <!-- BudgetDetailScreen -->
+    <string name="budget_default_title">Budżet</string>
+    <string name="budget_cd_clone_to_another_month">Sklonuj do innego miesiąca</string>
+    <string name="budget_exchange_rate_unavailable_progress">Kurs wymiany niedostępny — nie można teraz obliczyć postępu.</string>
+    <string name="budget_monthly_mark_completed_early_note">Ten miesiąc jeszcze się nie skończył — wszystko, czego nie opłacisz do jego końca, po prostu przestanie być śledzone.</string>
+
+    <!-- BudgetSettingsScreen -->
+    <string name="budget_settings_title">Ustawienia budżetu</string>
+    <string name="budget_draw_from_linked_accounts_title">Pobieranie z powiązanych kont</string>
+    <string name="budget_draw_from_linked_accounts_desc_settings">Gdy wyłączone dla kategorii, opłacanie jej pozycji nie przesunie pieniędzy na żadnym koncie. Dotyczy tylko przyszłych działań — zmiany salda już zastosowane pozostają bez zmian.</string>
+
+    <!-- BudgetWizardScreen -->
+    <string name="budget_new_budget_title">Nowy budżet</string>
+    <string name="budget_choose_month_title">Wybierz miesiąc dla tego budżetu</string>
+    <string name="budget_month_label">Miesiąc</string>
+    <string name="budget_year_label">Rok</string>
+    <string name="budget_already_exists">Budżet dla %1$s już istnieje.</string>
+    <string name="budget_draw_from_linked_accounts_desc_wizard">Gdy wyłączone dla kategorii, opłacanie jej pozycji nie przesunie pieniędzy na żadnym koncie. Można to zmienić później w ustawieniach budżetu.</string>
+    <string name="budget_account_kind_saving">oszczędnościowych</string>
+    <string name="budget_account_kind_investment">inwestycyjnych</string>
+    <string name="budget_account_kind_cash_checking_investment">gotówkowych, bieżących lub inwestycyjnych</string>
+    <string name="budget_no_accounts_yet_kind">Brak kont %1$s — utwórz jedno w zakładce Konta lub pomiń tę sekcję.</string>
+    <string name="budget_exchange_rate_unavailable_allocation">Kurs wymiany niedostępny — nie można teraz obliczyć alokacji dla tej sekcji.</string>
+    <string name="budget_allocated_to_section">Przydzielono na %1$s: %2$s</string>
+    <string name="budget_percent_of_disposable_unallocated">%1$s%% dochodu rozporządzalnego · Nieprzydzielone razem: %2$s</string>
+
+    <!-- BudgetsScreen -->
+    <string name="budget_tab_monthly">Miesięczne</string>
+    <string name="budget_tab_adhoc">Doraźne</string>
+    <string name="budget_cd_create_budget">Utwórz budżet</string>
+    <string name="budget_no_budgets_yet">Brak budżetów — dotknij +, aby utworzyć.</string>
+    <string name="budget_tap_to_continue_setup">Dotknij, aby kontynuować konfigurację tego budżetu.</string>
+    <string name="budget_disposable_income_row">Dochód rozporządzalny: %1$s</string>
+    <string name="budget_unallocated_row">Nieprzydzielone: %1$s</string>
+    <string name="budget_exchange_rate_unavailable_short">kurs wymiany niedostępny</string>
+    <string name="budget_progress_unavailable">Postęp niedostępny — brak kursu wymiany</string>
+    <string name="budget_cd_create_adhoc_budget">Utwórz budżet doraźny</string>
+    <string name="budget_no_adhoc_budgets_yet">Brak budżetów doraźnych — dotknij +, aby utworzyć.</string>
+
+    <!-- MarkAdHocItemPaidDialog -->
+    <string name="budget_cd_mark_fully_paid">Oznacz jako w pełni opłacone</string>
+    <string name="budget_paid_label">Opłacono</string>
+    <string name="budget_planned_with_currency">Planowane (%1$s)</string>
+    <string name="budget_only_left_in_linked_account">Na powiązanym koncie pozostało tylko %1$s</string>
+
+    <!-- MarkPaidDialog -->
+    <string name="budget_cd_complete_item">Zakończ pozycję</string>
+    <string name="budget_only_left_in_account">Na koncie %2$s pozostało tylko %1$s</string>
+    <string name="budget_complete_item_title">Zakończyć tę pozycję?</string>
+    <string name="budget_complete_item_message">To jednokierunkowa zmiana. Po zakończeniu pozycji „%1$s” nie będzie można jej dalej edytować ani opłacać, nawet jeśli nie jest w pełni opłacona — to, co opłacono do tej pory, stanie się ostateczne.</string>
+    <string name="budget_complete_button">Zakończ</string>
+
+    <!-- CategoryTargetIndicator -->
+    <string name="budget_target_percent_disposable">Cel: %1$s%% dochodu rozporządzalnego</string>
+    <string name="budget_on_target">W normie</string>
+    <string name="budget_percent_over_target">%1$s%% powyżej przydziału docelowego</string>
+    <string name="budget_percent_below_target">%1$s%% poniżej przydziału docelowego</string>
+
+    <!-- PaymentDaySelector -->
+    <string name="budget_payment_day_optional">Dzień płatności (opcjonalnie)</string>
+    <string name="budget_day_of_month_option">Dzień miesiąca</string>
+    <string name="budget_last_day_option">Ostatni dzień</string>
+    <string name="budget_day_range_label">Dzień (1-31)</string>
+</resources>

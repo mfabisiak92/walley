@@ -61,7 +61,6 @@ class GoogleDriveApi @Inject constructor() {
                 write("Content-Type: application/json; charset=UTF-8\r\n\r\n".toByteArray())
                 write(metadataJson.toByteArray())
                 write("\r\n--$boundary\r\n".toByteArray())
-                write("Content-Type: $mimeType\r\n\r\n".toByteArray())
                 write(content)
                 write("\r\n--$boundary--".toByteArray())
             }.toByteArray()

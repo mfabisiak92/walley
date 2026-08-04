@@ -1,5 +1,8 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -44,8 +47,8 @@ fun MarkAdHocItemPaidDialog(
 ) {
     var paidText by remember { mutableStateOf(item.paidAmount.toPlainString()) }
     var plannedText by remember { mutableStateOf(item.amount.toPlainString()) }
-    val parsedPaid = paidText.toBigDecimalOrNull()
-    val parsedPlanned = plannedText.toBigDecimalOrNull()
+    val parsedPaid = paidText.toBigDecimalOrNullLenient()
+    val parsedPlanned = plannedText.toBigDecimalOrNullLenient()
 
     // How much more of the (possibly edited) planned amount would still need to come out of the
     // linked account beyond what's already paid.
@@ -85,7 +88,7 @@ fun MarkAdHocItemPaidDialog(
                     OutlinedTextField(
                         value = paidText,
                         onValueChange = { paidText = it },
-                        label = { Text("Paid") },
+                        label = { Text(stringResource(R.string.budget_paid_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedPaid == null || (parsedPlanned != null && parsedPaid > parsedPlanned),
@@ -95,7 +98,7 @@ fun MarkAdHocItemPaidDialog(
                     OutlinedTextField(
                         value = plannedText,
                         onValueChange = { plannedText = it },
-                        label = { Text("Planned (${currency.symbol})") },
+                        label = { Text(stringResource(R.string.budget_planned_with_currency, currency.symbol)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = parsedPlanned == null || exceedsBalance,
@@ -115,10 +118,10 @@ fun MarkAdHocItemPaidDialog(
             TextButton(
                 onClick = { onSave(parsedPaid!!, parsedPlanned!!) },
                 enabled = isValid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.budget_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }

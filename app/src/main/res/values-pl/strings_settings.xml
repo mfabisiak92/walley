@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tab_general">Ogólne</string>
+    <string name="settings_tab_budget">Budżet</string>
+
+    <string name="settings_dark_mode">Tryb ciemny</string>
+    <string name="settings_fingerprint_unlock">Odblokowanie odciskiem palca</string>
+    <string name="settings_no_fingerprint_enrolled">Brak zarejestrowanego odcisku palca na tym urządzeniu</string>
+    <string name="settings_base_currency">Waluta podstawowa</string>
+    <string name="settings_language">Język</string>
+    <string name="settings_language_system">Domyślny systemowy</string>
+    <string name="settings_include_savings_in_net_worth">Uwzględnij oszczędności w wartości netto</string>
+    <string name="settings_include_savings_hint">Wirtualne konta oszczędnościowe są zawsze wykluczone, ponieważ ich saldo znajduje się już na innym koncie.</string>
+    <string name="settings_pin">PIN</string>
+    <string name="settings_change_pin">Zmień PIN</string>
+    <string name="settings_yahoo_finance_integration">Integracja z Yahoo Finance</string>
+    <string name="settings_yahoo_finance_hint">Pozwala funkcji Aktualizuj ceny automatycznie pobierać bieżące ceny rynkowe. Korzysta z nieoficjalnego, darmowego endpointu Yahoo Finance — nie wymaga konta ani klucza, ale nie ma gwarancji, że będzie działać w przyszłości.</string>
+    <string name="settings_backup_restore">Kopia zapasowa i przywracanie</string>
+    <string name="settings_open">Otwórz</string>
+    <string name="settings_pin_changed">PIN został zmieniony</string>
+
+    <string name="settings_category_target_hint">Ustaw docelowy % dochodu rozporządzalnego dla każdej kategorii. Koszty stałe/inne i Oszczędności ostrzegają po przekroczeniu; Inwestycje pokazują znacznik po osiągnięciu celu.</string>
+    <string name="settings_category_target_label">%1$s cel %%</string>
+
+    <string name="settings_current_pin">Obecny PIN</string>
+    <string name="settings_new_pin_hint">Nowy PIN (%1$d-%2$d cyfr)</string>
+    <string name="settings_confirm_new_pin">Potwierdź nowy PIN</string>
+    <string name="settings_pins_dont_match">PIN-y się nie zgadzają</string>
+    <string name="settings_change">Zmień</string>
+    <string name="settings_cancel">Anuluj</string>
+    <string name="settings_pin_incorrect">Obecny PIN jest nieprawidłowy</string>
+</resources>

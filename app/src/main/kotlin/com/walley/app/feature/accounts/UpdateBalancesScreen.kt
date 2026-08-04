@@ -1,5 +1,6 @@
 package com.walley.app.feature.accounts
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,12 +40,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
@@ -68,16 +71,16 @@ fun UpdateBalancesScreen(
         if (account.id !in balanceTexts) balanceTexts[account.id] = editableValue(account).toPlainString()
     }
 
-    val parsedBalances = accounts.associate { it.id to balanceTexts[it.id]?.toBigDecimalOrNull() }
+    val parsedBalances = accounts.associate { it.id to balanceTexts[it.id]?.toBigDecimalOrNullLenient() }
     val allValid = parsedBalances.values.all { it != null }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Update balances") },
+                title = { Text(stringResource(R.string.accounts_update_balances)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.accounts_cd_back))
                     }
                 }
             )
@@ -103,7 +106,7 @@ fun UpdateBalancesScreen(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
-            ) { Text("Save all") }
+            ) { Text(stringResource(R.string.accounts_save_all)) }
         }
     ) { innerPadding ->
         Column(
@@ -113,8 +116,7 @@ fun UpdateBalancesScreen(
         ) {
             if (isInvestments) {
                 Text(
-                    "Uninvested cash only — an account's total balance also includes the current market " +
-                        "value of its linked investments, updated from the Investments tab.",
+                    stringResource(R.string.accounts_uninvested_cash_only_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(16.dp)
@@ -146,7 +148,7 @@ private fun UpdateBalanceRow(
     balanceText: String,
     onBalanceChange: (String) -> Unit
 ) {
-    val parsed = balanceText.toBigDecimalOrNull()
+    val parsed = balanceText.toBigDecimalOrNullLenient()
     val isValid = parsed != null
     val hasChanged = parsed != null && parsed.compareTo(currentValue) != 0
     val isIncrease = hasChanged && parsed!!.compareTo(currentValue) > 0
@@ -210,12 +212,14 @@ private fun UpdateBalanceRow(
             ) {
                 Icon(
                     if (isIncrease) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
-                    contentDescription = if (isIncrease) "Increased" else "Decreased",
+                    contentDescription = stringResource(
+                        if (isIncrease) R.string.accounts_cd_increased else R.string.accounts_cd_decreased
+                    ),
                     modifier = Modifier.size(14.dp),
                     tint = changeColor
                 )
                 Text(
-                    text = "was ${formatMoney(currentValue, account.currency)}",
+                    text = stringResource(R.string.accounts_was_amount, formatMoney(currentValue, account.currency)),
                     style = MaterialTheme.typography.labelSmall,
                     color = changeColor,
                     modifier = Modifier.padding(start = 4.dp)

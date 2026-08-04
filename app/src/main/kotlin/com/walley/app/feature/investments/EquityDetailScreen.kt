@@ -34,14 +34,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.ui.EquityStatusColors
 import com.walley.app.core.ui.EquityStatusIconBadge
 import com.walley.app.core.ui.SwipeToDeleteBox
 import com.walley.app.domain.model.EquityNote
+import com.walley.app.domain.model.displayName
 import com.walley.app.domain.model.InvestmentWithTransactions
 import java.time.format.DateTimeFormatter
 
@@ -66,24 +69,25 @@ fun EquityDetailScreen(
                 title = {
                     val equity = equityWithNotes?.equity
                     Text(
-                        equity?.let { listOfNotNull(it.name, it.ticker).joinToString(" · ") } ?: "Equity"
+                        equity?.let { listOfNotNull(it.name, it.ticker).joinToString(" · ") }
+                            ?: stringResource(R.string.investments_equity_title_fallback)
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.investments_cd_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showDeleteEquityConfirm = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete equity")
+                        Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.investments_cd_delete_equity))
                     }
                 }
             )
         },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddNoteDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add note")
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.investments_cd_add_note))
             }
         }
     ) { innerPadding ->
@@ -169,8 +173,8 @@ fun EquityDetailScreen(
     pendingDeleteNote?.let { note ->
         AlertDialog(
             onDismissRequest = { pendingDeleteNote = null },
-            title = { Text("Delete note?") },
-            text = { Text("This will permanently delete this note. This cannot be undone.") },
+            title = { Text(stringResource(R.string.investments_delete_note_title)) },
+            text = { Text(stringResource(R.string.investments_delete_note_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -178,10 +182,10 @@ fun EquityDetailScreen(
                         pendingDeleteNote = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.investments_action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteNote = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingDeleteNote = null }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         )
     }
@@ -190,8 +194,8 @@ fun EquityDetailScreen(
         val equityName = equityWithNotes?.equity?.name ?: "this equity"
         AlertDialog(
             onDismissRequest = { showDeleteEquityConfirm = false },
-            title = { Text("Delete equity?") },
-            text = { Text("This will permanently delete \"$equityName\" and all its notes. This cannot be undone.") },
+            title = { Text(stringResource(R.string.investments_delete_equity_title)) },
+            text = { Text(stringResource(R.string.investments_delete_equity_message, equityName)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -199,10 +203,10 @@ fun EquityDetailScreen(
                         viewModel.deleteEquity(onNavigateBack)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.investments_action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteEquityConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteEquityConfirm = false }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         )
     }
@@ -218,7 +222,7 @@ private fun LinkedInvestmentsSection(linkedInvestments: List<InvestmentWithTrans
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text("Linked investments", style = MaterialTheme.typography.labelLarge)
+            Text(stringResource(R.string.investments_label_linked_investments), style = MaterialTheme.typography.labelLarge)
             Text(
                 text = if (linkedInvestments.isEmpty()) {
                     "None yet"
@@ -268,7 +272,7 @@ private fun NoteRow(note: EquityNote, onClick: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        note.status.label,
+                        note.status.displayName(),
                         style = MaterialTheme.typography.bodyMedium,
                         color = EquityStatusColors.getValue(note.status),
                         modifier = Modifier.padding(start = 8.dp)

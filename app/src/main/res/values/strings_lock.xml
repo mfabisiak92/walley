@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LockScreen -->
+    <string name="lock_unlock_walley">Unlock Walley</string>
+    <string name="lock_use_pin">Use PIN</string>
+    <string name="lock_screen_title">Walley is locked</string>
+    <string name="lock_pin_label">PIN</string>
+    <string name="lock_wrong_pin">Wrong PIN — try again.</string>
+    <string name="lock_unlock_button">Unlock</string>
+    <string name="lock_use_fingerprint">Use fingerprint</string>
+
+    <!-- PinSetupScreen -->
+    <string name="lock_setup_confirm_title">Confirm your PIN</string>
+    <string name="lock_setup_title">Set up a PIN</string>
+    <string name="lock_setup_confirm_body">Enter the same PIN again to confirm.</string>
+    <string name="lock_setup_body">Protect access to Walley with a %1$d-%2$d digit PIN.</string>
+    <string name="lock_setup_pin_mismatch">PINs don\'t match — try again.</string>
+    <string name="lock_setup_confirm_button">Confirm PIN</string>
+    <string name="lock_setup_continue_button">Continue</string>
+</resources>

@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,7 +33,7 @@ fun PaymentDaySelector(
     }
 
     Column {
-        Text("Payment day (optional)")
+        Text(stringResource(R.string.budget_payment_day_optional))
         Row(
             modifier = Modifier
                 .padding(top = 4.dp)
@@ -41,17 +43,17 @@ fun PaymentDaySelector(
             FilterChip(
                 selected = mode == PaymentDayMode.NONE,
                 onClick = { onChange(null, false) },
-                label = { Text("None") }
+                label = { Text(stringResource(R.string.budget_none)) }
             )
             FilterChip(
                 selected = mode == PaymentDayMode.SPECIFIC_DAY,
                 onClick = { onChange(paymentDay ?: 1, false) },
-                label = { Text("Day of month") }
+                label = { Text(stringResource(R.string.budget_day_of_month_option)) }
             )
             FilterChip(
                 selected = mode == PaymentDayMode.LAST_DAY,
                 onClick = { onChange(null, true) },
-                label = { Text("Last day") }
+                label = { Text(stringResource(R.string.budget_last_day_option)) }
             )
         }
         if (mode == PaymentDayMode.SPECIFIC_DAY) {
@@ -61,7 +63,7 @@ fun PaymentDaySelector(
                     val day = text.toIntOrNull()?.coerceIn(1, 31)
                     if (day != null) onChange(day, false)
                 },
-                label = { Text("Day (1-31)") },
+                label = { Text(stringResource(R.string.budget_day_range_label)) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier

@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BudgetSectionType -->
+    <string name="domain_budget_section_income">Przychód</string>
+    <string name="domain_budget_section_income_related_expenses">Wydatki związane z przychodem</string>
+    <string name="domain_budget_section_fixed_costs">Koszty stałe</string>
+    <string name="domain_budget_section_other_costs">Inne koszty</string>
+    <string name="domain_budget_section_savings">Oszczędności</string>
+    <string name="domain_budget_section_investments">Inwestycje</string>
+
+    <!-- AccountEffectsGroup -->
+    <string name="domain_account_effects_group_income">Przychód i wydatki związane z przychodem</string>
+    <string name="domain_account_effects_group_costs">Koszty stałe i inne</string>
+    <string name="domain_account_effects_group_savings">Oszczędności</string>
+    <string name="domain_account_effects_group_investments">Inwestycje</string>
+
+    <!-- InvestmentCategory -->
+    <string name="domain_investment_category_stock">Akcja</string>
+    <string name="domain_investment_category_etf">ETF</string>
+    <string name="domain_investment_category_bond">Obligacja</string>
+    <string name="domain_investment_category_precious_metal">Metal szlachetny</string>
+    <string name="domain_investment_category_energy_metal">Metal energetyczny</string>
+    <string name="domain_investment_category_crypto">Kryptowaluta</string>
+
+    <!-- AccountType -->
+    <string name="domain_account_type_checking">Konto bieżące</string>
+    <string name="domain_account_type_saving">Oszczędnościowe</string>
+    <string name="domain_account_type_investment">Inwestycyjne</string>
+    <string name="domain_account_type_cash">Gotówka</string>
+
+    <!-- IncomeCategory -->
+    <string name="domain_income_category_salary">Wynagrodzenie</string>
+    <string name="domain_income_category_dividends">Dywidendy</string>
+    <string name="domain_income_category_interest">Odsetki</string>
+    <string name="domain_income_category_other">Inne</string>
+
+    <!-- AccountTaxRate -->
+    <string name="domain_account_tax_rate_tax_free">Bez podatku</string>
+    <string name="domain_account_tax_rate_standard_19">19%</string>
+
+    <!-- AccountBalanceGroup -->
+    <string name="domain_account_balance_group_cash_checking">Gotówka i konto bieżące</string>
+    <string name="domain_account_balance_group_savings">Oszczędności</string>
+    <string name="domain_account_balance_group_investments">Inwestycje</string>
+
+    <!-- EquityStatus -->
+    <string name="domain_equity_status_sell">Sprzedaj</string>
+    <string name="domain_equity_status_hold">Trzymaj</string>
+    <string name="domain_equity_status_wait">Czekaj</string>
+    <string name="domain_equity_status_buy">Kupuj</string>
+
+    <!-- InvestmentTransactionType -->
+    <string name="domain_investment_transaction_type_buy">Kupno</string>
+    <string name="domain_investment_transaction_type_sell">Sprzedaż</string>
+
+    <!-- NetWorthCategory -->
+    <string name="domain_net_worth_category_checking">Konta bieżące</string>
+    <string name="domain_net_worth_category_saving">Konta oszczędnościowe</string>
+    <string name="domain_net_worth_category_cash">Konta gotówkowe</string>
+    <string name="domain_net_worth_category_investment">Konta inwestycyjne</string>
+    <string name="domain_net_worth_category_asset">Aktywa</string>
+    <string name="domain_net_worth_category_liability">Zobowiązania</string>
+
+    <!-- BudgetDetailTab -->
+    <string name="domain_budget_detail_tab_summary">Podsumowanie</string>
+    <string name="domain_budget_detail_tab_income">Przychód</string>
+    <string name="domain_budget_detail_tab_fixed_costs">Koszty stałe</string>
+    <string name="domain_budget_detail_tab_other_costs">Inne koszty</string>
+    <string name="domain_budget_detail_tab_savings">Oszczędności</string>
+    <string name="domain_budget_detail_tab_investments">Inwestycje</string>
+
+    <!-- BudgetItemIcon -->
+    <string name="domain_budget_item_icon_salary">Wynagrodzenie</string>
+    <string name="domain_budget_item_icon_dividends">Dywidendy</string>
+    <string name="domain_budget_item_icon_interest">Odsetki</string>
+    <string name="domain_budget_item_icon_saving">Oszczędności</string>
+    <string name="domain_budget_item_icon_investment">Inwestycja</string>
+    <string name="domain_budget_item_icon_tax">Podatek</string>
+    <string name="domain_budget_item_icon_car">Samochód</string>
+    <string name="domain_budget_item_icon_fuel">Paliwo</string>
+    <string name="domain_budget_item_icon_subscription">Subskrypcja</string>
+    <string name="domain_budget_item_icon_groceries">Zakupy spożywcze</string>
+    <string name="domain_budget_item_icon_clothes">Ubrania</string>
+    <string name="domain_budget_item_icon_eating_out">Jedzenie na mieście</string>
+    <string name="domain_budget_item_icon_entertainment">Rozrywka</string>
+    <string name="domain_budget_item_icon_transportation">Transport</string>
+    <string name="domain_budget_item_icon_vacations">Wakacje</string>
+    <string name="domain_budget_item_icon_trip">Wycieczka</string>
+    <string name="domain_budget_item_icon_gift">Prezent</string>
+    <string name="domain_budget_item_icon_insurance">Ubezpieczenie</string>
+    <string name="domain_budget_item_icon_currency_exchange">Wymiana walut</string>
+    <string name="domain_budget_item_icon_electronics">Elektronika</string>
+    <string name="domain_budget_item_icon_phone">Telefon</string>
+    <string name="domain_budget_item_icon_bills">Rachunki</string>
+    <string name="domain_budget_item_icon_rent">Czynsz</string>
+    <string name="domain_budget_item_icon_piggy_bank">Skarbonka</string>
+    <string name="domain_budget_item_icon_electricity">Prąd</string>
+    <string name="domain_budget_item_icon_internet">Internet</string>
+    <string name="domain_budget_item_icon_tv">TV</string>
+    <string name="domain_budget_item_icon_music">Muzyka</string>
+    <string name="domain_budget_item_icon_barber">Fryzjer</string>
+    <string name="domain_budget_item_icon_games">Gry</string>
+    <string name="domain_budget_item_icon_sport">Sport</string>
+    <string name="domain_budget_item_icon_books">Książki</string>
+    <string name="domain_budget_item_icon_repair">Naprawa</string>
+    <string name="domain_budget_item_icon_health">Zdrowie</string>
+    <string name="domain_budget_item_icon_medicine">Leki</string>
+    <string name="domain_budget_item_icon_pet">Zwierzak</string>
+    <string name="domain_budget_item_icon_movie">Kino</string>
+    <string name="domain_budget_item_icon_kids">Dzieci</string>
+    <string name="domain_budget_item_icon_retirement">Emerytura</string>
+    <string name="domain_budget_item_icon_parking">Parking</string>
+    <string name="domain_budget_item_icon_ship">Statek</string>
+    <string name="domain_budget_item_icon_shipment">Przesyłka</string>
+    <string name="domain_budget_item_icon_doctor">Lekarz</string>
+</resources>

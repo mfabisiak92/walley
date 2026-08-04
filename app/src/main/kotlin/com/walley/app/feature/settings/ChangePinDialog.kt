@@ -12,16 +12,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.feature.lock.PIN_MAX_LENGTH
 import com.walley.app.feature.lock.PIN_MIN_LENGTH
 import com.walley.app.feature.lock.sanitizePinInput
 
 @Composable
 fun ChangePinDialog(
-    errorMessage: String?,
+    hasError: Boolean,
     onCurrentPinChanged: () -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (currentPin: String, newPin: String) -> Unit
@@ -36,7 +38,7 @@ fun ChangePinDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Change PIN") },
+        title = { Text(stringResource(R.string.settings_change_pin)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -45,17 +47,21 @@ fun ChangePinDialog(
                         currentPin = sanitizePinInput(it)
                         onCurrentPinChanged()
                     },
-                    label = { Text("Current PIN") },
+                    label = { Text(stringResource(R.string.settings_current_pin)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
-                    isError = errorMessage != null,
-                    supportingText = errorMessage?.let { message -> { Text(message) } }
+                    isError = hasError,
+                    supportingText = if (hasError) {
+                        { Text(stringResource(R.string.settings_pin_incorrect)) }
+                    } else {
+                        null
+                    }
                 )
                 OutlinedTextField(
                     value = newPin,
                     onValueChange = { newPin = sanitizePinInput(it) },
-                    label = { Text("New PIN ($PIN_MIN_LENGTH-$PIN_MAX_LENGTH digits)") },
+                    label = { Text(stringResource(R.string.settings_new_pin_hint, PIN_MIN_LENGTH, PIN_MAX_LENGTH)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation()
@@ -63,13 +69,13 @@ fun ChangePinDialog(
                 OutlinedTextField(
                     value = confirmPin,
                     onValueChange = { confirmPin = sanitizePinInput(it) },
-                    label = { Text("Confirm new PIN") },
+                    label = { Text(stringResource(R.string.settings_confirm_new_pin)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
                     isError = mismatch,
                     supportingText = if (mismatch) {
-                        { Text("PINs don't match") }
+                        { Text(stringResource(R.string.settings_pins_dont_match)) }
                     } else {
                         null
                     }
@@ -80,10 +86,10 @@ fun ChangePinDialog(
             TextButton(
                 onClick = { onConfirm(currentPin, newPin) },
                 enabled = isValid
-            ) { Text("Change") }
+            ) { Text(stringResource(R.string.settings_change)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.settings_cancel)) }
         }
     )
 }

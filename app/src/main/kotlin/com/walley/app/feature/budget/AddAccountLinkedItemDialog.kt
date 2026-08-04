@@ -1,5 +1,6 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
@@ -24,8 +25,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.domain.model.Account
@@ -51,12 +54,12 @@ fun AddAccountLinkedItemDialog(
     var isLastOfMonth by remember { mutableStateOf(initial?.paymentDayIsLastOfMonth ?: false) }
 
     val selectedAccount = accounts.find { it.id == accountId }
-    val parsedAmount = amountText.toBigDecimalOrNull()
+    val parsedAmount = amountText.toBigDecimalOrNullLenient()
     val isValid = selectedAccount != null && parsedAmount != null && parsedAmount.signum() > 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (initial != null) "Edit item" else "Add item") },
+        title = { Text(stringResource(if (initial != null) R.string.budget_edit_item else R.string.budget_add_item)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -70,7 +73,7 @@ fun AddAccountLinkedItemDialog(
                         value = selectedAccount?.name ?: "",
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Account") },
+                        label = { Text(stringResource(R.string.budget_account_label)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = accountMenuExpanded) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
@@ -85,7 +88,7 @@ fun AddAccountLinkedItemDialog(
                                     if (account.targetReached) {
                                         Icon(
                                             Icons.Filled.CheckCircle,
-                                            contentDescription = "Target reached",
+                                            contentDescription = stringResource(R.string.budget_target_reached_cd),
                                             tint = InvestmentGainColor
                                         )
                                     }
@@ -100,17 +103,26 @@ fun AddAccountLinkedItemDialog(
                 }
                 selectedAccount?.let { account ->
                     val info = if (account.type == AccountType.SAVING) {
-                        "Currently: ${formatMoney(account.balance, account.currency)} · Target: " +
-                            (account.targetAmount?.let { formatMoney(it, account.currency) } ?: "not set")
+                        stringResource(
+                            R.string.budget_currently_amount_target,
+                            formatMoney(account.balance, account.currency),
+                            account.targetAmount?.let { formatMoney(it, account.currency) }
+                                ?: stringResource(R.string.budget_target_not_set)
+                        )
                     } else {
-                        "Currently: ${formatMoney(account.balance, account.currency)}"
+                        stringResource(R.string.budget_currently_amount, formatMoney(account.balance, account.currency))
                     }
                     Text(info, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it },
-                    label = { Text("Amount" + (selectedAccount?.let { " (${it.currency.symbol})" } ?: "")) },
+                    label = {
+                        Text(
+                            selectedAccount?.let { stringResource(R.string.budget_amount_with_currency, it.currency.symbol) }
+                                ?: stringResource(R.string.budget_amount_label)
+                        )
+                    },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = amountText.isNotBlank() && parsedAmount == null
@@ -129,10 +141,10 @@ fun AddAccountLinkedItemDialog(
             TextButton(
                 onClick = { onConfirm(selectedAccount!!.id, parsedAmount!!, paymentDay, isLastOfMonth) },
                 enabled = isValid
-            ) { Text(if (initial != null) "Save" else "Add") }
+            ) { Text(stringResource(if (initial != null) R.string.budget_save else R.string.budget_add_button)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.budget_cancel)) }
         }
     )
 }

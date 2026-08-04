@@ -1,5 +1,7 @@
 package com.walley.app.feature.budget
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +59,7 @@ import com.walley.app.domain.model.Budget
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
+import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Month
@@ -82,7 +85,7 @@ fun BudgetWizardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(section?.label ?: if (step == WIZARD_STEP_SUMMARY) "Summary" else "New budget") },
+                title = { Text(section?.displayName() ?: if (step == WIZARD_STEP_SUMMARY) "Summary" else "New budget") },
                 navigationIcon = {
                     IconButton(onClick = { if (step == WIZARD_STEP_MONTH) onCancel() else viewModel.goBack() }) {
                         Icon(
@@ -155,7 +158,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text("Choose the month for this budget", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.budget_choose_month_title), style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ExposedDropdownMenuBox(
                 expanded = monthMenuExpanded,
@@ -166,7 +169,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
                     value = Month.of(viewModel.month).getDisplayName(TextStyle.FULL, Locale.ENGLISH),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Month") },
+                    label = { Text(stringResource(R.string.budget_month_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthMenuExpanded) },
                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
@@ -194,7 +197,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
                     value = viewModel.year.toString(),
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Year") },
+                    label = { Text(stringResource(R.string.budget_year_label)) },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = yearMenuExpanded) },
                     modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                 )
@@ -221,7 +224,7 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
             )
         }
         HorizontalDivider()
-        Text("Draw from linked accounts", style = MaterialTheme.typography.bodyLarge)
+        Text(stringResource(R.string.budget_draw_from_linked_accounts_title), style = MaterialTheme.typography.bodyLarge)
         Text(
             "When off for a category, paying its items won't move money in any account. " +
                 "This can be changed later from the budget's settings.",
@@ -229,22 +232,22 @@ private fun MonthStep(viewModel: BudgetWizardViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         AccountEffectsToggleRow(
-            label = AccountEffectsGroup.INCOME.label,
+            label = AccountEffectsGroup.INCOME.displayName(),
             checked = viewModel.applyIncomeAccountEffects,
             onCheckedChange = { viewModel.applyIncomeAccountEffects = it }
         )
         AccountEffectsToggleRow(
-            label = AccountEffectsGroup.COSTS.label,
+            label = AccountEffectsGroup.COSTS.displayName(),
             checked = viewModel.applyCostsAccountEffects,
             onCheckedChange = { viewModel.applyCostsAccountEffects = it }
         )
         AccountEffectsToggleRow(
-            label = AccountEffectsGroup.SAVINGS.label,
+            label = AccountEffectsGroup.SAVINGS.displayName(),
             checked = viewModel.applySavingsAccountEffects,
             onCheckedChange = { viewModel.applySavingsAccountEffects = it }
         )
         AccountEffectsToggleRow(
-            label = AccountEffectsGroup.INVESTMENTS.label,
+            label = AccountEffectsGroup.INVESTMENTS.displayName(),
             checked = viewModel.applyInvestmentsAccountEffects,
             onCheckedChange = { viewModel.applyInvestmentsAccountEffects = it }
         )
@@ -311,7 +314,7 @@ private fun SectionStep(viewModel: BudgetWizardViewModel, section: BudgetSection
                     .padding(top = 12.dp)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text("Add item", modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.budget_add_item), modifier = Modifier.padding(start = 8.dp))
             }
         }
         if (showFooter) {
@@ -475,7 +478,7 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
                     sectionTotal.divide(disposable, 4, RoundingMode.HALF_UP) * BigDecimal(100)
                 }
                 Text(
-                    "Allocated to ${section.label}: ${formatMoney(sectionTotal, baseCurrency)}",
+                    "Allocated to ${section.displayName()}: ${formatMoney(sectionTotal, baseCurrency)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(

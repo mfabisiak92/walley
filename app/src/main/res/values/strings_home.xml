@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- HomeScreen -->
+    <string name="home_analytics_content_description">Analytics</string>
+    <string name="home_settings_content_description">Settings</string>
+    <string name="home_net_worth">Net worth</string>
+    <string name="home_projected">Projected %1$s</string>
+    <string name="home_exchange_rates_unavailable">Exchange rates unavailable</string>
+    <string name="home_this_months_budget">This month\'s budget</string>
+    <string name="home_percent_days_left">%1$s%% · %2$d days left</string>
+    <string name="home_unallocated">%1$s unallocated</string>
+    <string name="home_exchange_rate_unavailable_progress">Exchange rate unavailable — progress can\'t be computed right now.</string>
+    <string name="home_due_soon">Due soon</string>
+    <string name="home_overdue">Overdue</string>
+    <string name="home_due_today">Due today</string>
+    <string name="home_due_tomorrow">Due tomorrow</string>
+    <string name="home_due_in_days">Due in %1$d days</string>
+    <string name="home_checking_cash_savings">Checking, cash &amp; savings</string>
+    <string name="home_available">Available</string>
+    <string name="home_savings">Savings</string>
+    <string name="home_investments">Investments</string>
+    <string name="home_net_balance">Net balance</string>
+    <string name="home_invested_amount">Invested amount</string>
+    <string name="home_uninvested_cash">Uninvested cash</string>
+    <string name="home_by_currency">By currency</string>
+
+    <!-- NetWorthDetailScreen -->
+    <string name="home_net_worth_breakdown">Net worth breakdown</string>
+    <string name="home_back_content_description">Back</string>
+    <string name="home_total">Total</string>
+    <string name="home_ecb_rates">ECB rates · %1$s</string>
+    <string name="home_projected_net_worth">Projected net worth</string>
+    <string name="home_projected_net_worth_description">If this month\'s budget is followed through to completion</string>
+    <string name="home_current_net_worth">Current net worth</string>
+    <string name="home_income">Income</string>
+    <string name="home_income_related_expenses">Income-related expenses</string>
+    <string name="home_fixed_costs">Fixed costs</string>
+    <string name="home_other_costs">Other costs</string>
+    <string name="home_savings_adjustment">Savings adjustment</string>
+    <string name="home_collapse_content_description">Collapse</string>
+    <string name="home_expand_content_description">Expand</string>
+</resources>

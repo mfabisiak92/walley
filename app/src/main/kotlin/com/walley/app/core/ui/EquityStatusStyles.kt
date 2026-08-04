@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.walley.app.domain.model.EquityStatus
+import com.walley.app.domain.model.displayName
 
 val EquityStatusColors: Map<EquityStatus, Color> = mapOf(
     EquityStatus.BUY to Color(0xFF2E7D32),
@@ -51,7 +52,7 @@ fun EquityStatusIconBadge(status: EquityStatus, modifier: Modifier = Modifier, s
     ) {
         Icon(
             EquityStatusIcons.getValue(status),
-            contentDescription = status.label,
+            contentDescription = status.displayName(),
             tint = color,
             modifier = Modifier.size(size * 0.6f)
         )
@@ -63,7 +64,7 @@ fun EquityStatusIconBadge(status: EquityStatus, modifier: Modifier = Modifier, s
 fun EquityStatusChip(status: EquityStatus, modifier: Modifier = Modifier) {
     val color = EquityStatusColors.getValue(status)
     Text(
-        text = status.label,
+        text = status.displayName(),
         style = MaterialTheme.typography.labelSmall,
         color = color,
         modifier = modifier

@@ -34,9 +34,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.AccountBalanceContainerColor
 import com.walley.app.core.ui.AccountBalanceContentColor
@@ -73,10 +75,10 @@ fun HomeScreen(
                 onTitleClick = {},
                 actions = {
                     IconButton(onClick = onNavigateToAnalytics) {
-                        Icon(Icons.Default.Insights, contentDescription = "Analytics")
+                        Icon(Icons.Default.Insights, contentDescription = stringResource(R.string.home_analytics_content_description))
                     }
                     IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.home_settings_content_description))
                     }
                 }
             )
@@ -116,7 +118,7 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text("Net worth", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.home_net_worth), style = MaterialTheme.typography.titleMedium)
             if (netWorth.amount != null) {
                 Text(
                     text = formatMoney(netWorth.amount, netWorth.currency),
@@ -124,7 +126,7 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                 )
                 netWorth.projectedAmount?.let { projected ->
                     Text(
-                        text = "Projected ${formatMoney(projected, netWorth.currency)}",
+                        text = stringResource(R.string.home_projected, formatMoney(projected, netWorth.currency)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = NetWorthCardContentColor.copy(alpha = 0.75f)
                     )
@@ -135,7 +137,7 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                 )
             } else {
                 Text(
-                    text = "Exchange rates unavailable",
+                    text = stringResource(R.string.home_exchange_rates_unavailable),
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
@@ -145,13 +147,14 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
 
 /**
  * Change vs. the previous calendar month's net worth, as recorded in that month's financial snapshot —
- * "-" when no snapshot exists (the previous month's budget was never marked completed). Deliberately not
- * [NetWorthState.projectedAmount]-based: this reflects an actual month-over-month change, not a forecast.
+ * "-" when no snapshot exists (the previous month's budget was never marked completed). Uses
+ * [NetWorthState.projectedAmount] when available so the delta reflects where net worth is headed by
+ * month end, falling back to the current [NetWorthState.amount] when there's no projection.
  */
 private fun monthOverMonthChangeText(netWorth: NetWorthState): String {
-    val now = netWorth.amount ?: return "-"
+    val projected = netWorth.projectedAmount ?: netWorth.amount ?: return "-"
     val previous = netWorth.previousMonthNetWorth ?: return "-"
-    val delta = now - previous
+    val delta = projected - previous
     return (if (delta.signum() > 0) "+" else "") + formatMoney(delta, netWorth.currency)
 }
 
@@ -165,7 +168,7 @@ private fun MonthBudgetCard(summary: MonthBudgetSummary) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("This month's budget", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.home_this_months_budget), style = MaterialTheme.typography.titleMedium)
             val progress = summary.progress
             if (progress != null) {
                 Row(
@@ -177,7 +180,11 @@ private fun MonthBudgetCard(summary: MonthBudgetSummary) {
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        "${progress.percent.setScale(0, RoundingMode.HALF_UP)}% · ${summary.daysLeftInMonth} days left",
+                        stringResource(
+                            R.string.home_percent_days_left,
+                            progress.percent.setScale(0, RoundingMode.HALF_UP).toString(),
+                            summary.daysLeftInMonth
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -194,14 +201,14 @@ private fun MonthBudgetCard(summary: MonthBudgetSummary) {
                 )
                 summary.unallocated?.let {
                     Text(
-                        "${formatMoney(it, summary.currency)} unallocated",
+                        stringResource(R.string.home_unallocated, formatMoney(it, summary.currency)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
                 Text(
-                    "Exchange rate unavailable — progress can't be computed right now.",
+                    stringResource(R.string.home_exchange_rate_unavailable_progress),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -218,7 +225,7 @@ private fun UpcomingItemsCard(items: List<UpcomingBudgetItem>) {
     ) {
         Column {
             Text(
-                "Due soon",
+                stringResource(R.string.home_due_soon),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(16.dp, 16.dp, 16.dp, 8.dp)
             )
@@ -244,10 +251,10 @@ private fun UpcomingItemRow(item: UpcomingBudgetItem) {
             Column {
                 Text(item.name, style = MaterialTheme.typography.bodyMedium)
                 val (label, color) = when {
-                    item.daysUntilDue < 0 -> "Overdue" to MaterialTheme.colorScheme.error
-                    item.daysUntilDue == 0 -> "Due today" to MaterialTheme.colorScheme.error
-                    item.daysUntilDue == 1 -> "Due tomorrow" to MaterialTheme.colorScheme.onSurfaceVariant
-                    else -> "Due in ${item.daysUntilDue} days" to MaterialTheme.colorScheme.onSurfaceVariant
+                    item.daysUntilDue < 0 -> stringResource(R.string.home_overdue) to MaterialTheme.colorScheme.error
+                    item.daysUntilDue == 0 -> stringResource(R.string.home_due_today) to MaterialTheme.colorScheme.error
+                    item.daysUntilDue == 1 -> stringResource(R.string.home_due_tomorrow) to MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> stringResource(R.string.home_due_in_days, item.daysUntilDue) to MaterialTheme.colorScheme.onSurfaceVariant
                 }
                 Text(label, style = MaterialTheme.typography.bodySmall, color = color)
             }
@@ -309,7 +316,7 @@ private fun CheckingCashCard(balances: HomeBalances) {
     if (currencies.isEmpty()) return
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Checking, cash & savings", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.home_checking_cash_savings), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = AccountBalanceContainerColor, contentColor = AccountBalanceContentColor)
@@ -345,11 +352,11 @@ private fun CheckingCashCard(balances: HomeBalances) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Available", style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
+                            Text(stringResource(R.string.home_available), style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
                             Text(formatMoney(available, currency), style = MaterialTheme.typography.titleSmall)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Savings", style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
+                            Text(stringResource(R.string.home_savings), style = MaterialTheme.typography.bodySmall, color = AccountBalanceContentColor.copy(alpha = 0.7f))
                             Text(formatMoney(savings, currency), style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -389,7 +396,7 @@ private fun InvestmentsCard(balances: HomeBalances) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Investments", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(R.string.home_investments), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
@@ -410,7 +417,7 @@ private fun InvestmentsCard(balances: HomeBalances) {
                     ) {
                         Text(formatMoney(total, currency), style = MaterialTheme.typography.titleLarge)
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(stringResource(R.string.home_net_balance), style = MaterialTheme.typography.bodySmall, color = labelColor)
                             Text(
                                 formatMoney(net, currency),
                                 style = MaterialTheme.typography.titleSmall,
@@ -425,11 +432,11 @@ private fun InvestmentsCard(balances: HomeBalances) {
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column {
-                            Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(stringResource(R.string.home_invested_amount), style = MaterialTheme.typography.bodySmall, color = labelColor)
                             Text(formatMoney(invested, currency), style = MaterialTheme.typography.titleSmall)
                         }
                         Column(horizontalAlignment = Alignment.End) {
-                            Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                            Text(stringResource(R.string.home_uninvested_cash), style = MaterialTheme.typography.bodySmall, color = labelColor)
                             Text(formatMoney(uninvested, currency), style = MaterialTheme.typography.titleSmall)
                         }
                     }
@@ -449,7 +456,7 @@ private fun CurrencyBreakdownCard(breakdown: List<NetWorthByCurrency>) {
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("By currency", style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.home_by_currency), style = MaterialTheme.typography.titleMedium)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

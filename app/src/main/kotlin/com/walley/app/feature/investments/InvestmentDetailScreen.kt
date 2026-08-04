@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -77,6 +79,7 @@ import com.walley.app.domain.model.InvestmentTransaction
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.WatchedEquityWithNotes
+import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
@@ -142,14 +145,14 @@ fun InvestmentDetailScreen(
                 ExtendedFloatingActionButton(
                     onClick = { pendingTransactionType = InvestmentTransactionType.SELL },
                     icon = { Icon(Icons.Default.Remove, contentDescription = null) },
-                    text = { Text("Sell") },
+                    text = { Text(stringResource(R.string.investments_action_sell)) },
                     containerColor = MaterialTheme.colorScheme.errorContainer,
                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
                 ExtendedFloatingActionButton(
                     onClick = { pendingTransactionType = InvestmentTransactionType.BUY },
                     icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                    text = { Text("Buy") }
+                    text = { Text(stringResource(R.string.investments_action_buy)) }
                 )
             }
         }
@@ -227,8 +230,8 @@ fun InvestmentDetailScreen(
     pendingDeleteTransaction?.let { transaction ->
         AlertDialog(
             onDismissRequest = { pendingDeleteTransaction = null },
-            title = { Text("Delete event?") },
-            text = { Text("This will permanently delete this ${transaction.type.label.lowercase()} event. This cannot be undone.") },
+            title = { Text(stringResource(R.string.investments_delete_event_title)) },
+            text = { Text(stringResource(R.string.investments_delete_event_message, transaction.type.displayName().lowercase())) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -236,10 +239,10 @@ fun InvestmentDetailScreen(
                         pendingDeleteTransaction = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.investments_action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDeleteTransaction = null }) { Text("Cancel") }
+                TextButton(onClick = { pendingDeleteTransaction = null }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         )
     }
@@ -261,8 +264,8 @@ fun InvestmentDetailScreen(
         val name = data?.investment?.name ?: "this investment"
         AlertDialog(
             onDismissRequest = { showDeleteInvestmentConfirm = false },
-            title = { Text("Delete investment?") },
-            text = { Text("This will permanently delete \"$name\" and all its buy/sell events. This cannot be undone.") },
+            title = { Text(stringResource(R.string.investments_delete_investment_title)) },
+            text = { Text(stringResource(R.string.investments_delete_investment_message, name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -270,10 +273,10 @@ fun InvestmentDetailScreen(
                         viewModel.deleteInvestment(onNavigateBack)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.investments_action_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteInvestmentConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteInvestmentConfirm = false }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         )
     }
@@ -557,7 +560,7 @@ private fun TransactionRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(transaction.type.label, style = MaterialTheme.typography.bodyLarge)
+                    Text(transaction.type.displayName(), style = MaterialTheme.typography.bodyLarge)
                     Text(formatMoney(transaction.total, currency), style = MaterialTheme.typography.bodyLarge)
                 }
                 Row(

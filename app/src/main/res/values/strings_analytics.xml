@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AnalyticsScreen: top bar / tabs -->
+    <string name="analytics_title">Analytics</string>
+    <string name="analytics_back">Back</string>
+    <string name="analytics_tab_budget">Budget</string>
+    <string name="analytics_tab_history">History</string>
+
+    <!-- AnalyticsScreen: history horizon selector -->
+    <string name="analytics_horizon_6m">6M</string>
+    <string name="analytics_horizon_1y">1Y</string>
+    <string name="analytics_horizon_2y">2Y</string>
+    <string name="analytics_horizon_5y">5Y</string>
+    <string name="analytics_horizon_all">∞</string>
+
+    <!-- AnalyticsScreen: shared labels -->
+    <string name="analytics_label_income">Income</string>
+    <string name="analytics_label_expenses">Expenses</string>
+    <string name="analytics_label_savings">Savings</string>
+    <string name="analytics_savings_rate">Savings rate</string>
+    <string name="analytics_label_spent">Spent</string>
+    <string name="analytics_label_planned">Planned</string>
+    <string name="analytics_label_actual">Actual</string>
+    <string name="analytics_label_net_worth">Net worth</string>
+    <string name="analytics_label_cash_and_checking">Cash &amp; Checking</string>
+    <string name="analytics_label_investments">Investments</string>
+    <string name="analytics_label_mom_percent">MoM %</string>
+    <string name="analytics_label_yoy_percent">YoY %</string>
+    <string name="analytics_label_salary">Salary</string>
+    <string name="analytics_label_dividends">Dividends</string>
+    <string name="analytics_label_interest">Interest</string>
+    <string name="analytics_label_other">Other</string>
+    <string name="analytics_label_growth">Growth</string>
+    <string name="analytics_label_realized">Realized</string>
+    <string name="analytics_label_unrealized">Unrealized</string>
+    <string name="analytics_label_invested">Invested</string>
+    <string name="analytics_label_deposited">Deposited</string>
+
+    <!-- AnalyticsScreen: period comparison -->
+    <string name="analytics_period_last_month">vs last month</string>
+    <string name="analytics_period_last_year">vs last year</string>
+
+    <!-- AnalyticsScreen: empty states -->
+    <string name="analytics_empty_no_budgets">No budgets yet — create one to see analytics.</string>
+    <string name="analytics_empty_no_history">No history yet — mark a budget as completed to record your first snapshot.</string>
+    <string name="analytics_empty_no_investments">No investments yet — add one from the Investments tab to see a breakdown.</string>
+
+    <!-- AnalyticsScreen: chart titles -->
+    <string name="analytics_chart_income_vs_expenses_vs_savings">Income vs Expenses vs Savings</string>
+    <string name="analytics_chart_budget_adherence">Budget adherence (spent vs planned)</string>
+    <string name="analytics_chart_spending_by_category">Spending by category</string>
+    <string name="analytics_planned_vs_actual">Planned vs actual — %1$s</string>
+    <string name="analytics_chart_account_balances">Account balances</string>
+    <string name="analytics_chart_net_worth_growth_rate">Net worth growth rate</string>
+    <string name="analytics_chart_income_by_source">Income by source</string>
+    <string name="analytics_chart_investment_growth">Investment growth (net of contributions)</string>
+    <string name="analytics_chart_investments_by_size">Investments by size</string>
+    <string name="analytics_chart_investments_by_category">Investments by category</string>
+    <string name="analytics_chart_investments_by_account">Investments by account</string>
+    <string name="analytics_chart_investments_by_currency">Investments by currency</string>
+    <string name="analytics_chart_realized_gains_by_year">Realized gains/losses by year</string>
+    <string name="analytics_chart_contributions_by_year">Contributions by year</string>
+
+    <!-- AnalyticsScreen: investments breakdown -->
+    <string name="analytics_all_time_gains">All-time gains</string>
+    <string name="analytics_performance_by_position">Performance by position</string>
+    <string name="analytics_xirr_value">XIRR %1$s</string>
+    <string name="analytics_cagr_value">CAGR %1$s (%2$s)</string>
+
+    <!-- AnalyticsViewModel -->
+    <string name="analytics_unlinked_account">Unlinked</string>
+
+    <!-- SpendingByCategory -->
+    <string name="analytics_uncategorized">Uncategorized</string>
+</resources>

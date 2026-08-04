@@ -1,5 +1,7 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -34,10 +36,10 @@ fun LinkInvestmentsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Link investments") },
+        title = { Text(stringResource(R.string.investments_link_investments_title)) },
         text = {
             if (investments.isEmpty()) {
-                Text("No investments in your portfolio yet.")
+                Text(stringResource(R.string.investments_empty_portfolio_for_linking))
             } else {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     investments.forEach { data ->
@@ -76,10 +78,10 @@ fun LinkInvestmentsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(selectedIds) }) { Text("Save") }
+            TextButton(onClick = { onConfirm(selectedIds) }) { Text(stringResource(R.string.investments_action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.investments_action_cancel)) }
         }
     )
 }

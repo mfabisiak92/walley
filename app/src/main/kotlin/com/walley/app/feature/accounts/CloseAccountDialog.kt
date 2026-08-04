@@ -18,7 +18,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
@@ -39,13 +41,13 @@ fun CloseAccountDialog(
     if (!needsTransfer) {
         AlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Close account?") },
-            text = { Text("Close \"${account.name}\"? You can reopen it later from the Accounts screen.") },
+            title = { Text(stringResource(R.string.accounts_close_account_confirm_title)) },
+            text = { Text(stringResource(R.string.accounts_close_account_confirm_text_simple, account.name)) },
             confirmButton = {
-                TextButton(onClick = { onConfirm(null) }) { Text("Close") }
+                TextButton(onClick = { onConfirm(null) }) { Text(stringResource(R.string.accounts_close)) }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) { Text("Cancel") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.accounts_cancel)) }
             }
         )
         return
@@ -68,20 +70,24 @@ fun CloseAccountDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Close account?") },
+        title = { Text(stringResource(R.string.accounts_close_account_confirm_title)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(
-                    "\"${account.name}\" has a remaining balance of ${formatMoney(transferAmount, account.currency)}. " +
-                        "You can optionally transfer it to another account below, or leave it in \"${account.name}\" " +
-                        "— it'll stay there but be excluded from net worth while closed. You can reopen " +
-                        "\"${account.name}\" later from the Accounts screen, but a transfer won't be reversed automatically."
+                    stringResource(
+                        R.string.accounts_close_account_transfer_text,
+                        account.name,
+                        formatMoney(transferAmount, account.currency)
+                    )
                 )
                 if (candidates.isEmpty()) {
-                    val virtualQualifier = if (account.isVirtual) "virtual " else ""
+                    val noOtherAccountRes = if (account.isVirtual) {
+                        R.string.accounts_no_other_virtual_account_available
+                    } else {
+                        R.string.accounts_no_other_account_available
+                    }
                     Text(
-                        "No other ${virtualQualifier}account in ${account.currency.name} is available to receive " +
-                            "the balance — it will stay in \"${account.name}\" if you close it.",
+                        stringResource(noOtherAccountRes, account.currency.name, account.name),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -91,10 +97,10 @@ fun CloseAccountDialog(
                         onExpandedChange = { menuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = destination?.name ?: "Don't transfer",
+                            value = destination?.name ?: stringResource(R.string.accounts_dont_transfer),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Transfer to") },
+                            label = { Text(stringResource(R.string.accounts_transfer_to)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuExpanded) },
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
@@ -103,7 +109,7 @@ fun CloseAccountDialog(
                             onDismissRequest = { menuExpanded = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Don't transfer") },
+                                text = { Text(stringResource(R.string.accounts_dont_transfer)) },
                                 onClick = {
                                     destinationId = null
                                     menuExpanded = false
@@ -124,10 +130,10 @@ fun CloseAccountDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(destination?.id) }) { Text("Close") }
+            TextButton(onClick = { onConfirm(destination?.id) }) { Text(stringResource(R.string.accounts_close)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.accounts_cancel)) }
         }
     )
 }

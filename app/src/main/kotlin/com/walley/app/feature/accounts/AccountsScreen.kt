@@ -61,9 +61,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.AccountBalanceContainerColor
 import com.walley.app.core.ui.AccountBalanceContentColor
@@ -82,6 +84,7 @@ import com.walley.app.domain.model.AccountsSortState
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.CurrencyTotal
 import com.walley.app.domain.model.SortDirection
+import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.format.DateTimeFormatter
@@ -116,7 +119,7 @@ fun AccountsScreen(
                 actions = {
                     IconButton(onClick = { showSortFilterSheet = true }) {
                         BadgedBox(badge = { if (hasActiveSortOrFilter) Badge() }) {
-                            Icon(Icons.Filled.Tune, contentDescription = "Sort and filter")
+                            Icon(Icons.Filled.Tune, contentDescription = stringResource(R.string.accounts_cd_sort_and_filter))
                         }
                     }
                 }
@@ -134,7 +137,7 @@ fun AccountsScreen(
                     Tab(
                         selected = pagerState.currentPage == index,
                         onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
-                        text = { Text(group.label) }
+                        text = { Text(group.displayName()) }
                     )
                 }
             }
@@ -213,29 +216,38 @@ private fun ActiveFiltersRow(
             RemovableChip(label = sortChipLabel(sortState), onRemove = onResetSort)
         }
         if (filterState.status != AccountStatusFilter.ACTIVE) {
-            val label = if (filterState.status == AccountStatusFilter.CLOSED) "Closed" else "All statuses"
+            val label = if (filterState.status == AccountStatusFilter.CLOSED) {
+                stringResource(R.string.accounts_closed)
+            } else {
+                stringResource(R.string.accounts_filter_status_all)
+            }
             RemovableChip(label = label, onRemove = onStatusReset)
         }
         filterState.currencies.forEach { currency ->
             RemovableChip(label = currency.name, onRemove = { onCurrencyToggled(currency) })
         }
         filterState.types.forEach { type ->
-            RemovableChip(label = type.label, onRemove = { onTypeToggled(type) })
+            RemovableChip(label = type.displayName(), onRemove = { onTypeToggled(type) })
         }
         if (filterState.kind != AccountKindFilter.ALL) {
-            val label = if (filterState.kind == AccountKindFilter.REAL) "Real" else "Virtual"
+            val label = if (filterState.kind == AccountKindFilter.REAL) {
+                stringResource(R.string.accounts_real)
+            } else {
+                stringResource(R.string.accounts_virtual)
+            }
             RemovableChip(label = label, onRemove = onKindReset)
         }
-        TextButton(onClick = onResetAll) { Text("Reset all") }
+        TextButton(onClick = onResetAll) { Text(stringResource(R.string.accounts_reset_all)) }
     }
 }
 
+@Composable
 private fun sortChipLabel(sort: AccountsSortState): String {
     val fieldLabel = when (sort.field) {
-        AccountSortField.NAME -> "Name"
-        AccountSortField.BALANCE -> "Balance"
-        AccountSortField.DATE_ADDED -> "Date added"
-        AccountSortField.DEFAULT_FIRST -> return "Default first"
+        AccountSortField.NAME -> stringResource(R.string.accounts_name)
+        AccountSortField.BALANCE -> stringResource(R.string.accounts_balance)
+        AccountSortField.DATE_ADDED -> stringResource(R.string.accounts_date_added)
+        AccountSortField.DEFAULT_FIRST -> return stringResource(R.string.accounts_sort_chip_default_first)
     }
     val arrow = if (sort.direction == SortDirection.DESC) "↓" else "↑"
     return "$arrow $fieldLabel"
@@ -249,7 +261,7 @@ private fun AccountsListPage(
     onOpenCashOperations: (Long) -> Unit
 ) {
     val allowedTypes = group.types
-    val tabLabel = group.label
+    val tabLabel = group.displayName()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val filteredAccounts = accounts.filter { it.type in allowedTypes }
     val activeAccounts = filteredAccounts.filterNot { it.isClosed }
@@ -270,12 +282,12 @@ private fun AccountsListPage(
             Column(horizontalAlignment = Alignment.End) {
                 if (filteredAccounts.isNotEmpty()) {
                     SmallFloatingActionButton(onClick = { onOpenUpdateBalances(group) }) {
-                        Icon(Icons.Default.EditNote, contentDescription = "Update balances")
+                        Icon(Icons.Default.EditNote, contentDescription = stringResource(R.string.accounts_update_balances))
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add account")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.accounts_add_account))
                 }
             }
         }
@@ -301,7 +313,7 @@ private fun AccountsListPage(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "No $tabLabel accounts yet — tap + to add one.",
+                        stringResource(R.string.accounts_empty_state_no_type_accounts, tabLabel),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -322,12 +334,12 @@ private fun AccountsListPage(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "No accounts match your filters.",
+                        stringResource(R.string.accounts_empty_state_no_match_filters),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     TextButton(onClick = { viewModel.resetFilters(group) }) {
-                        Text("Reset filters")
+                        Text(stringResource(R.string.accounts_reset_filters))
                     }
                 }
             } else {
@@ -350,9 +362,9 @@ private fun AccountsListPage(
                                 // 0 line for a currency whose envelopes exactly cancel out its checking/cash total.
                                 val currencies = checkingCashAccounts.map { it.currency }.distinct()
                                 SplitSummaryHeader(
-                                    leftLabel = "Total",
+                                    leftLabel = stringResource(R.string.accounts_total),
                                     leftTotals = signedTotalsByCurrency(currencies, checkingCashAccounts) { it.balance },
-                                    rightLabel = "Available",
+                                    rightLabel = stringResource(R.string.accounts_available),
                                     rightTotals = signedTotalsByCurrency(currencies, checkingCashAccounts + virtualSavingsAccounts) { account ->
                                         if (account.isVirtual) -account.balance else account.balance
                                     },
@@ -364,9 +376,9 @@ private fun AccountsListPage(
                                 val virtualSavingsAccounts = activeAccounts.filter { it.isVirtual }
                                 val currencies = activeAccounts.map { it.currency }.distinct()
                                 SplitSummaryHeader(
-                                    leftLabel = "Standard accounts",
+                                    leftLabel = stringResource(R.string.accounts_standard_accounts),
                                     leftTotals = signedTotalsByCurrency(currencies, realSavingsAccounts) { it.balance },
-                                    rightLabel = "Virtual accounts",
+                                    rightLabel = stringResource(R.string.accounts_virtual_accounts),
                                     rightTotals = signedTotalsByCurrency(currencies, virtualSavingsAccounts) { it.balance },
                                     baseCurrency = baseCurrency
                                 )
@@ -448,10 +460,10 @@ private fun AccountsListPage(
     deleteBlockedMessage?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteBlockedMessage,
-            title = { Text("Can't delete account") },
+            title = { Text(stringResource(R.string.accounts_cant_delete_account_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text(stringResource(R.string.accounts_ok)) }
             }
         )
     }
@@ -459,10 +471,10 @@ private fun AccountsListPage(
     closeBlockedMessage?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissCloseBlockedMessage,
-            title = { Text("Can't close account") },
+            title = { Text(stringResource(R.string.accounts_cant_close_account_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissCloseBlockedMessage) { Text("OK") }
+                TextButton(onClick = viewModel::dismissCloseBlockedMessage) { Text(stringResource(R.string.accounts_ok)) }
             }
         )
     }
@@ -510,10 +522,10 @@ private fun AccountRow(
                         val subtitle = listOfNotNull(
                             // Redundant within the Savings tab, which is already single-type — only
                             // Cash & Checking mixes both types, so the label still disambiguates there.
-                            account.type.label.takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
+                            account.type.displayName().takeIf { account.type == AccountType.CHECKING || account.type == AccountType.CASH },
                             account.targetDate?.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                            "Virtual".takeIf { account.isVirtual },
-                            "Closed".takeIf { account.isClosed }
+                            stringResource(R.string.accounts_virtual).takeIf { account.isVirtual },
+                            stringResource(R.string.accounts_closed).takeIf { account.isClosed }
                         ).joinToString(" · ")
                         if (subtitle.isNotEmpty()) {
                             Text(
@@ -532,7 +544,7 @@ private fun AccountRow(
                             ) {
                                 Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.size(6.dp))
-                                Text("Reopen", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.accounts_reopen), style = MaterialTheme.typography.labelMedium)
                             }
                         } else {
                             Text(formatMoney(account.balance, account.currency), style = MaterialTheme.typography.titleMedium)
@@ -583,7 +595,7 @@ private fun InvestmentAccountBody(account: Account, onReopen: () -> Unit) {
         Column {
             Text(account.name, style = MaterialTheme.typography.titleMedium)
             if (account.isClosed) {
-                Text("Closed", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(stringResource(R.string.accounts_closed), style = MaterialTheme.typography.bodySmall, color = labelColor)
             }
         }
         if (account.isClosed) {
@@ -594,11 +606,11 @@ private fun InvestmentAccountBody(account: Account, onReopen: () -> Unit) {
             ) {
                 Icon(Icons.Filled.LockOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.size(6.dp))
-                Text("Reopen", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.accounts_reopen), style = MaterialTheme.typography.labelMedium)
             }
         } else {
             Column(horizontalAlignment = Alignment.End) {
-                Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(stringResource(R.string.accounts_net_balance), style = MaterialTheme.typography.bodySmall, color = labelColor)
                 Text(
                     formatMoney(account.netWorthValue, account.currency),
                     style = MaterialTheme.typography.titleSmall,
@@ -615,11 +627,11 @@ private fun InvestmentAccountBody(account: Account, onReopen: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(stringResource(R.string.accounts_invested_amount), style = MaterialTheme.typography.bodySmall, color = labelColor)
                 Text(formatMoney(invested, account.currency), style = MaterialTheme.typography.titleSmall)
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                Text(stringResource(R.string.accounts_uninvested_cash), style = MaterialTheme.typography.bodySmall, color = labelColor)
                 Text(formatMoney(account.uninvestedCash, account.currency), style = MaterialTheme.typography.titleSmall)
             }
         }
@@ -646,13 +658,13 @@ private fun DefaultAccountButton(isDefault: Boolean, onClick: () -> Unit) {
         if (isDefault) {
             Icon(
                 Icons.Filled.Star,
-                contentDescription = "Default account",
+                contentDescription = stringResource(R.string.accounts_cd_default_account),
                 tint = MaterialTheme.colorScheme.primary
             )
         } else {
             Icon(
                 Icons.Outlined.StarOutline,
-                contentDescription = "Set as default account",
+                contentDescription = stringResource(R.string.accounts_cd_set_as_default_account),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -775,7 +787,7 @@ private fun InvestmentSummaryCard(accounts: List<Account>) {
                 ) {
                     Text(formatMoney(total, currency), style = MaterialTheme.typography.titleLarge)
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Net balance", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(stringResource(R.string.accounts_net_balance), style = MaterialTheme.typography.bodySmall, color = labelColor)
                         Text(
                             formatMoney(net, currency),
                             style = MaterialTheme.typography.titleSmall,
@@ -790,11 +802,11 @@ private fun InvestmentSummaryCard(accounts: List<Account>) {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text("Invested amount", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(stringResource(R.string.accounts_invested_amount), style = MaterialTheme.typography.bodySmall, color = labelColor)
                         Text(formatMoney(invested, currency), style = MaterialTheme.typography.titleSmall)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("Uninvested cash", style = MaterialTheme.typography.bodySmall, color = labelColor)
+                        Text(stringResource(R.string.accounts_uninvested_cash), style = MaterialTheme.typography.bodySmall, color = labelColor)
                         Text(formatMoney(uninvested, currency), style = MaterialTheme.typography.titleSmall)
                     }
                 }
@@ -819,7 +831,7 @@ private fun MonthPaidRow(amount: BigDecimal, currency: Currency) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            "Paid this month",
+            stringResource(R.string.accounts_paid_this_month),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -850,15 +862,18 @@ private fun SavingsGoalProgress(account: Account, progressPercent: BigDecimal) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${progressPercent.setScale(0, RoundingMode.HALF_UP)}% of " +
-                    formatMoney(account.targetAmount ?: BigDecimal.ZERO, account.currency),
+                text = stringResource(
+                    R.string.accounts_progress_percent_of,
+                    progressPercent.setScale(0, RoundingMode.HALF_UP),
+                    formatMoney(account.targetAmount ?: BigDecimal.ZERO, account.currency)
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (account.targetReached) {
                 Icon(
                     Icons.Filled.CheckCircle,
-                    contentDescription = "Goal reached",
+                    contentDescription = stringResource(R.string.accounts_cd_goal_reached),
                     tint = InvestmentGainColor,
                     modifier = Modifier.size(16.dp)
                 )

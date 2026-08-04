@@ -20,10 +20,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Investment
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.displayName
 
 /** Edits an investment's identity/metadata. Position size and cost basis are managed via its buy/sell events instead. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,7 +59,7 @@ fun EditInvestmentDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit investment") },
+        title = { Text(stringResource(R.string.investments_edit_investment_title)) },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -64,8 +67,7 @@ fun EditInvestmentDialog(
             ) {
                 if (selectableAccounts.isEmpty()) {
                     Text(
-                        "No investment account in ${investment.currency.name} exists yet. " +
-                            "Create one from the Accounts screen to keep this investment.",
+                        stringResource(R.string.investments_edit_investment_no_account_warning, investment.currency.name),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -73,31 +75,31 @@ fun EditInvestmentDialog(
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("Name") },
+                    label = { Text(stringResource(R.string.investments_label_name)) },
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = ticker,
                     onValueChange = { ticker = it },
-                    label = { Text("Ticker") },
+                    label = { Text(stringResource(R.string.investments_label_ticker)) },
                     singleLine = true
                 )
                 OutlinedTextField(
                     value = externalTicker,
                     onValueChange = { externalTicker = it },
-                    label = { Text("External ticker (optional, e.g. PZU.WA)") },
+                    label = { Text(stringResource(R.string.investments_label_external_ticker_optional)) },
                     singleLine = true,
-                    supportingText = { Text("Yahoo Finance symbol, for automatic price refresh") }
+                    supportingText = { Text(stringResource(R.string.investments_hint_external_ticker)) }
                 )
                 ExposedDropdownMenuBox(
                     expanded = categoryMenuExpanded,
                     onExpandedChange = { categoryMenuExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = category.label,
+                        value = category.displayName(),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Category") },
+                        label = { Text(stringResource(R.string.investments_label_category)) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryMenuExpanded) },
                         modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                     )
@@ -107,7 +109,7 @@ fun EditInvestmentDialog(
                     ) {
                         InvestmentCategory.entries.forEach { option ->
                             DropdownMenuItem(
-                                text = { Text(option.label) },
+                                text = { Text(option.displayName()) },
                                 onClick = {
                                     category = option
                                     categoryMenuExpanded = false
@@ -139,10 +141,10 @@ fun EditInvestmentDialog(
                     )
                 },
                 enabled = isValid
-            ) { Text("Save") }
+            ) { Text(stringResource(R.string.investments_action_save)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.investments_action_cancel)) }
         }
     )
 }

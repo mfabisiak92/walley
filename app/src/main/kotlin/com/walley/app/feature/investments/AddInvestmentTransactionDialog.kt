@@ -1,5 +1,6 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,13 +26,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.walley.app.R
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.InvestmentTransaction
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.availableCashToBuy
+import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -69,13 +73,13 @@ fun AddInvestmentTransactionDialog(
     var priceText by remember { mutableStateOf(initial?.pricePerUnit?.toPlainString() ?: "") }
     var commissionText by remember { mutableStateOf(initial?.commission?.toPlainString() ?: "") }
 
-    val parsedQuantity = quantityText.toBigDecimalOrNull()
-    val parsedPrice = priceText.toBigDecimalOrNull()
+    val parsedQuantity = quantityText.toBigDecimalOrNullLenient()
+    val parsedPrice = priceText.toBigDecimalOrNullLenient()
     val isEditing = initial != null
 
     val tradeValue = if (parsedQuantity != null && parsedPrice != null) parsedQuantity * parsedPrice else BigDecimal.ZERO
     val suggestedCommission = account?.defaultCommission(tradeValue)
-    val parsedCommission = commissionText.toBigDecimalOrNull()
+    val parsedCommission = commissionText.toBigDecimalOrNullLenient()
     val effectiveCommission = parsedCommission ?: suggestedCommission ?: BigDecimal.ZERO
     val commissionInvalid = commissionText.isNotBlank() && (parsedCommission == null || parsedCommission.signum() < 0)
 
@@ -99,7 +103,15 @@ fun AddInvestmentTransactionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "Edit event" else "Add ${type.label.lowercase()}") },
+        title = {
+            Text(
+                if (isEditing) {
+                    stringResource(R.string.investments_edit_event_title)
+                } else {
+                    stringResource(R.string.investments_add_type_title, type.displayName().lowercase())
+                }
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -111,10 +123,10 @@ fun AddInvestmentTransactionDialog(
                         onExpandedChange = { typeMenuExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = type.label,
+                            value = type.displayName(),
                             onValueChange = {},
                             readOnly = true,
-                            label = { Text("Type") },
+                            label = { Text(stringResource(R.string.investments_label_type)) },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeMenuExpanded) },
                             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
@@ -124,7 +136,7 @@ fun AddInvestmentTransactionDialog(
                         ) {
                             InvestmentTransactionType.entries.forEach { option ->
                                 DropdownMenuItem(
-                                    text = { Text(option.label) },
+                                    text = { Text(option.displayName()) },
                                     onClick = {
                                         type = option
                                         typeMenuExpanded = false
@@ -138,7 +150,7 @@ fun AddInvestmentTransactionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Date")
+                    Text(stringResource(R.string.investments_label_date))
                     TextButton(onClick = { showDatePicker = true }) {
                         Text(date.format(DateTimeFormatter.ISO_LOCAL_DATE))
                     }
@@ -146,12 +158,19 @@ fun AddInvestmentTransactionDialog(
                 OutlinedTextField(
                     value = quantityText,
                     onValueChange = { quantityText = it },
-                    label = { Text("Quantity") },
+                    label = { Text(stringResource(R.string.investments_label_quantity)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = quantityText.isNotBlank() && (parsedQuantity == null || parsedQuantity.signum() <= 0 || exceedsHoldings),
                     supportingText = if (exceedsHoldings) {
-                        { Text("Only ${availableToSell?.toPlainString()} available to sell as of this date") }
+                        {
+                            Text(
+                                stringResource(
+                                    R.string.investments_hint_only_available_to_sell,
+                                    availableToSell?.toPlainString().orEmpty()
+                                )
+                            )
+                        }
                     } else {
                         null
                     }
@@ -159,12 +178,20 @@ fun AddInvestmentTransactionDialog(
                 OutlinedTextField(
                     value = priceText,
                     onValueChange = { priceText = it },
-                    label = { Text("Price per unit (${currency.symbol})") },
+                    label = { Text(stringResource(R.string.investments_label_price_per_unit_currency, currency.symbol)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = priceText.isNotBlank() && (parsedPrice == null || parsedPrice.signum() <= 0 || exceedsCash),
                     supportingText = if (exceedsCash) {
-                        { Text("Only ${availableCash?.toPlainString()} ${currency.symbol} available in this account as of this date") }
+                        {
+                            Text(
+                                stringResource(
+                                    R.string.investments_hint_only_cash_available,
+                                    availableCash?.toPlainString().orEmpty(),
+                                    currency.symbol
+                                )
+                            )
+                        }
                     } else {
                         null
                     }
@@ -172,16 +199,20 @@ fun AddInvestmentTransactionDialog(
                 OutlinedTextField(
                     value = commissionText,
                     onValueChange = { commissionText = it },
-                    label = { Text("Commission (${currency.symbol})") },
+                    label = { Text(stringResource(R.string.investments_label_commission_currency, currency.symbol)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     isError = commissionInvalid,
                     supportingText = {
                         Text(
                             if (commissionText.isBlank() && suggestedCommission != null) {
-                                "Defaults to ${suggestedCommission.toPlainString()} ${currency.symbol} from account settings"
+                                stringResource(
+                                    R.string.investments_hint_defaults_to_commission_currency,
+                                    suggestedCommission.toPlainString(),
+                                    currency.symbol
+                                )
                             } else {
-                                "Optional — leave blank to use the account's default"
+                                stringResource(R.string.investments_hint_optional_default_commission)
                             }
                         )
                     }
@@ -192,10 +223,10 @@ fun AddInvestmentTransactionDialog(
             TextButton(
                 onClick = { onConfirm(type, date, parsedQuantity!!, parsedPrice!!, effectiveCommission) },
                 enabled = isValid
-            ) { Text(if (isEditing) "Save" else "Add") }
+            ) { Text(if (isEditing) stringResource(R.string.investments_action_save) else stringResource(R.string.investments_action_add)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.investments_action_cancel)) }
         }
     )
 
@@ -213,10 +244,10 @@ fun AddInvestmentTransactionDialog(
                         }
                         showDatePicker = false
                     }
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.investments_action_ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) { Text("Cancel") }
+                TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.investments_action_cancel)) }
             }
         ) {
             DatePicker(state = datePickerState)

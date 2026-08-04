@@ -46,10 +46,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.R
 import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.BudgetItemIconBadge
 import com.walley.app.core.ui.SwipeToCompleteBox
@@ -82,6 +84,11 @@ fun AdHocBudgetDetailScreen(
     var showCompleteConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    // Unformatted templates, captured while composing (stringResource requires a composable
+    // context) — formatted later, from the event handlers below, with String.format.
+    val itemDeletedTemplate = stringResource(R.string.budget_item_deleted_snackbar)
+    val itemMarkedPaidTemplate = stringResource(R.string.budget_item_marked_paid_snackbar)
+    val undoLabel = stringResource(R.string.budget_undo)
 
     fun deleteItemWithUndo(item: AdHocBudgetItem) {
         viewModel.deleteItem(item.id)
@@ -91,8 +98,8 @@ fun AdHocBudgetDetailScreen(
                 snackbarHostState.currentSnackbarData?.dismiss()
             }
             val result = snackbarHostState.showSnackbar(
-                message = "\"${item.name}\" deleted",
-                actionLabel = "Undo",
+                message = itemDeletedTemplate.format(item.name),
+                actionLabel = undoLabel,
                 duration = SnackbarDuration.Indefinite
             )
             dismissJob.cancel()
@@ -109,7 +116,7 @@ fun AdHocBudgetDetailScreen(
         floatingActionButton = {
             if (!isCompleted && account != null) {
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Icons.Filled.Add, contentDescription = "Add item")
+                    Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.budget_add_item))
                 }
             }
         },
@@ -117,10 +124,10 @@ fun AdHocBudgetDetailScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(budgetWithItems?.budget?.name ?: "Ad-hoc budget")
+                        Text(budgetWithItems?.budget?.name ?: stringResource(R.string.budget_adhoc_default_name))
                         if (isCompleted) {
                             Text(
-                                "Completed",
+                                stringResource(R.string.budget_completed_label),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -129,16 +136,16 @@ fun AdHocBudgetDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.budget_cd_back))
                     }
                 },
                 actions = {
                     if (!isCompleted) {
                         IconButton(onClick = { showCompleteConfirm = true }) {
-                            Icon(Icons.Filled.CheckCircle, contentDescription = "Mark as completed")
+                            Icon(Icons.Filled.CheckCircle, contentDescription = stringResource(R.string.budget_cd_mark_completed))
                         }
                         IconButton(onClick = { showDeleteConfirm = true }) {
-                            Icon(Icons.Filled.Delete, contentDescription = "Delete budget")
+                            Icon(Icons.Filled.Delete, contentDescription = stringResource(R.string.budget_cd_delete_budget))
                         }
                     }
                 }
@@ -163,7 +170,11 @@ fun AdHocBudgetDetailScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Default account: ${currentAccount.name} (${formatMoney(currentAccount.balance, currentAccount.currency)} left)",
+                        stringResource(
+                            R.string.budget_adhoc_default_account_with_balance,
+                            currentAccount.name,
+                            formatMoney(currentAccount.balance, currentAccount.currency)
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -202,8 +213,8 @@ fun AdHocBudgetDetailScreen(
                                         snackbarHostState.currentSnackbarData?.dismiss()
                                     }
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "\"${item.name}\" marked as paid",
-                                        actionLabel = "Undo",
+                                        message = itemMarkedPaidTemplate.format(item.name),
+                                        actionLabel = undoLabel,
                                         duration = SnackbarDuration.Indefinite
                                     )
                                     dismissJob.cancel()
@@ -279,8 +290,8 @@ fun AdHocBudgetDetailScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("Delete budget?") },
-            text = { Text("This will permanently delete this budget and all its items. This cannot be undone.") },
+            title = { Text(stringResource(R.string.budget_delete_budget_title)) },
+            text = { Text(stringResource(R.string.budget_delete_budget_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -288,10 +299,10 @@ fun AdHocBudgetDetailScreen(
                         viewModel.deleteBudget(onNavigateBack)
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+                ) { Text(stringResource(R.string.budget_delete)) }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showDeleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -299,10 +310,10 @@ fun AdHocBudgetDetailScreen(
     deleteBlockedMessage?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissDeleteBlockedMessage,
-            title = { Text("Can't delete budget") },
+            title = { Text(stringResource(R.string.budget_cant_delete_budget_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text("OK") }
+                TextButton(onClick = viewModel::dismissDeleteBlockedMessage) { Text(stringResource(R.string.budget_ok)) }
             }
         )
     }
@@ -310,31 +321,23 @@ fun AdHocBudgetDetailScreen(
     insufficientBalanceMessage?.let { message ->
         AlertDialog(
             onDismissRequest = viewModel::dismissInsufficientBalanceMessage,
-            title = { Text("Can't complete payment") },
+            title = { Text(stringResource(R.string.budget_cant_complete_payment_title)) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = viewModel::dismissInsufficientBalanceMessage) { Text("OK") }
+                TextButton(onClick = viewModel::dismissInsufficientBalanceMessage) { Text(stringResource(R.string.budget_ok)) }
             }
         )
     }
 
     if (showCompleteConfirm) {
         val isEarly = budgetWithItems?.budget?.endDate?.let { LocalDate.now().isBefore(it) } == true
+        val earlyNote = stringResource(R.string.budget_adhoc_mark_completed_early_note)
+        val commonNote = stringResource(R.string.budget_mark_completed_common_note)
         AlertDialog(
             onDismissRequest = { showCompleteConfirm = false },
-            title = { Text("Mark budget as completed?") },
+            title = { Text(stringResource(R.string.budget_mark_completed_title)) },
             text = {
-                Text(
-                    (if (isEarly) {
-                        "This budget's end date hasn't passed yet — anything you haven't paid will just stop " +
-                            "being tracked. "
-                    } else {
-                        ""
-                    }) +
-                        "This is a one-way change. Once completed, this budget and its items become read-only " +
-                        "— nothing can be paid, deleted, or otherwise changed, and the budget itself can no " +
-                        "longer be deleted."
-                )
+                Text((if (isEarly) "$earlyNote " else "") + commonNote)
             },
             confirmButton = {
                 TextButton(
@@ -342,10 +345,10 @@ fun AdHocBudgetDetailScreen(
                         showCompleteConfirm = false
                         viewModel.markCompleted()
                     }
-                ) { Text("Mark completed") }
+                ) { Text(stringResource(R.string.budget_mark_completed_button)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCompleteConfirm = false }) { Text("Cancel") }
+                TextButton(onClick = { showCompleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
             }
         )
     }
@@ -366,11 +369,15 @@ private fun AdHocProgressSection(total: AdHocCurrencyTotal, modifier: Modifier =
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "${formatMoney(total.paid, total.currency)} / ${formatMoney(total.planned, total.currency)}",
+                stringResource(
+                    R.string.budget_paid_of_planned,
+                    formatMoney(total.paid, total.currency),
+                    formatMoney(total.planned, total.currency)
+                ),
                 style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                "${percent.setScale(0, RoundingMode.HALF_UP)}%",
+                stringResource(R.string.budget_percent_value, percent.setScale(0, RoundingMode.HALF_UP)),
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -438,7 +445,7 @@ private fun AdHocBudgetItemRow(
                         )
                         if (accountName != null) {
                             Text(
-                                "From $accountName",
+                                stringResource(R.string.budget_from_account, accountName),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -448,7 +455,11 @@ private fun AdHocBudgetItemRow(
                     }
                 }
                 Text(
-                    "${formatMoney(item.paidAmount, currency)} / ${formatMoney(item.amount, currency)}",
+                    stringResource(
+                        R.string.budget_paid_of_planned,
+                        formatMoney(item.paidAmount, currency),
+                        formatMoney(item.amount, currency)
+                    ),
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
