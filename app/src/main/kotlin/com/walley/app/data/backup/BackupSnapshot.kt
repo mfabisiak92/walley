@@ -56,7 +56,9 @@ data class InvestmentBackupDto(
     val currentPrice: String,
     val accountId: Long?,
     val lastPriceUpdate: String?,
-    val externalTicker: String?
+    val externalTicker: String?,
+    // Defaulted to null so a backup taken before this field existed still restores cleanly.
+    val previousPrice: String? = null
 )
 
 @Serializable

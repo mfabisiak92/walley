@@ -20,7 +20,9 @@ data class Investment(
     /** Null means the price has never been refreshed (e.g. investments created before this field existed). */
     val lastPriceUpdate: LocalDate? = null,
     /** The Yahoo Finance symbol for this instrument (e.g. "PZU.WA"), set once per investment. Null falls back to [ticker] as-is, which is fine for tickers Yahoo resolves without a suffix (e.g. most US ones). */
-    val externalTicker: String? = null
+    val externalTicker: String? = null,
+    /** [currentPrice] as of just before the most recent price update, letting the user revert a price change. Null until the price has been updated at least once. */
+    val previousPrice: BigDecimal? = null
 )
 
 data class InvestmentTransaction(

@@ -255,7 +255,8 @@ fun InvestmentDetailScreen(
                 onSave = { currentPrice ->
                     viewModel.updateCurrentPrice(currentPrice)
                     showUpdatePriceDialog = false
-                }
+                },
+                onRevertToPrevious = { viewModel.revertToPreviousPrice() }
             )
         }
     }

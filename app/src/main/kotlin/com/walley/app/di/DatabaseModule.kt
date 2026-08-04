@@ -44,6 +44,7 @@ import com.walley.app.data.local.MIGRATION_31_32
 import com.walley.app.data.local.MIGRATION_32_33
 import com.walley.app.data.local.MIGRATION_33_34
 import com.walley.app.data.local.MIGRATION_34_35
+import com.walley.app.data.local.MIGRATION_35_36
 import com.walley.app.data.local.WalleyDatabase
 import com.walley.app.data.local.WatchedEquityDao
 import dagger.Module
@@ -95,7 +96,8 @@ object DatabaseModule {
                 MIGRATION_31_32,
                 MIGRATION_32_33,
                 MIGRATION_33_34,
-                MIGRATION_34_35
+                MIGRATION_34_35,
+                MIGRATION_35_36
             )
             .build()
 

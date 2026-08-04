@@ -209,10 +209,22 @@
     <string name="investments_cd_increased">Wzrosła</string>
     <string name="investments_cd_decreased">Spadła</string>
     <string name="investments_price_was">było %1$s</string>
+    <string name="investments_action_review">Przegląd</string>
+
+    <!-- ReviewPriceUpdatesScreen -->
+    <string name="investments_review_prices_title">Przegląd zmian cen</string>
+    <string name="investments_action_confirm_and_save">Potwierdź i zapisz</string>
+    <string name="investments_review_total_title">Razem</string>
+    <string name="investments_label_account_balance">Saldo</string>
+    <string name="investments_label_net_balance">Netto</string>
+    <string name="investments_cd_expand">Rozwiń</string>
+    <string name="investments_cd_collapse">Zwiń</string>
 
     <!-- UpdateCurrentPriceDialog -->
     <string name="investments_update_current_price_title">Zaktualizuj aktualną cenę</string>
     <string name="investments_label_current_price_currency">Aktualna cena (%1$s)</string>
+    <string name="investments_previous_price_label">Poprzednia: %1$s</string>
+    <string name="investments_action_revert">Cofnij</string>
 
     <!-- ImportInvestmentsViewModel -->
     <string name="investments_import_error_read_file">Nie udało się odczytać pliku. Upewnij się, że to plik CSV, i spróbuj ponownie.</string>

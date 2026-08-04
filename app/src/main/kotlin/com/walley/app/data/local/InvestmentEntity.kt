@@ -18,6 +18,8 @@ data class InvestmentEntity(
     val currentPrice: BigDecimal,
     val accountId: Long? = null,
     val lastPriceUpdate: LocalDate? = null,
+    /** currentPrice as of just before the most recent price update — lets the user revert to it. Null until a price has been updated at least once. */
+    val previousPrice: BigDecimal? = null,
     // Column kept as "exchange" (from when this held a Twelve Data exchange code) to avoid another
     // migration — it now holds a full Yahoo Finance symbol instead.
     @ColumnInfo(name = "exchange") val externalTicker: String? = null

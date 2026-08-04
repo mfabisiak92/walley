@@ -64,17 +64,22 @@ private const val STALE_PRICE_THRESHOLD_DAYS = 3L
 @Composable
 fun UpdatePricesScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToReview: () -> Unit,
     viewModel: UpdatePricesViewModel = hiltViewModel()
 ) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
     val refreshingIds by viewModel.refreshingIds.collectAsStateWithLifecycle()
     val failedRefreshReasons by viewModel.failedRefreshReasons.collectAsStateWithLifecycle()
+    val fetchedPrices by viewModel.fetchedPrices.collectAsStateWithLifecycle()
     val marketDataConfigured by viewModel.marketDataConfigured.collectAsStateWithLifecycle()
     val priceTexts = remember { mutableStateMapOf<Long, String>() }
-    // Tracks the currentPrice each text field was last seeded from, so a market refresh (which
-    // changes currentPrice in the DB) overwrites the field, while an unsaved manual edit (which
-    // doesn't) is left alone.
+    // Tracks the currentPrice each text field was last seeded from, so a change to the saved DB
+    // price (which only happens after Confirm & save on the review screen) overwrites the field,
+    // while an unsaved manual edit (which doesn't touch the DB) is left alone.
     val seededPrices = remember { mutableStateMapOf<Long, BigDecimal>() }
+    // Same idea for a market-fetched preview price, which is never written to the DB from this
+    // screen — refreshing only updates the on-screen field, exactly like typing a price by hand.
+    val seededFetchedPrices = remember { mutableStateMapOf<Long, BigDecimal>() }
     val scope = rememberCoroutineScope()
 
     investments.forEach { investment ->
@@ -82,6 +87,13 @@ fun UpdatePricesScreen(
         if (seeded == null || seeded.compareTo(investment.currentPrice) != 0) {
             priceTexts[investment.id] = investment.currentPrice.toPlainString()
             seededPrices[investment.id] = investment.currentPrice
+        }
+    }
+    fetchedPrices.forEach { (investmentId, price) ->
+        val seeded = seededFetchedPrices[investmentId]
+        if (seeded == null || seeded.compareTo(price) != 0) {
+            priceTexts[investmentId] = price.toPlainString()
+            seededFetchedPrices[investmentId] = price
         }
     }
 
@@ -120,8 +132,8 @@ fun UpdatePricesScreen(
                         }
                     }.toMap()
                     scope.launch {
-                        viewModel.saveAll(changed)
-                        onNavigateBack()
+                        viewModel.generateReview(changed)
+                        onNavigateToReview()
                     }
                 },
                 enabled = allValid,
@@ -129,7 +141,7 @@ fun UpdatePricesScreen(
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
-            ) { Text(stringResource(R.string.investments_action_save_all)) }
+            ) { Text(stringResource(R.string.investments_action_review)) }
         }
     ) { innerPadding ->
         LazyColumn(

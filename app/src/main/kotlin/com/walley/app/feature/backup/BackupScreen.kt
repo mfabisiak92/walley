@@ -30,10 +30,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.R
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val timestampFormatter = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm")
+
+// Colon-free and space-free so it's a valid filename on every filesystem the document picker might
+// save to, while still sorting chronologically as plain text.
+private val backupFileNameFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +77,10 @@ fun BackupScreen(
             when (state) {
                 is BackupUiState.Ready -> ReadyContent(
                     lastBackupAt = lastBackupAt,
-                    onBackupClick = { createDocumentLauncher.launch("walley_backup_${System.currentTimeMillis()}.enc") },
+                    onBackupClick = {
+                        val timestamp = LocalDateTime.now().format(backupFileNameFormatter)
+                        createDocumentLauncher.launch("walley_backup_$timestamp.enc")
+                    },
                     onRestoreClick = { openDocumentLauncher.launch(arrayOf("*/*")) }
                 )
                 is BackupUiState.BackingUp -> LoadingContent(stringResource(R.string.backup_backing_up))

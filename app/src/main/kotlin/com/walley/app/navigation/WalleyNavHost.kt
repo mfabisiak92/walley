@@ -1,6 +1,8 @@
 package com.walley.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -19,7 +21,9 @@ import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.investments.CashOperationsScreen
 import com.walley.app.feature.investments.EquityDetailScreen
 import com.walley.app.feature.investments.InvestmentDetailScreen
+import com.walley.app.feature.investments.ReviewPriceUpdatesScreen
 import com.walley.app.feature.investments.UpdatePricesScreen
+import com.walley.app.feature.investments.UpdatePricesViewModel
 import com.walley.app.feature.settings.SettingsScreen
 
 private object WalleyDestinations {
@@ -34,6 +38,7 @@ private object WalleyDestinations {
     const val AD_HOC_WIZARD = "ad_hoc_wizard?resume={resumeBudgetId}"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
     const val UPDATE_PRICES = "update_prices"
+    const val REVIEW_PRICES = "review_prices"
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
     const val UPDATE_BALANCES = "update_balances/{group}"
     const val CASH_OPERATIONS = "cash_operations/{accountId}"
@@ -184,8 +189,27 @@ fun WalleyNavHost() {
         ) {
             AdHocBudgetDetailScreen(onNavigateBack = { navController.popBackStack() })
         }
-        composable(WalleyDestinations.UPDATE_PRICES) {
-            UpdatePricesScreen(onNavigateBack = { navController.popBackStack() })
+        composable(WalleyDestinations.UPDATE_PRICES) { backStackEntry ->
+            // hiltViewModel() defaults to scoping the ViewModel to this destination's own back
+            // stack entry. Passed explicitly here so the REVIEW_PRICES destination below can look
+            // up this same entry and share the instance — otherwise the review screen would get a
+            // fresh, empty ViewModel and never see the review that was just generated.
+            val viewModel: UpdatePricesViewModel = hiltViewModel(backStackEntry)
+            UpdatePricesScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToReview = { navController.navigate(WalleyDestinations.REVIEW_PRICES) }
+            )
+        }
+        composable(WalleyDestinations.REVIEW_PRICES) { backStackEntry ->
+            val parentEntry = remember(backStackEntry) {
+                navController.getBackStackEntry(WalleyDestinations.UPDATE_PRICES)
+            }
+            val viewModel: UpdatePricesViewModel = hiltViewModel(parentEntry)
+            ReviewPriceUpdatesScreen(
+                viewModel = viewModel,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
         composable(
             WalleyDestinations.UPDATE_BALANCES,

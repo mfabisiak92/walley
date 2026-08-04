@@ -209,10 +209,22 @@
     <string name="investments_cd_increased">Increased</string>
     <string name="investments_cd_decreased">Decreased</string>
     <string name="investments_price_was">was %1$s</string>
+    <string name="investments_action_review">Review</string>
+
+    <!-- ReviewPriceUpdatesScreen -->
+    <string name="investments_review_prices_title">Review price changes</string>
+    <string name="investments_action_confirm_and_save">Confirm &amp; save</string>
+    <string name="investments_review_total_title">Total</string>
+    <string name="investments_label_account_balance">Balance</string>
+    <string name="investments_label_net_balance">Net</string>
+    <string name="investments_cd_expand">Expand</string>
+    <string name="investments_cd_collapse">Collapse</string>
 
     <!-- UpdateCurrentPriceDialog -->
     <string name="investments_update_current_price_title">Update current price</string>
     <string name="investments_label_current_price_currency">Current price (%1$s)</string>
+    <string name="investments_previous_price_label">Previous: %1$s</string>
+    <string name="investments_action_revert">Revert</string>
 
     <!-- ImportInvestmentsViewModel -->
     <string name="investments_import_error_read_file">Couldn\'t read that file. Make sure it\'s a CSV file and try again.</string>

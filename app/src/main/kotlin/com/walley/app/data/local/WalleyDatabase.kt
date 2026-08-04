@@ -8,7 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
 /** Kept in sync with [WalleyDatabase]'s `@Database(version = ...)` — referenced by backups to record the schema they were taken against. */
-const val WALLEY_DB_SCHEMA_VERSION = 35
+const val WALLEY_DB_SCHEMA_VERSION = 36
 
 @Database(
     entities = [
@@ -560,5 +560,14 @@ val MIGRATION_34_35 = object : Migration(34, 35) {
         // migration runs; other account types leave it unset since the field doesn't apply to them.
         db.execSQL("ALTER TABLE accounts ADD COLUMN targetDate TEXT")
         db.execSQL("UPDATE accounts SET targetDate = '${LocalDate.now()}' WHERE type = 'SAVING'")
+    }
+}
+
+val MIGRATION_35_36 = object : Migration(35, 36) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Tracks the price in effect just before the most recent update, so the user can revert a
+        // price change from the investment detail screen. Null for existing investments until their
+        // price is next updated.
+        db.execSQL("ALTER TABLE investments ADD COLUMN previousPrice TEXT")
     }
 }

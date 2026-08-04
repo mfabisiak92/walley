@@ -74,8 +74,37 @@ interface InvestmentDao {
         commission: BigDecimal
     )
 
-    @Query("UPDATE investments SET currentPrice = :currentPrice, lastPriceUpdate = :lastPriceUpdate WHERE id = :investmentId")
+    // previousPrice is set from the row's current (pre-update) currentPrice, so it always holds
+    // whatever price was in effect just before this call — the SET clauses all read the row's
+    // pre-update values, so this is an atomic shift rather than a read-then-write.
+    @Query(
+        """
+        UPDATE investments
+        SET previousPrice = currentPrice, currentPrice = :currentPrice, lastPriceUpdate = :lastPriceUpdate
+        WHERE id = :investmentId
+        """
+    )
     suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal, lastPriceUpdate: LocalDate)
+
+    // Used instead of [updateCurrentPrice] when the "new" price is numerically the same as what's
+    // already stored (e.g. re-saving the dialog unchanged, or a market refresh confirming the price
+    // hasn't moved) — still marks the price as freshly checked without shifting the unchanged value
+    // into previousPrice, which would otherwise stomp on the real previous price.
+    @Query("UPDATE investments SET lastPriceUpdate = :lastPriceUpdate WHERE id = :investmentId")
+    suspend fun touchLastPriceUpdate(investmentId: Long, lastPriceUpdate: LocalDate)
+
+    // Swaps currentPrice and previousPrice — reverting is just "set the price to what it was
+    // before", which itself is a price update, so the value being reverted from becomes the new
+    // previousPrice. That makes a second revert a redo back to the original price. Guarded by
+    // previousPrice IS NOT NULL so calling this with nothing to revert to is a harmless no-op.
+    @Query(
+        """
+        UPDATE investments
+        SET currentPrice = previousPrice, previousPrice = currentPrice, lastPriceUpdate = :lastPriceUpdate
+        WHERE id = :investmentId AND previousPrice IS NOT NULL
+        """
+    )
+    suspend fun revertToPreviousPrice(investmentId: Long, lastPriceUpdate: LocalDate)
 
     @Query("DELETE FROM investments WHERE id = :investmentId")
     suspend fun delete(investmentId: Long)

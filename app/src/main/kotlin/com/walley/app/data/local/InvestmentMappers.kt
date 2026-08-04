@@ -12,7 +12,8 @@ fun InvestmentEntity.toDomain(): Investment = Investment(
     currentPrice = currentPrice,
     accountId = accountId,
     lastPriceUpdate = lastPriceUpdate,
-    externalTicker = externalTicker
+    externalTicker = externalTicker,
+    previousPrice = previousPrice
 )
 
 fun InvestmentTransactionEntity.toDomain(): InvestmentTransaction = InvestmentTransaction(

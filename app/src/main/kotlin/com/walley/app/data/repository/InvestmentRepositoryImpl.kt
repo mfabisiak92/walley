@@ -92,7 +92,20 @@ class InvestmentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal) {
-        investmentDao.updateCurrentPrice(investmentId, currentPrice, LocalDate.now())
+        val entity = investmentDao.findById(investmentId) ?: return
+        val today = LocalDate.now()
+        // BigDecimal.equals() is scale-sensitive (10 != 10.00), so a plain re-save of the same
+        // value at a different scale would otherwise be treated as a real change and stomp on the
+        // real previousPrice — compareTo is the numeric comparison that avoids that.
+        if (entity.currentPrice.compareTo(currentPrice) == 0) {
+            investmentDao.touchLastPriceUpdate(investmentId, today)
+        } else {
+            investmentDao.updateCurrentPrice(investmentId, currentPrice, today)
+        }
+    }
+
+    override suspend fun revertToPreviousPrice(investmentId: Long) {
+        investmentDao.revertToPreviousPrice(investmentId, LocalDate.now())
     }
 
     override suspend fun deleteInvestment(investmentId: Long) {
@@ -100,19 +113,41 @@ class InvestmentRepositoryImpl @Inject constructor(
     }
 
     override suspend fun refreshMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome> {
+        val entities = investmentIds.mapNotNull { investmentDao.findById(it) }.associateBy { it.id }
+        val outcomes = fetchOutcomes(investmentIds, entities)
+
+        val today = LocalDate.now()
+        outcomes.forEach { (investmentId, outcome) ->
+            if (outcome !is PriceFetchOutcome.Success) return@forEach
+            val entity = entities[investmentId] ?: return@forEach
+            // Same numeric (scale-independent) comparison as updateCurrentPrice — a refresh that
+            // confirms the price hasn't moved still marks it freshly checked, but shouldn't stomp
+            // on the real previousPrice with a same-valued "change".
+            if (entity.currentPrice.compareTo(outcome.price) == 0) {
+                investmentDao.touchLastPriceUpdate(investmentId, today)
+            } else {
+                investmentDao.updateCurrentPrice(investmentId, outcome.price, today)
+            }
+        }
+        return outcomes
+    }
+
+    override suspend fun fetchMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome> {
+        val entities = investmentIds.mapNotNull { investmentDao.findById(it) }.associateBy { it.id }
+        return fetchOutcomes(investmentIds, entities)
+    }
+
+    private suspend fun fetchOutcomes(
+        investmentIds: Collection<Long>,
+        entities: Map<Long, InvestmentEntity>
+    ): Map<Long, PriceFetchOutcome> {
         if (!integrationsRepository.observeYahooFinanceEnabled().first()) {
             return investmentIds.associateWith { PriceFetchOutcome.NotFound("Yahoo Finance integration is disabled in Settings") }
         }
-
-        val today = LocalDate.now()
         val results = mutableMapOf<Long, PriceFetchOutcome>()
         investmentIds.forEach { investmentId ->
-            val entity = investmentDao.findById(investmentId) ?: return@forEach
-            val outcome = fetchOutcomeFor(entity)
-            results[investmentId] = outcome
-            if (outcome is PriceFetchOutcome.Success) {
-                investmentDao.updateCurrentPrice(investmentId, outcome.price, today)
-            }
+            val entity = entities[investmentId] ?: return@forEach
+            results[investmentId] = fetchOutcomeFor(entity)
         }
         return results
     }

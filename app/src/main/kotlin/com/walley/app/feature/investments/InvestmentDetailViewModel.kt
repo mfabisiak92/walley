@@ -97,6 +97,10 @@ class InvestmentDetailViewModel @Inject constructor(
         viewModelScope.launch { repository.updateCurrentPrice(investmentId, currentPrice) }
     }
 
+    fun revertToPreviousPrice() {
+        viewModelScope.launch { repository.revertToPreviousPrice(investmentId) }
+    }
+
     fun refreshPrice() {
         if (_isRefreshingPrice.value) return
         viewModelScope.launch {

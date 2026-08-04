@@ -43,10 +43,20 @@ interface InvestmentRepository {
     )
 
     suspend fun updateCurrentPrice(investmentId: Long, currentPrice: BigDecimal)
+
+    /** Reverts to the price in effect just before the most recent update; a no-op if there isn't one. */
+    suspend fun revertToPreviousPrice(investmentId: Long)
+
     suspend fun deleteInvestment(investmentId: Long)
 
     /** Fetches current market prices for [investmentIds] and applies any that resolve successfully. */
     suspend fun refreshMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome>
+
+    /**
+     * Same lookup as [refreshMarketPrices] but never writes to the database — used by the bulk price
+     * update screen, where a fetched price is only a preview until the user reviews and confirms it.
+     */
+    suspend fun fetchMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome>
 
     suspend fun addTransaction(
         investmentId: Long,

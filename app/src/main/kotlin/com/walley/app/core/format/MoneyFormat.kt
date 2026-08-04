@@ -6,3 +6,7 @@ import java.util.Locale
 
 fun formatMoney(amount: BigDecimal, currency: Currency): String =
     String.format(Locale.getDefault(), "%,.2f %s", amount, currency.symbol)
+
+/** Formats money using a currency symbol string. */
+fun formatMoney(amount: BigDecimal, currencySymbol: String): String =
+    String.format(Locale.getDefault(), "%,.2f %s", amount, currencySymbol)

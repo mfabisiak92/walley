@@ -69,7 +69,8 @@ fun InvestmentEntity.toBackupDto() = InvestmentBackupDto(
     currentPrice = currentPrice.toPlainString(),
     accountId = accountId,
     lastPriceUpdate = lastPriceUpdate?.toString(),
-    externalTicker = externalTicker
+    externalTicker = externalTicker,
+    previousPrice = previousPrice?.toPlainString()
 )
 
 fun InvestmentBackupDto.toEntity(newId: Long = 0, remappedAccountId: Long?) = InvestmentEntity(
@@ -81,7 +82,8 @@ fun InvestmentBackupDto.toEntity(newId: Long = 0, remappedAccountId: Long?) = In
     currentPrice = BigDecimal(currentPrice),
     accountId = remappedAccountId,
     lastPriceUpdate = lastPriceUpdate?.let(LocalDate::parse),
-    externalTicker = externalTicker
+    externalTicker = externalTicker,
+    previousPrice = previousPrice?.let(::BigDecimal)
 )
 
 fun InvestmentTransactionEntity.toBackupDto() = InvestmentTransactionBackupDto(
