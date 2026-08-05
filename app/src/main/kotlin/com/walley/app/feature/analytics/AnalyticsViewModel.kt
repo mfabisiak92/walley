@@ -69,7 +69,14 @@ data class InvestmentYearPoint(
     /** Sum of BUY transactions' net amount dated in [year] across every investment, converted to base currency. */
     val contributions: BigDecimal,
     /** Sum of positive (deposit) [com.walley.app.domain.model.AccountOperation.amount] dated in [year] across every investment account, converted to base currency. */
-    val deposits: BigDecimal
+    val deposits: BigDecimal,
+    /**
+     * Realized gain/loss from sells dated in [year], plus unrealized gain/loss on currently open lots
+     * bought in [year] (see [com.walley.app.domain.model.InvestmentWithTransactions.unrealizedGainLossByPurchaseYear]
+     * for why it's attributed that way) — the portfolio's overall growth, not just what's been sold,
+     * derived entirely from investment transactions and today's prices (no snapshots involved).
+     */
+    val growth: BigDecimal
 )
 
 /** [xirr]/[cagr] are each in [currency] (the position's own) — never converted, see their KDoc. */
@@ -246,11 +253,13 @@ class AnalyticsViewModel @Inject constructor(
             .mapNotNull { data ->
                 val value = convertToCurrency(data.currentValue, data.investment.currency, base, rates) ?: return@mapNotNull null
                 if (value.signum() <= 0) return@mapNotNull null
+                val ticker = data.investment.ticker
                 TreemapItem(
-                    label = data.investment.ticker.ifBlank { data.investment.name },
+                    label = ticker.ifBlank { data.investment.name },
                     displayValue = formatMoney(value, base),
                     value = value.toFloat(),
-                    color = InvestmentCategoryColors.getValue(data.investment.category)
+                    color = InvestmentCategoryColors.getValue(data.investment.category),
+                    detailLabel = if (ticker.isBlank()) data.investment.name else "${data.investment.name} · $ticker"
                 )
             }
             .sortedByDescending { it.value }
@@ -320,7 +329,15 @@ class AnalyticsViewModel @Inject constructor(
                         val currency = currencyByAccountId[operation.accountId] ?: base
                         acc + (convertToCurrency(operation.amount, currency, base, rates) ?: BigDecimal.ZERO)
                     }
-                InvestmentYearPoint(year, realized, contributions, deposits)
+                // Realized (from sells dated this year) plus unrealized on lots bought this year and
+                // still held — see unrealizedGainLossByPurchaseYear's KDoc for why unrealized is
+                // attributed by purchase year rather than by year held.
+                val growth = investments.fold(BigDecimal.ZERO) { acc, data ->
+                    val unrealizedThisYear = data.unrealizedGainLossByPurchaseYear()[year] ?: BigDecimal.ZERO
+                    val gain = data.realizedGainLossInYear(year) + unrealizedThisYear
+                    acc + (convertToCurrency(gain, data.investment.currency, base, rates) ?: BigDecimal.ZERO)
+                }
+                InvestmentYearPoint(year, realized, contributions, deposits, growth)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

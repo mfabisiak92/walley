@@ -14,6 +14,8 @@
     <string name="accounts_net_balance">Net balance</string>
     <string name="accounts_invested_amount">Invested amount</string>
     <string name="accounts_uninvested_cash">Uninvested cash</string>
+    <!-- Short label for the compact investment account row -->
+    <string name="accounts_label_cash_short">Cash</string>
     <string name="accounts_target_date">Target date</string>
     <string name="accounts_tax_rate">Tax rate</string>
     <string name="accounts_cancel">Cancel</string>
@@ -47,10 +49,10 @@
     <string name="accounts_empty_state_no_type_accounts">No %1$s accounts yet — tap + to add one.</string>
     <string name="accounts_empty_state_no_match_filters">No accounts match your filters.</string>
     <string name="accounts_reset_filters">Reset filters</string>
-    <string name="accounts_total">Total</string>
     <string name="accounts_available">Available</string>
-    <string name="accounts_standard_accounts">Standard accounts</string>
-    <string name="accounts_virtual_accounts">Virtual accounts</string>
+    <string name="accounts_cd_expand_currencies">Show amounts in other currencies</string>
+    <string name="accounts_cd_collapse_currencies">Hide amounts in other currencies</string>
+    <string name="accounts_exchange_rate_unavailable">Exchange rate unavailable</string>
     <string name="accounts_cant_delete_account_title">Can\'t delete account</string>
     <string name="accounts_cant_close_account_title">Can\'t close account</string>
     <string name="accounts_cd_default_account">Default account</string>
@@ -93,6 +95,17 @@
     <string name="accounts_no_other_account_available">No other account in %1$s is available to receive the balance — it will stay in \"%2$s\" if you close it.</string>
     <string name="accounts_no_other_virtual_account_available">No other virtual account in %1$s is available to receive the balance — it will stay in \"%2$s\" if you close it.</string>
     <string name="accounts_transfer_to">Transfer to</string>
+
+    <!-- TransferMoneyDialog.kt -->
+    <string name="accounts_transfer_money_title">Transfer money</string>
+    <string name="accounts_transfer_needs_two_accounts">You need at least two open accounts to make a transfer.</string>
+    <string name="accounts_transfer_from">From</string>
+    <string name="accounts_transfer_available">Available: %1$s</string>
+    <string name="accounts_transfer_no_destination">No other account in %1$s is available to receive the transfer.</string>
+    <string name="accounts_transfer_amount_with_currency">Amount (%1$s)</string>
+    <string name="accounts_transfer_exceeds_balance">Amount exceeds available balance</string>
+    <string name="accounts_transfer_confirm">Transfer</string>
+    <string name="accounts_transfer_failed_title">Transfer failed</string>
 
     <!-- UpdateBalancesScreen.kt -->
     <string name="accounts_cd_back">Back</string>

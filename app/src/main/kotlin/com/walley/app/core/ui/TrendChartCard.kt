@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -30,10 +31,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.log10
 import kotlin.math.pow
+import kotlin.math.roundToInt
 
 data class ChartSeries(
     val name: String,
@@ -43,6 +46,7 @@ data class ChartSeries(
 )
 
 private val ChartHeight = 100.dp
+private val ChartHeightExpanded = 260.dp
 private val BarWidth = 10.dp
 private val AxisWidth = 44.dp
 
@@ -62,93 +66,159 @@ fun TrendChartCard(
     if (labels.isEmpty()) return
 
     var selectedIndex by remember(labels) { mutableStateOf<Int?>(null) }
-    val rawMax = series.flatMap { it.values }.filterNotNull().maxOrNull()?.coerceAtLeast(0f) ?: 0f
-    val ticks = niceTicks(0f, rawMax)
+    var expanded by remember { mutableStateOf(false) }
+    val allValues = series.flatMap { it.values }.filterNotNull()
+    val rawMax = (allValues.maxOrNull() ?: 0f).coerceAtLeast(0f)
+    val rawMin = (allValues.minOrNull() ?: 0f).coerceAtMost(0f)
+    val ticks = niceTicks(rawMin, rawMax)
+    val minValue = ticks.first()
     val maxValue = ticks.last()
+    // Where the zero line sits, as a fraction of the chart height measured from the top — used to
+    // grow bars up from zero for positive values and down from zero for negative ones.
+    val zeroFraction = yFraction(0f, minValue, maxValue)
 
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                ExpandChartIconButton(onClick = { expanded = true })
+            }
+            TrendChartBody(
+                labels = labels,
+                series = series,
+                valueFormatter = valueFormatter,
+                ticks = ticks,
+                minValue = minValue,
+                maxValue = maxValue,
+                zeroFraction = zeroFraction,
+                selectedIndex = selectedIndex,
+                onSelect = { selectedIndex = it },
+                chartHeight = ChartHeight
+            )
+        }
+    }
 
-            if (series.size > 1) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    series.forEach { s ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(s.color)
-                            )
-                            Text(
-                                "  ${s.name}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+    if (expanded) {
+        FullScreenChartDialog(title = title, onDismiss = { expanded = false }) {
+            TrendChartBody(
+                labels = labels,
+                series = series,
+                valueFormatter = valueFormatter,
+                ticks = ticks,
+                minValue = minValue,
+                maxValue = maxValue,
+                zeroFraction = zeroFraction,
+                selectedIndex = selectedIndex,
+                onSelect = { selectedIndex = it },
+                chartHeight = ChartHeightExpanded
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrendChartBody(
+    labels: List<String>,
+    series: List<ChartSeries>,
+    valueFormatter: (Float) -> String,
+    ticks: List<Float>,
+    minValue: Float,
+    maxValue: Float,
+    zeroFraction: Float,
+    selectedIndex: Int?,
+    onSelect: (Int?) -> Unit,
+    chartHeight: Dp
+) {
+    Column {
+        if (series.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                series.forEach { s ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(s.color)
+                        )
+                        Text(
+                            "  ${s.name}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
+        }
 
-            selectedIndex?.let { index ->
-                Text(
-                    selectedPointDescription(labels[index], series, index, valueFormatter),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            }
+        selectedIndex?.let { index ->
+            Text(
+                selectedPointDescription(labels[index], series, index, valueFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
 
-            Row(modifier = Modifier.padding(top = 16.dp)) {
-                ChartAxisScale(ticks = ticks, height = ChartHeight, valueFormatter = valueFormatter)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    labels.forEachIndexed { index, label ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                selectedIndex = if (selectedIndex == index) null else index
-                            }
+        Row(modifier = Modifier.padding(top = 16.dp)) {
+            ChartAxisScale(ticks = ticks, height = chartHeight)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                labels.forEachIndexed { index, label ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            onSelect(if (selectedIndex == index) null else index)
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .height(chartHeight)
+                                .background(
+                                    if (selectedIndex == index) {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    } else {
+                                        Color.Transparent
+                                    }
+                                )
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .height(ChartHeight)
-                                    .background(
-                                        if (selectedIndex == index) {
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                        } else {
-                                            Color.Transparent
-                                        }
-                                    ),
-                                contentAlignment = Alignment.BottomCenter
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.Bottom,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    series.forEach { s ->
-                                        val value = s.values.getOrNull(index)
-                                        val barHeight = if (value != null) {
-                                            (ChartHeight * (value / maxValue).coerceIn(0f, 1f))
-                                        } else {
-                                            2.dp
-                                        }
+                                series.forEach { s ->
+                                    val value = s.values.getOrNull(index)
+                                    // A fixed-size placeholder the full chart height, so every column lines
+                                    // up regardless of sign; the actual bar is positioned inside it by offset.
+                                    Box(
+                                        modifier = Modifier
+                                            .width(BarWidth)
+                                            .height(chartHeight)
+                                    ) {
+                                        val valueFraction = yFraction(value ?: 0f, minValue, maxValue)
+                                        val topFraction = if (value != null) minOf(valueFraction, zeroFraction) else zeroFraction
+                                        val bottomFraction = if (value != null) maxOf(valueFraction, zeroFraction) else zeroFraction
+                                        val barTop = chartHeight * topFraction
+                                        val barHeight = (chartHeight * (bottomFraction - topFraction)).coerceAtLeast(2.dp)
                                         Box(
                                             modifier = Modifier
+                                                .offset(y = barTop)
                                                 .width(BarWidth)
-                                                .height(barHeight.coerceAtLeast(2.dp))
+                                                .height(barHeight)
                                                 .clip(RoundedCornerShape(2.dp))
                                                 .background(
                                                     if (value != null) s.color else MaterialTheme.colorScheme.surfaceVariant
@@ -157,13 +227,13 @@ fun TrendChartCard(
                                     }
                                 }
                             }
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
                         }
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }
@@ -172,15 +242,28 @@ fun TrendChartCard(
 }
 
 /**
+ * Fraction of a chart's height, measured from the top, at which [value] falls within the visible
+ * [minValue]..[maxValue] range — 0 at the top ([maxValue]), 1 at the bottom ([minValue]). Used to place
+ * a bar's top/bottom edges (or a line chart's point) regardless of where zero sits in that range.
+ */
+private fun yFraction(value: Float, minValue: Float, maxValue: Float): Float {
+    val range = (maxValue - minValue).takeIf { it > 0f } ?: 1f
+    return ((maxValue - value) / range).coerceIn(0f, 1f)
+}
+
+/**
  * A vertical scale of evenly-spaced [ticks] (highest first), aligned to a chart area of the given [height].
  * [ticks] is expected to come from [niceTicks], so consecutive entries are equally spaced in value — that
  * lets a plain [Arrangement.SpaceBetween] double as correct proportional vertical placement.
+ *
+ * Labels always use [formatCompactAxisValue] rather than the chart's full `valueFormatter` (which is still
+ * used for the tap-to-reveal description) — a fixed-width axis column has no room for a fully formatted
+ * value like "50,000.00 zł" once the chart's range gets large, and it was getting clipped.
  */
 @Composable
 internal fun ChartAxisScale(
     ticks: List<Float>,
-    height: Dp,
-    valueFormatter: (Float) -> String
+    height: Dp
 ) {
     Column(
         modifier = Modifier
@@ -191,13 +274,36 @@ internal fun ChartAxisScale(
     ) {
         ticks.asReversed().forEach { tick ->
             Text(
-                valueFormatter(tick),
+                formatCompactAxisValue(tick),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
             )
         }
     }
+}
+
+/**
+ * Compact form of a round axis tick value: 1000 -> "1k", 10000 -> "10k", 1000000 -> "1M", etc. Ticks come
+ * from [niceTicks] so they're always "nice" round numbers, meaning a single optional decimal digit is
+ * always enough precision (no ticks like 1234 ever reach here).
+ */
+internal fun formatCompactAxisValue(value: Float): String {
+    val absValue = abs(value)
+    val (divisor, suffix) = when {
+        absValue >= 1_000_000_000f -> 1_000_000_000f to "B"
+        absValue >= 1_000_000f -> 1_000_000f to "M"
+        absValue >= 1_000f -> 1_000f to "k"
+        else -> 1f to ""
+    }
+    val scaled = value / divisor
+    val rounded = (scaled * 10f).roundToInt() / 10f
+    val text = if (rounded == rounded.toLong().toFloat()) {
+        rounded.toLong().toString()
+    } else {
+        rounded.toString()
+    }
+    return "$text$suffix"
 }
 
 /**

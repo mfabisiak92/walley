@@ -511,7 +511,8 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
                 labels = labels,
                 series = listOf(
                     ChartSeries(stringResource(R.string.analytics_label_invested), PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() }),
-                    ChartSeries(stringResource(R.string.analytics_label_deposited), PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() })
+                    ChartSeries(stringResource(R.string.analytics_label_deposited), PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() }),
+                    ChartSeries(stringResource(R.string.analytics_label_gain_loss), PieChartColors[0], yearlyHistory.map { it.growth.toFloat() })
                 ),
                 valueFormatter = moneyFormatter
             )

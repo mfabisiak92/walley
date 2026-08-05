@@ -184,6 +184,26 @@ class AccountRepositoryImpl @Inject constructor(
         accountDao.setClosed(accountId, false)
     }
 
+    override suspend fun transferBetweenAccounts(fromAccountId: Long, toAccountId: Long, amount: BigDecimal) {
+        require(fromAccountId != toAccountId) { "Source and destination must be different accounts" }
+        require(amount.signum() > 0) { "Amount must be positive" }
+        val source = requireNotNull(accountDao.getById(fromAccountId)) { "Source account not found" }
+        val destination = requireNotNull(accountDao.getById(toAccountId)) { "Destination account not found" }
+        require(!source.isClosed) { "Source account can't be closed" }
+        require(!destination.isClosed) { "Destination account can't be closed" }
+        require(source.currency == destination.currency) { "Accounts must share the same currency" }
+        if (source.isVirtual) {
+            require(destination.isVirtual) { "A virtual account can only transfer to another virtual account" }
+        }
+        // balanceMinorUnits is already uninvested cash for an Investment account (see
+        // AccountMappers.toDomain), so this correctly caps the transfer at what's actually movable —
+        // never the market value of linked investments.
+        val amountMinorUnits = amount.toMinorUnits()
+        require(amountMinorUnits <= source.balanceMinorUnits) { "Amount exceeds the source account's available balance" }
+        accountDao.addToBalance(fromAccountId, -amountMinorUnits)
+        accountDao.addToBalance(toAccountId, amountMinorUnits)
+    }
+
     override suspend fun addToBalance(accountId: Long, delta: BigDecimal) {
         accountDao.addToBalance(accountId, delta.toMinorUnits())
     }

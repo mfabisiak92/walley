@@ -228,4 +228,27 @@ class AccountsViewModel @Inject constructor(
     fun reopenAccount(accountId: Long) {
         viewModelScope.launch { repository.reopenAccount(accountId) }
     }
+
+    private val _transferBlockedMessage = MutableStateFlow<String?>(null)
+    val transferBlockedMessage: StateFlow<String?> = _transferBlockedMessage.asStateFlow()
+
+    fun dismissTransferBlockedMessage() {
+        _transferBlockedMessage.value = null
+    }
+
+    /**
+     * The dialog only ever offers same-currency, valid account pairs and caps the amount at what's
+     * available, so [IllegalArgumentException] here means the picture it was built from went stale
+     * between opening the dialog and confirming (e.g. an account got closed elsewhere in the meantime)
+     * — surfaced as a blocked-message rather than left to crash.
+     */
+    fun transferBetweenAccounts(fromAccountId: Long, toAccountId: Long, amount: BigDecimal) {
+        viewModelScope.launch {
+            try {
+                repository.transferBetweenAccounts(fromAccountId, toAccountId, amount)
+            } catch (e: IllegalArgumentException) {
+                _transferBlockedMessage.value = e.message
+            }
+        }
+    }
 }

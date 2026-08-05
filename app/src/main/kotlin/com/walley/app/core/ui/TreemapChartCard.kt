@@ -1,10 +1,13 @@
 package com.walley.app.core.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -14,57 +17,114 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 data class TreemapItem(
     val label: String,
     val displayValue: String,
     val value: Float,
-    val color: Color
+    val color: Color,
+    /**
+     * Full investment name and ticker, e.g. "Apple Inc. · AAPL" — tiles are often too small to show
+     * this inline, so it's revealed in a snackbar when the tile is tapped.
+     */
+    val detailLabel: String
 )
 
 private data class TreemapRect(val x: Float, val y: Float, val width: Float, val height: Float)
 
 private val TreemapHeight = 240.dp
+private val TreemapHeightExpanded = 520.dp
 private const val MinTileWidthForLabel = 56f
 private const val MinTileHeightForLabel = 32f
 private const val MinTileHeightForValue = 48f
 
-/** A card showing [items] as a squarified treemap — each tile's area proportional to its [TreemapItem.value]. */
+/**
+ * A card showing [items] as a squarified treemap — each tile's area proportional to its
+ * [TreemapItem.value]. Tapping a tile reveals its full name and ticker in a snackbar (tiles are
+ * often too small to show that inline), and the expand button opens the same treemap full-screen.
+ */
 @Composable
 fun TreemapChartCard(title: String, items: List<TreemapItem>, modifier: Modifier = Modifier) {
     if (items.isEmpty()) return
     val sortedItems = remember(items) { items.sortedByDescending { it.value } }
+    var expanded by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    // Tapping a tile reveals its full name/ticker here — same pattern as the price update screens,
+    // where a tap on truncated text surfaces the full text in a snackbar.
+    val onTileClick: (TreemapItem) -> Unit = { item ->
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(item.detailLabel)
+        }
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            BoxWithConstraints(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(TreemapHeight)
-                    .padding(top = 12.dp)
-            ) {
-                val containerWidth = maxWidth.value
-                val containerHeight = maxHeight.value
-                val rects = remember(sortedItems, containerWidth, containerHeight) {
-                    squarify(sortedItems.map { it.value }, TreemapRect(0f, 0f, containerWidth, containerHeight))
+        Box {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(title, style = MaterialTheme.typography.titleMedium)
+                    ExpandChartIconButton(onClick = { expanded = true })
                 }
-                sortedItems.forEachIndexed { index, item ->
-                    val rect = rects.getOrNull(index) ?: return@forEachIndexed
-                    if (rect.width <= 0f || rect.height <= 0f) return@forEachIndexed
-                    TreemapTile(item, rect)
+                TreemapGrid(
+                    items = sortedItems,
+                    height = TreemapHeight,
+                    onTileClick = onTileClick,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+            }
+            SnackbarHost(
+                snackbarHostState,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(12.dp)
+            ) { data ->
+                Snackbar(snackbarData = data, modifier = Modifier.clickable { data.dismiss() })
+            }
+        }
+    }
+
+    if (expanded) {
+        FullScreenChartDialog(title = title, onDismiss = { expanded = false }) {
+            Box {
+                TreemapGrid(
+                    items = sortedItems,
+                    height = TreemapHeightExpanded,
+                    onTileClick = onTileClick,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                SnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp)
+                ) { data ->
+                    Snackbar(snackbarData = data, modifier = Modifier.clickable { data.dismiss() })
                 }
             }
         }
@@ -72,7 +132,28 @@ fun TreemapChartCard(title: String, items: List<TreemapItem>, modifier: Modifier
 }
 
 @Composable
-private fun BoxScope.TreemapTile(item: TreemapItem, rect: TreemapRect) {
+private fun TreemapGrid(
+    items: List<TreemapItem>,
+    height: Dp,
+    onTileClick: (TreemapItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier.height(height)) {
+        val containerWidth = maxWidth.value
+        val containerHeight = maxHeight.value
+        val rects = remember(items, containerWidth, containerHeight) {
+            squarify(items.map { it.value }, TreemapRect(0f, 0f, containerWidth, containerHeight))
+        }
+        items.forEachIndexed { index, item ->
+            val rect = rects.getOrNull(index) ?: return@forEachIndexed
+            if (rect.width <= 0f || rect.height <= 0f) return@forEachIndexed
+            TreemapTile(item, rect, onTileClick)
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.TreemapTile(item: TreemapItem, rect: TreemapRect, onTileClick: (TreemapItem) -> Unit) {
     Box(
         modifier = Modifier
             .align(Alignment.TopStart)
@@ -81,6 +162,7 @@ private fun BoxScope.TreemapTile(item: TreemapItem, rect: TreemapRect) {
             .padding(1.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(item.color)
+            .clickable { onTileClick(item) }
             .padding(6.dp)
     ) {
         if (rect.width >= MinTileWidthForLabel && rect.height >= MinTileHeightForLabel) {

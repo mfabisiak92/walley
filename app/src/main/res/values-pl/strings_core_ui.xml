@@ -2,4 +2,8 @@
 <resources>
     <!-- BudgetItemIconPicker -->
     <string name="picker_no_icon">Brak ikony</string>
+
+    <!-- Chart cards: full-screen expand -->
+    <string name="chart_expand">Powiększ wykres</string>
+    <string name="chart_close">Zamknij</string>
 </resources>

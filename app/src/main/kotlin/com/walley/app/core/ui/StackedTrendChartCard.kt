@@ -28,9 +28,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private val ChartHeight = 100.dp
+private val ChartHeightExpanded = 260.dp
 private val BarWidth = 24.dp
 
 /**
@@ -52,6 +54,7 @@ fun StackedTrendChartCard(
     if (labels.isEmpty()) return
 
     var selectedIndex by remember(labels) { mutableStateOf<Int?>(null) }
+    var expanded by remember { mutableStateOf(false) }
     val stackTotals = labels.indices.map { index ->
         series.sumOf { s -> (s.values.getOrNull(index) ?: 0f).toDouble() }.toFloat()
     }
@@ -64,96 +67,145 @@ fun StackedTrendChartCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                ExpandChartIconButton(onClick = { expanded = true })
+            }
+            StackedTrendChartBody(
+                labels = labels,
+                series = series,
+                valueFormatter = valueFormatter,
+                ticks = ticks,
+                stackTotals = stackTotals,
+                maxTotal = maxTotal,
+                selectedIndex = selectedIndex,
+                onSelect = { selectedIndex = it },
+                chartHeight = ChartHeight
+            )
+        }
+    }
 
-            if (series.size > 1) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    series.forEach { s ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(s.color)
-                            )
-                            Text(
-                                "  ${s.name}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+    if (expanded) {
+        FullScreenChartDialog(title = title, onDismiss = { expanded = false }) {
+            StackedTrendChartBody(
+                labels = labels,
+                series = series,
+                valueFormatter = valueFormatter,
+                ticks = ticks,
+                stackTotals = stackTotals,
+                maxTotal = maxTotal,
+                selectedIndex = selectedIndex,
+                onSelect = { selectedIndex = it },
+                chartHeight = ChartHeightExpanded
+            )
+        }
+    }
+}
+
+@Composable
+private fun StackedTrendChartBody(
+    labels: List<String>,
+    series: List<ChartSeries>,
+    valueFormatter: (Float) -> String,
+    ticks: List<Float>,
+    stackTotals: List<Float>,
+    maxTotal: Float,
+    selectedIndex: Int?,
+    onSelect: (Int?) -> Unit,
+    chartHeight: Dp
+) {
+    Column {
+        if (series.size > 1) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                series.forEach { s ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(s.color)
+                        )
+                        Text(
+                            "  ${s.name}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
+        }
 
-            selectedIndex?.let { index ->
-                Text(
-                    selectedStackDescription(labels[index], series, stackTotals[index], index, valueFormatter),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            }
+        selectedIndex?.let { index ->
+            Text(
+                selectedStackDescription(labels[index], series, stackTotals[index], index, valueFormatter),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 12.dp)
+            )
+        }
 
-            Row(modifier = Modifier.padding(top = 16.dp)) {
-                ChartAxisScale(ticks = ticks, height = ChartHeight, valueFormatter = valueFormatter)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    labels.forEachIndexed { index, label ->
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable {
-                                selectedIndex = if (selectedIndex == index) null else index
-                            }
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .height(ChartHeight)
-                                    .background(
-                                        if (selectedIndex == index) {
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                        } else {
-                                            Color.Transparent
-                                        }
-                                    ),
-                                contentAlignment = Alignment.BottomCenter
-                            ) {
-                                Column(
-                                    verticalArrangement = Arrangement.Bottom,
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    // Reversed so the first series ends up visually at the bottom of the stack.
-                                    series.asReversed().forEach { s ->
-                                        val value = (s.values.getOrNull(index) ?: 0f).coerceAtLeast(0f)
-                                        if (value <= 0f) return@forEach
-                                        val segmentHeight = ChartHeight * (value / maxTotal).coerceIn(0f, 1f)
-                                        Box(
-                                            modifier = Modifier
-                                                .width(BarWidth)
-                                                .height(segmentHeight.coerceAtLeast(2.dp))
-                                                .clip(RoundedCornerShape(1.dp))
-                                                .background(s.color)
-                                        )
+        Row(modifier = Modifier.padding(top = 16.dp)) {
+            ChartAxisScale(ticks = ticks, height = chartHeight)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                labels.forEachIndexed { index, label ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            onSelect(if (selectedIndex == index) null else index)
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .height(chartHeight)
+                                .background(
+                                    if (selectedIndex == index) {
+                                        MaterialTheme.colorScheme.surfaceVariant
+                                    } else {
+                                        Color.Transparent
                                     }
+                                ),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.Bottom,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                // Reversed so the first series ends up visually at the bottom of the stack.
+                                series.asReversed().forEach { s ->
+                                    val value = (s.values.getOrNull(index) ?: 0f).coerceAtLeast(0f)
+                                    if (value <= 0f) return@forEach
+                                    val segmentHeight = chartHeight * (value / maxTotal).coerceIn(0f, 1f)
+                                    Box(
+                                        modifier = Modifier
+                                            .width(BarWidth)
+                                            .height(segmentHeight.coerceAtLeast(2.dp))
+                                            .clip(RoundedCornerShape(1.dp))
+                                            .background(s.color)
+                                    )
                                 }
                             }
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
                         }
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
             }

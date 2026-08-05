@@ -14,6 +14,8 @@
     <string name="accounts_net_balance">Saldo netto</string>
     <string name="accounts_invested_amount">Kwota zainwestowana</string>
     <string name="accounts_uninvested_cash">Niezainwestowana gotówka</string>
+    <!-- Short label for the compact investment account row -->
+    <string name="accounts_label_cash_short">Gotówka</string>
     <string name="accounts_target_date">Data docelowa</string>
     <string name="accounts_tax_rate">Stawka podatkowa</string>
     <string name="accounts_cancel">Anuluj</string>
@@ -47,10 +49,10 @@
     <string name="accounts_empty_state_no_type_accounts">Brak kont w tej zakładce (%1$s) — dotknij +, aby dodać.</string>
     <string name="accounts_empty_state_no_match_filters">Żadne konto nie pasuje do filtrów.</string>
     <string name="accounts_reset_filters">Wyczyść filtry</string>
-    <string name="accounts_total">Razem</string>
     <string name="accounts_available">Dostępne</string>
-    <string name="accounts_standard_accounts">Konta standardowe</string>
-    <string name="accounts_virtual_accounts">Konta wirtualne</string>
+    <string name="accounts_cd_expand_currencies">Pokaż kwoty w innych walutach</string>
+    <string name="accounts_cd_collapse_currencies">Ukryj kwoty w innych walutach</string>
+    <string name="accounts_exchange_rate_unavailable">Kurs wymiany niedostępny</string>
     <string name="accounts_cant_delete_account_title">Nie można usunąć konta</string>
     <string name="accounts_cant_close_account_title">Nie można zamknąć konta</string>
     <string name="accounts_cd_default_account">Konto domyślne</string>
@@ -93,6 +95,17 @@
     <string name="accounts_no_other_account_available">Brak innego konta w walucie %1$s, na które można przenieść środki — pozostaną one na koncie „%2$s” po zamknięciu.</string>
     <string name="accounts_no_other_virtual_account_available">Brak innego konta wirtualnego w walucie %1$s, na które można przenieść środki — pozostaną one na koncie „%2$s” po zamknięciu.</string>
     <string name="accounts_transfer_to">Przenieś na</string>
+
+    <!-- TransferMoneyDialog.kt -->
+    <string name="accounts_transfer_money_title">Przelew między kontami</string>
+    <string name="accounts_transfer_needs_two_accounts">Potrzebujesz co najmniej dwóch otwartych kont, aby wykonać przelew.</string>
+    <string name="accounts_transfer_from">Z konta</string>
+    <string name="accounts_transfer_available">Dostępne: %1$s</string>
+    <string name="accounts_transfer_no_destination">Brak innego konta w walucie %1$s, na które można przenieść środki.</string>
+    <string name="accounts_transfer_amount_with_currency">Kwota (%1$s)</string>
+    <string name="accounts_transfer_exceeds_balance">Kwota przekracza dostępne saldo</string>
+    <string name="accounts_transfer_confirm">Przelej</string>
+    <string name="accounts_transfer_failed_title">Przelew nie powiódł się</string>
 
     <!-- UpdateBalancesScreen.kt -->
     <string name="accounts_cd_back">Wstecz</string>

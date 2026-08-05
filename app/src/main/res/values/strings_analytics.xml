@@ -35,6 +35,7 @@
     <string name="analytics_label_unrealized">Unrealized</string>
     <string name="analytics_label_invested">Invested</string>
     <string name="analytics_label_deposited">Deposited</string>
+    <string name="analytics_label_gain_loss">Gain/Loss</string>
 
     <!-- AnalyticsScreen: period comparison -->
     <string name="analytics_period_last_month">vs last month</string>

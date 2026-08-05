@@ -57,7 +57,7 @@ data class InvestmentWithTransactions(
     private val running: RunningState by lazy { runningState(includeRealized = { true }) }
 
     /** An open buy lot still (partially) held, oldest lots consumed first by sells. */
-    private data class Lot(val quantity: BigDecimal, val unitCost: BigDecimal)
+    private data class Lot(val quantity: BigDecimal, val unitCost: BigDecimal, val purchaseYear: Int)
 
     /**
      * Replays every transaction in chronological order to track open buy lots, but only sums
@@ -75,7 +75,7 @@ data class InvestmentWithTransactions(
                         } else {
                             t.netAmount.divide(t.quantity, 8, RoundingMode.HALF_UP)
                         }
-                        state.copy(lots = state.lots + Lot(t.quantity, unitCost))
+                        state.copy(lots = state.lots + Lot(t.quantity, unitCost, t.date.year))
                     }
                     InvestmentTransactionType.SELL -> {
                         // Commission reduces net proceeds, so it's netted per unit before comparing to cost.
@@ -134,6 +134,20 @@ data class InvestmentWithTransactions(
     /** Realized gain/loss from only the sells dated in [year] — what a tax bill for that year is based on. */
     fun realizedGainLossInYear(year: Int): BigDecimal =
         runningState(includeRealized = { it.date.year == year }).realizedGainLoss
+
+    /**
+     * Unrealized gain/loss of currently open lots, grouped by the calendar year each lot was bought
+     * in. There's no historical market price to value a past year-end by, so this attributes a still-
+     * held lot's paper gain to the year the money went in rather than the years it was held — added to
+     * [realizedGainLossInYear] across every year, the totals sum to exactly this position's all-time
+     * [realizedGainLoss] + [unrealizedGainLoss], just broken down by year instead of realized/unrealized.
+     */
+    fun unrealizedGainLossByPurchaseYear(): Map<Int, BigDecimal> =
+        running.lots
+            .groupBy { it.purchaseYear }
+            .mapValues { (_, lots) ->
+                lots.fold(BigDecimal.ZERO) { acc, lot -> acc + lot.quantity * (investment.currentPrice - lot.unitCost) }
+            }
 
     val firstPurchaseDate: LocalDate? get() =
         transactions.filter { it.type == InvestmentTransactionType.BUY }.minByOrNull { it.date }?.date

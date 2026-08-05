@@ -35,6 +35,7 @@
     <string name="analytics_label_unrealized">Niezrealizowane</string>
     <string name="analytics_label_invested">Zainwestowane</string>
     <string name="analytics_label_deposited">Wpłacone</string>
+    <string name="analytics_label_gain_loss">Zysk/Strata</string>
 
     <!-- AnalyticsScreen: period comparison -->
     <string name="analytics_period_last_month">względem poprzedniego miesiąca</string>

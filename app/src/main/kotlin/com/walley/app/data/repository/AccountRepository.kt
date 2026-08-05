@@ -58,6 +58,18 @@ interface AccountRepository {
     suspend fun closeAccount(accountId: Long, transferToAccountId: Long?)
     /** Reverses [closeAccount], making the account selectable again. Doesn't move any balance back. */
     suspend fun reopenAccount(accountId: Long)
+    /**
+     * Moves [amount] out of [fromAccountId]'s balance (for [AccountType.INVESTMENT], its uninvested
+     * cash — same distinction as [closeAccount]'s sweep) and into [toAccountId]'s. Same virtual-transfer
+     * rule as [closeAccount]: a virtual account may only transfer into another virtual account, since
+     * its balance is just an earmarked slice of a real account's money, not money of its own to move
+     * anywhere else; a non-virtual account may transfer into any other open account regardless of type
+     * or virtual-ness.
+     * @throws IllegalArgumentException if [amount] isn't positive, exceeds what [fromAccountId] actually
+     * has available, the two accounts are the same, either is closed, their currencies don't match, or
+     * a virtual source's destination isn't also virtual.
+     */
+    suspend fun transferBetweenAccounts(fromAccountId: Long, toAccountId: Long, amount: BigDecimal)
     /** Adds (or subtracts, for a negative delta) an amount to an account's stored balance. */
     suspend fun addToBalance(accountId: Long, delta: BigDecimal)
     /**

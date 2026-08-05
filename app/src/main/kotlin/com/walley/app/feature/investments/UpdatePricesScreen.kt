@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,13 +34,18 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -81,6 +87,15 @@ fun UpdatePricesScreen(
     // screen — refreshing only updates the on-screen field, exactly like typing a price by hand.
     val seededFetchedPrices = remember { mutableStateMapOf<Long, BigDecimal>() }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    // Tapping a truncated investment name reveals it in full here — same pattern as the review
+    // screen, so the two screens behave identically.
+    val onRevealFullLabel: (String) -> Unit = { fullText ->
+        scope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar(fullText)
+        }
+    }
 
     investments.forEach { investment ->
         val seeded = seededPrices[investment.id]
@@ -101,6 +116,15 @@ fun UpdatePricesScreen(
     val allValid = parsedPrices.values.all { it != null && it.signum() > 0 }
 
     Scaffold(
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                // Tapping the snackbar itself dismisses it early instead of waiting out its duration.
+                Snackbar(
+                    snackbarData = data,
+                    modifier = Modifier.clickable { data.dismiss() }
+                )
+            }
+        },
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.investments_update_prices_title)) },
@@ -170,7 +194,8 @@ fun UpdatePricesScreen(
                     showRefreshButton = marketDataConfigured,
                     isRefreshingThis = investment.id in refreshingIds,
                     refreshDisabled = refreshingIds.isNotEmpty(),
-                    onRefresh = { viewModel.refreshOne(investment.id) }
+                    onRefresh = { viewModel.refreshOne(investment.id) },
+                    onRevealFullLabel = onRevealFullLabel
                 )
             }
         }
@@ -187,7 +212,8 @@ private fun UpdatePriceRow(
     showRefreshButton: Boolean,
     isRefreshingThis: Boolean,
     refreshDisabled: Boolean,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onRevealFullLabel: (String) -> Unit
 ) {
     val parsed = priceText.toBigDecimalOrNullLenient()
     val isValid = parsed?.let { it.signum() > 0 } == true
@@ -197,6 +223,9 @@ private fun UpdatePriceRow(
     val textColor = MaterialTheme.colorScheme.onSurface
     val daysSinceUpdate = investment.lastPriceUpdate?.let { ChronoUnit.DAYS.between(it, LocalDate.now()) }
     val isStale = daysSinceUpdate == null || daysSinceUpdate >= STALE_PRICE_THRESHOLD_DAYS
+    // Only the ellipsized case is actually tappable — a name that already fits has nothing more to
+    // reveal, so it shouldn't look or behave like an interactive element.
+    var isNameTruncated by remember(investment.id) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -209,11 +238,16 @@ private fun UpdatePriceRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "${investment.name} · ${investment.ticker}",
+                text = investment.name,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
+                onTextLayout = { result -> isNameTruncated = result.hasVisualOverflow },
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(enabled = isNameTruncated) {
+                        onRevealFullLabel("${investment.name} · ${investment.ticker}")
+                    }
             )
             if (showRefreshButton) {
                 IconButton(onClick = onRefresh, enabled = !refreshDisabled, modifier = Modifier.size(32.dp)) {
