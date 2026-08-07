@@ -101,7 +101,9 @@ data class BudgetBackupDto(
     val applyIncomeAccountEffects: Boolean,
     val applyCostsAccountEffects: Boolean,
     val applySavingsAccountEffects: Boolean,
-    val applyInvestmentsAccountEffects: Boolean
+    val applyInvestmentsAccountEffects: Boolean,
+    // Defaults to null so a backup taken before this field existed still restores.
+    val plannedNetWorthMinorUnits: Long? = null
 )
 
 @Serializable

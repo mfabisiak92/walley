@@ -2,12 +2,14 @@ package com.walley.app.data.backup
 
 import com.walley.app.data.local.AccountEntity
 import com.walley.app.data.local.AccountOperationEntity
+import com.walley.app.data.local.BudgetEntity
 import com.walley.app.data.local.BudgetItemEntity
 import com.walley.app.data.local.InvestmentTransactionEntity
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
+import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.IncomeCategory
 import com.walley.app.domain.model.InvestmentTransactionType
@@ -93,6 +95,40 @@ class BackupMappersTest {
         val restored = withOptionalFields.toBackupDto().toEntity(remappedBudgetId = 10, remappedAccountId = 2)
 
         assertEquals(withOptionalFields.copy(id = 0), restored)
+    }
+
+    @Test
+    fun `budget entity preserves a set planned net worth through the dto`() {
+        val original = BudgetEntity(
+            id = 8,
+            year = 2026,
+            month = 3,
+            status = BudgetStatus.ACTIVE,
+            applyIncomeAccountEffects = true,
+            applyCostsAccountEffects = false,
+            applySavingsAccountEffects = true,
+            applyInvestmentsAccountEffects = false,
+            plannedNetWorthMinorUnits = 150_000_00
+        )
+
+        val restored = original.toBackupDto().toEntity(newId = original.id)
+
+        assertEquals(original, restored)
+    }
+
+    @Test
+    fun `budget entity predating the planned net worth field round trips it as null`() {
+        val original = BudgetEntity(
+            id = 9,
+            year = 2026,
+            month = 4,
+            status = BudgetStatus.DRAFT,
+            plannedNetWorthMinorUnits = null
+        )
+
+        val restored = original.toBackupDto().toEntity(newId = original.id)
+
+        assertEquals(original, restored)
     }
 
     @Test

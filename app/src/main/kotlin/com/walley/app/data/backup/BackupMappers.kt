@@ -147,7 +147,8 @@ fun BudgetEntity.toBackupDto() = BudgetBackupDto(
     applyIncomeAccountEffects = applyIncomeAccountEffects,
     applyCostsAccountEffects = applyCostsAccountEffects,
     applySavingsAccountEffects = applySavingsAccountEffects,
-    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects,
+    plannedNetWorthMinorUnits = plannedNetWorthMinorUnits
 )
 
 fun BudgetBackupDto.toEntity(newId: Long = 0) = BudgetEntity(
@@ -158,7 +159,8 @@ fun BudgetBackupDto.toEntity(newId: Long = 0) = BudgetEntity(
     applyIncomeAccountEffects = applyIncomeAccountEffects,
     applyCostsAccountEffects = applyCostsAccountEffects,
     applySavingsAccountEffects = applySavingsAccountEffects,
-    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects,
+    plannedNetWorthMinorUnits = plannedNetWorthMinorUnits
 )
 
 fun BudgetItemEntity.toBackupDto() = BudgetItemBackupDto(
