@@ -162,17 +162,33 @@ class ImportInvestmentsViewModel @Inject constructor(
                     ignoreAccountBalance = toggleValue
                 )
             }
-            validateAndShowPreview(parseResults)
+            val accountsSyncingCashWithTrades = if (pendingIncludeAccountOperations) setOf(account.id) else emptySet()
+            validateAndShowPreview(parseResults, accountsSyncingCashWithTrades)
         }
     }
 
-    private suspend fun validateAndShowPreview(parseResults: List<CsvRowParseResult>) {
+    /**
+     * [accountsSyncingCashWithTrades] should include an account whenever its imports (this one and,
+     * implicitly, prior ones for the same account) use "include account operations" — see
+     * [pendingIncludeAccountOperations] and [validateImportRows]'s doc for why that account's stored
+     * cash can't be netted against its full trade history without double-counting.
+     */
+    private suspend fun validateAndShowPreview(
+        parseResults: List<CsvRowParseResult>,
+        accountsSyncingCashWithTrades: Set<Long> = emptySet()
+    ) {
         val accounts = accountRepository.observeAccounts().first()
         val investmentsByAccount: Map<Long, List<InvestmentWithTransactions>> = investmentRepository.observeInvestments().first()
             .filter { it.investment.accountId != null }
             .groupBy { it.investment.accountId!! }
         val accountOperationsByAccount = accountOperationRepository.observeAll().first().groupBy { it.accountId }
-        val outcomes = validateImportRows(parseResults, accounts, investmentsByAccount, accountOperationsByAccount)
+        val outcomes = validateImportRows(
+            parseResults,
+            accounts,
+            investmentsByAccount,
+            accountOperationsByAccount,
+            accountsSyncingCashWithTrades
+        )
         _uiState.value = ImportUiState.Preview(outcomes)
     }
 

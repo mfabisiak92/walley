@@ -173,6 +173,94 @@ class InvestmentImportTest {
     }
 
     @Test
+    fun `a new deposit funds a new buy on a fully-invested account that syncs cash with trades`() {
+        // Mirrors a real re-import: an account previously imported with "include account operations"
+        // has every historical trade's cost already subtracted from uninvestedCash, leaving it at ~0
+        // even though the portfolio is worth a lot. Without accountsSyncingCashWithTrades, netting the
+        // new buy's cost against that entire pre-existing history (already reflected in the stored
+        // cash) would double-count it and reject the buy regardless of the new deposit.
+        val existing = InvestmentWithTransactions(
+            investment = Investment(
+                name = "Investment",
+                ticker = "TCK",
+                category = InvestmentCategory.STOCK,
+                currency = Currency.PLN,
+                currentPrice = BigDecimal("100"),
+                accountId = 1
+            ),
+            transactions = listOf(
+                InvestmentTransaction(
+                    type = InvestmentTransactionType.BUY,
+                    date = LocalDate.parse("2020-01-01"),
+                    quantity = BigDecimal("100"),
+                    pricePerUnit = BigDecimal("100")
+                )
+            )
+        )
+        val rows = listOf(
+            cashOp(1, date = "2026-01-01", amount = "5000"),
+            row(2, date = "2026-01-02", quantity = "10", price = "490", commission = "14")
+        )
+
+        val withoutSyncFlag = validateImportRows(
+            rows,
+            accounts = listOf(account(uninvestedCash = "0")),
+            investmentsByAccount = mapOf(1L to listOf(existing))
+        )
+        assertTrue(withoutSyncFlag.first { it.rowNumber == 2 }.status is ImportRowStatus.Rejected)
+
+        val withSyncFlag = validateImportRows(
+            rows,
+            accounts = listOf(account(uninvestedCash = "0")),
+            investmentsByAccount = mapOf(1L to listOf(existing)),
+            accountsSyncingCashWithTrades = setOf(1L)
+        )
+        assertEquals(ImportRowStatus.ToImport, withSyncFlag.first { it.rowNumber == 1 }.status)
+        assertEquals(ImportRowStatus.ToImport, withSyncFlag.first { it.rowNumber == 2 }.status)
+    }
+
+    @Test
+    fun `a sell matching an existing buy under a different ticker is treated as a duplicate`() {
+        // BOSSA (and similar brokers) can retroactively report a trade under a different ISIN than
+        // the original buy showed — e.g. an IPO-subscription stock re-tagged with its permanent ISIN
+        // once regular trading starts. Ticker-scoped matching alone would miss this and reject the
+        // sell as an unfunded/unowned position, even though it's really the same already-recorded trade.
+        val existing = InvestmentWithTransactions(
+            investment = Investment(
+                name = "Investment (old ticker)",
+                ticker = "OLD_ISIN",
+                category = InvestmentCategory.STOCK,
+                currency = Currency.PLN,
+                currentPrice = BigDecimal("20"),
+                accountId = 1
+            ),
+            transactions = listOf(
+                InvestmentTransaction(
+                    type = InvestmentTransactionType.SELL,
+                    date = LocalDate.parse("2023-11-28"),
+                    quantity = BigDecimal("10"),
+                    pricePerUnit = BigDecimal("27.30")
+                )
+            )
+        )
+        val outcomes = validateImportRows(
+            listOf(
+                row(
+                    1,
+                    ticker = "NEW_ISIN",
+                    type = InvestmentTransactionType.SELL,
+                    date = "2023-11-28",
+                    quantity = "10",
+                    price = "27.30"
+                )
+            ),
+            accounts = listOf(account()),
+            investmentsByAccount = mapOf(1L to listOf(existing))
+        )
+        assertEquals(ImportRowStatus.Duplicate, outcomes.single().status)
+    }
+
+    @Test
     fun `duplicates are also detected within the same batch, not just against existing data`() {
         val outcomes = validateImportRows(
             listOf(

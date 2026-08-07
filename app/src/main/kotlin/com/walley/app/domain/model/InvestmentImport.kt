@@ -87,13 +87,29 @@ data class ImportRowOutcome(
  * exactly — [accountOperationsByAccount] is that existing ledger, keyed by account id.
  *
  * A trade row is treated as a duplicate when an existing or already-accepted transaction for the same
- * account+ticker matches its type, date, quantity, and price exactly.
+ * account+ticker matches its type, date, quantity, and price exactly — or, failing that, when some
+ * other investment in the same account has a transaction matching all four. That fallback exists
+ * because a broker can retroactively change a security's reported ISIN/ticker between exports (e.g.
+ * BOSSA re-tagging an IPO-subscription trade under the stock's permanent ISIN once it starts regular
+ * trading, while the original buy keeps showing the temporary one) — without it, the same real trade
+ * would import again under its new ticker and get rejected as an unfunded/unowned position instead of
+ * being recognized as already recorded.
+ *
+ * [accountsSyncingCashWithTrades] identifies accounts whose stored `uninvestedCash` already has every
+ * trade's cost/proceeds baked in (see the "include account operations" import toggle, which — besides
+ * importing cash operations — also debits/credits the balance for every trade on commit so it matches
+ * the broker statement). For those accounts, [availableCashToBuy]'s usual approach of netting a trade's
+ * cost against *all* of an investment's historical transactions would double-count: that history's cost
+ * is already subtracted from the stored cash, so subtracting it again here would drive available cash
+ * to (near) zero regardless of how much was actually deposited. Only trades accepted during *this*
+ * replay — not yet reflected in the stored cash — are netted for those accounts, via [newlySpentByAccount].
  */
 fun validateImportRows(
     parseResults: List<CsvRowParseResult>,
     accounts: List<Account>,
     investmentsByAccount: Map<Long, List<InvestmentWithTransactions>>,
-    accountOperationsByAccount: Map<Long, List<AccountOperation>> = emptyMap()
+    accountOperationsByAccount: Map<Long, List<AccountOperation>> = emptyMap(),
+    accountsSyncingCashWithTrades: Set<Long> = emptySet()
 ): List<ImportRowOutcome> {
     val accountsById = accounts.associateBy { it.id }
     val working: MutableMap<Long, MutableMap<String, InvestmentWithTransactions>> = investmentsByAccount
@@ -103,6 +119,7 @@ fun validateImportRows(
         .mapValues { (_, list) -> list.toMutableList() }
         .toMutableMap()
     val cashAdjustmentByAccount = mutableMapOf<Long, BigDecimal>()
+    val newlySpentByAccount = mutableMapOf<Long, BigDecimal>()
 
     val outcomeByRowNumber = mutableMapOf<Int, ImportRowOutcome>()
     for (parseResult in parseResults) {
@@ -155,10 +172,11 @@ fun validateImportRows(
             val accountInvestments = working.getOrPut(row.accountId) { mutableMapOf() }
             val existingForTicker = accountInvestments[row.ticker]
 
-            val isDuplicate = existingForTicker?.transactions.orEmpty().any { t ->
-                t.type == row.type && t.date == row.date &&
-                    t.quantity.compareTo(row.quantity) == 0 && t.pricePerUnit.compareTo(row.price) == 0
-            }
+            fun matchesRow(t: InvestmentTransaction) = t.type == row.type && t.date == row.date &&
+                t.quantity.compareTo(row.quantity) == 0 && t.pricePerUnit.compareTo(row.price) == 0
+
+            val isDuplicate = existingForTicker?.transactions.orEmpty().any(::matchesRow) ||
+                accountInvestments.values.any { it.investment.ticker != row.ticker && it.transactions.any(::matchesRow) }
             if (isDuplicate) {
                 outcomeByRowNumber[row.rowNumber] = ImportRowOutcome(row.rowNumber, row, status = ImportRowStatus.Duplicate)
                 continue
@@ -183,7 +201,12 @@ fun validateImportRows(
                     } else {
                         account
                     }
-                    val availableCash = availableCashToBuy(effectiveAccount, accountInvestments.values.toList(), row.date)
+                    val availableCash = if (row.accountId in accountsSyncingCashWithTrades) {
+                        val newlySpent = newlySpentByAccount[row.accountId] ?: BigDecimal.ZERO
+                        (effectiveAccount.uninvestedCash - newlySpent).max(BigDecimal.ZERO)
+                    } else {
+                        availableCashToBuy(effectiveAccount, accountInvestments.values.toList(), row.date)
+                    }
                     if (totalCost > availableCash) {
                         "Only ${availableCash.toPlainString()} ${account.currency.symbol} available in \"${account.name}\" as of ${row.date}"
                     } else {
@@ -194,6 +217,14 @@ fun validateImportRows(
             if (rejection != null) {
                 outcomeByRowNumber[row.rowNumber] = ImportRowOutcome(row.rowNumber, row, status = ImportRowStatus.Rejected(rejection))
                 continue
+            }
+
+            if (row.accountId in accountsSyncingCashWithTrades) {
+                val netAmount = (row.quantity * row.price).let { total ->
+                    if (row.type == InvestmentTransactionType.BUY) total + row.commission else total - row.commission
+                }
+                val spendDelta = if (row.type == InvestmentTransactionType.BUY) netAmount else -netAmount
+                newlySpentByAccount[row.accountId] = (newlySpentByAccount[row.accountId] ?: BigDecimal.ZERO) + spendDelta
             }
 
             val newTransaction = InvestmentTransaction(
