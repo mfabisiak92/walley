@@ -13,5 +13,7 @@ data class BudgetEntity(
     val applyIncomeAccountEffects: Boolean = true,
     val applyCostsAccountEffects: Boolean = true,
     val applySavingsAccountEffects: Boolean = true,
-    val applyInvestmentsAccountEffects: Boolean = true
+    val applyInvestmentsAccountEffects: Boolean = true,
+    /** Null only for a budget created before this field existed — see [com.walley.app.domain.model.Budget.plannedNetWorth]. */
+    val plannedNetWorthMinorUnits: Long? = null
 )

@@ -3,6 +3,7 @@ package com.walley.app.feature.budget
 import com.walley.app.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -95,6 +98,7 @@ fun BudgetDetailScreen(
     val (baseCurrency, rates) = viewModel.baseCurrencyRates.collectAsStateWithLifecycle().value
     val categoryTargets by viewModel.categoryTargets.collectAsStateWithLifecycle()
     val projectedNetWorth by viewModel.projectedNetWorth.collectAsStateWithLifecycle()
+    val plannedNetWorth by viewModel.plannedNetWorth.collectAsStateWithLifecycle()
     val deleteBlockedMessage by viewModel.deleteBlockedMessage.collectAsStateWithLifecycle()
     var itemForPaidDialog by remember { mutableStateOf<BudgetItem?>(null) }
     var itemForEditDialog by remember { mutableStateOf<BudgetItem?>(null) }
@@ -102,6 +106,7 @@ fun BudgetDetailScreen(
     var showAddSectionPicker by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
+    var showEditPlannedNetWorth by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val status = budgetWithItems?.budget?.status
@@ -214,7 +219,9 @@ fun BudgetDetailScreen(
                             items = budget.items,
                             baseCurrency = baseCurrency,
                             rates = rates,
-                            projectedNetWorth = projectedNetWorth
+                            projectedNetWorth = projectedNetWorth,
+                            plannedNetWorth = plannedNetWorth,
+                            onEditPlannedNetWorth = { showEditPlannedNetWorth = true }
                         )
                         else -> SectionTabContent(
                             allItems = budget.items,
@@ -457,6 +464,18 @@ fun BudgetDetailScreen(
             }
         )
     }
+
+    if (showEditPlannedNetWorth) {
+        EditPlannedNetWorthDialog(
+            initialValue = plannedNetWorth,
+            currency = baseCurrency,
+            onDismiss = { showEditPlannedNetWorth = false },
+            onSave = { value ->
+                viewModel.updatePlannedNetWorth(value)
+                showEditPlannedNetWorth = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -541,7 +560,9 @@ private fun SummaryTabContent(
     items: List<BudgetItem>,
     baseCurrency: Currency,
     rates: ExchangeRates?,
-    projectedNetWorth: BigDecimal?
+    projectedNetWorth: BigDecimal?,
+    plannedNetWorth: BigDecimal?,
+    onEditPlannedNetWorth: () -> Unit
 ) {
     val overallProgress = budgetProgress(items, SPENDING_SECTIONS, baseCurrency, rates)
     val plannedDisposable = plannedDisposableIncome(items, baseCurrency, rates)
@@ -561,7 +582,7 @@ private fun SummaryTabContent(
     ) {
         ProgressSummaryHeader(progress = overallProgress, currency = baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-        SummaryRow("Projected net worth", projectedNetWorth, baseCurrency)
+        ProjectedAndPlannedNetWorthRow(projectedNetWorth, plannedNetWorth, baseCurrency, onEditPlannedNetWorth)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         SummaryRow("Planned disposable income", plannedDisposable, baseCurrency)
         SummaryRow("Disposable income", disposable, baseCurrency)
@@ -592,6 +613,74 @@ private fun SummaryTabContent(
                 PieChartCard(title = "Budget allocation", slices = slices)
             }
         }
+    }
+}
+
+/**
+ * "Projected net worth" and its user-set "Planned" counterpart, side by side — each as label-above/
+ * value-below rather than [SummaryRow]'s label-left/value-right, since two label+value pairs on one
+ * line don't fit the screen width in that layout once amounts are formatted with a currency symbol.
+ */
+@Composable
+private fun ProjectedAndPlannedNetWorthRow(
+    projected: BigDecimal?,
+    planned: BigDecimal?,
+    currency: Currency,
+    onEditPlanned: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        NetWorthFigure(
+            label = "Projected net worth",
+            amount = projected,
+            currency = currency,
+            modifier = Modifier.weight(1f)
+        )
+        NetWorthFigure(
+            label = "Planned",
+            amount = planned,
+            currency = currency,
+            modifier = Modifier.weight(1f),
+            onClick = onEditPlanned
+        )
+    }
+}
+
+@Composable
+private fun NetWorthFigure(
+    label: String,
+    amount: BigDecimal?,
+    currency: Currency,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
+) {
+    Column(modifier = modifier.let { if (onClick != null) it.clickable(onClick = onClick) else it }) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (onClick != null) {
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Edit $label",
+                    modifier = Modifier.padding(start = 4.dp).size(14.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Text(
+            amount?.let { formatMoney(it, currency) } ?: "—",
+            style = MaterialTheme.typography.titleMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

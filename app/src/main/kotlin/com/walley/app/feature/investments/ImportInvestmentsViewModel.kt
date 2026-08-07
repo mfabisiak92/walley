@@ -55,7 +55,7 @@ sealed interface ImportUiState {
         val accounts: List<Account>,
         val toggleKind: ImportToggleKind
     ) : ImportUiState
-    data class Preview(val outcomes: List<ImportRowOutcome>) : ImportUiState
+    data class Preview(val outcomes: List<ImportRowOutcome>, val balanceReview: ImportBalanceReview) : ImportUiState
     data object Committing : ImportUiState
     data class Done(val importedCount: Int) : ImportUiState
 }
@@ -189,7 +189,8 @@ class ImportInvestmentsViewModel @Inject constructor(
             accountOperationsByAccount,
             accountsSyncingCashWithTrades
         )
-        _uiState.value = ImportUiState.Preview(outcomes)
+        val balanceReview = computeImportBalanceReview(outcomes, accounts, investmentsByAccount, pendingIncludeAccountOperations)
+        _uiState.value = ImportUiState.Preview(outcomes, balanceReview)
     }
 
     fun confirmImport() {

@@ -83,10 +83,12 @@ class BudgetRepositoryImpl @Inject constructor(
         applyIncomeAccountEffects: Boolean,
         applyCostsAccountEffects: Boolean,
         applySavingsAccountEffects: Boolean,
-        applyInvestmentsAccountEffects: Boolean
+        applyInvestmentsAccountEffects: Boolean,
+        plannedNetWorth: BigDecimal?
     ): Long = upsertBudget(
         budgetId, year, month, items, BudgetStatus.DRAFT,
-        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects,
+        plannedNetWorth
     )
 
     override suspend fun submitBudget(
@@ -97,10 +99,12 @@ class BudgetRepositoryImpl @Inject constructor(
         applyIncomeAccountEffects: Boolean,
         applyCostsAccountEffects: Boolean,
         applySavingsAccountEffects: Boolean,
-        applyInvestmentsAccountEffects: Boolean
+        applyInvestmentsAccountEffects: Boolean,
+        plannedNetWorth: BigDecimal
     ): Long = upsertBudget(
         budgetId, year, month, items, BudgetStatus.ACTIVE,
-        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+        applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects,
+        plannedNetWorth
     )
 
     private suspend fun upsertBudget(
@@ -112,7 +116,8 @@ class BudgetRepositoryImpl @Inject constructor(
         applyIncomeAccountEffects: Boolean,
         applyCostsAccountEffects: Boolean,
         applySavingsAccountEffects: Boolean,
-        applyInvestmentsAccountEffects: Boolean
+        applyInvestmentsAccountEffects: Boolean,
+        plannedNetWorth: BigDecimal?
     ): Long {
         val id = if (budgetId != null) {
             budgetDao.updateYearMonthAndStatus(budgetId, year, month, status)
@@ -120,6 +125,7 @@ class BudgetRepositoryImpl @Inject constructor(
             budgetDao.updateApplyCostsAccountEffects(budgetId, applyCostsAccountEffects)
             budgetDao.updateApplySavingsAccountEffects(budgetId, applySavingsAccountEffects)
             budgetDao.updateApplyInvestmentsAccountEffects(budgetId, applyInvestmentsAccountEffects)
+            budgetDao.updatePlannedNetWorth(budgetId, plannedNetWorth?.toMinorUnits())
             budgetId
         } else {
             budgetDao.insertBudget(
@@ -130,7 +136,8 @@ class BudgetRepositoryImpl @Inject constructor(
                     applyIncomeAccountEffects = applyIncomeAccountEffects,
                     applyCostsAccountEffects = applyCostsAccountEffects,
                     applySavingsAccountEffects = applySavingsAccountEffects,
-                    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+                    applyInvestmentsAccountEffects = applyInvestmentsAccountEffects,
+                    plannedNetWorthMinorUnits = plannedNetWorth?.toMinorUnits()
                 )
             )
         }
@@ -300,6 +307,10 @@ class BudgetRepositoryImpl @Inject constructor(
 
     override suspend fun updateApplyInvestmentsAccountEffects(budgetId: Long, enabled: Boolean) {
         budgetDao.updateApplyInvestmentsAccountEffects(budgetId, enabled)
+    }
+
+    override suspend fun updatePlannedNetWorth(budgetId: Long, plannedNetWorth: BigDecimal) {
+        budgetDao.updatePlannedNetWorth(budgetId, plannedNetWorth.toMinorUnits())
     }
 
     override suspend fun checkAndAutoCompleteDueItems() {

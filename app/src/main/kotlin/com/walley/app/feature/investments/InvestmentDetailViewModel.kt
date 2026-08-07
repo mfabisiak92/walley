@@ -3,6 +3,7 @@ package com.walley.app.feature.investments
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.data.repository.AccountOperationRepository
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.IntegrationsRepository
 import com.walley.app.data.repository.InvestmentRepository
@@ -12,6 +13,8 @@ import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import com.walley.app.domain.model.WatchedEquityWithNotes
+import com.walley.app.domain.model.dividendsPaid
+import com.walley.app.domain.model.netDividendsPaid
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -31,7 +34,8 @@ class InvestmentDetailViewModel @Inject constructor(
     private val repository: InvestmentRepository,
     private val integrationsRepository: IntegrationsRepository,
     accountRepository: AccountRepository,
-    watchedEquityRepository: WatchedEquityRepository
+    watchedEquityRepository: WatchedEquityRepository,
+    accountOperationRepository: AccountOperationRepository
 ) : ViewModel() {
 
     private val investmentId: Long = checkNotNull(savedStateHandle["investmentId"])
@@ -59,6 +63,21 @@ class InvestmentDetailViewModel @Inject constructor(
         accountRepository.observeAccounts()
     ) { current, accounts -> accounts.find { it.id == current?.investment?.accountId } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Best-effort dividends received so far for this investment — see [dividendsPaid]/[netDividendsPaid]'s docs for how they're matched. */
+    val dividendsSummary: StateFlow<DividendsSummary> = combine(
+        investmentWithTransactions,
+        linkedAccount,
+        accountOperationRepository.observeAll()
+    ) { current, account, allOperations ->
+        val investment = current?.investment
+        if (investment == null || account == null) {
+            DividendsSummary.ZERO
+        } else {
+            val operations = allOperations.filter { it.accountId == account.id }
+            DividendsSummary(gross = investment.dividendsPaid(operations), net = investment.netDividendsPaid(operations))
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DividendsSummary.ZERO)
 
     val investmentsInAccount: StateFlow<List<InvestmentWithTransactions>> = combine(
         investmentWithTransactions,
@@ -120,5 +139,12 @@ class InvestmentDetailViewModel @Inject constructor(
             repository.deleteInvestment(investmentId)
             onDeleted()
         }
+    }
+}
+
+/** [gross] is the dividend payout itself; [net] is what was actually kept after withholding tax. */
+data class DividendsSummary(val gross: BigDecimal, val net: BigDecimal) {
+    companion object {
+        val ZERO = DividendsSummary(BigDecimal.ZERO, BigDecimal.ZERO)
     }
 }

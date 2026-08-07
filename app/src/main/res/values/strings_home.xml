@@ -5,6 +5,7 @@
     <string name="home_settings_content_description">Settings</string>
     <string name="home_net_worth">Net worth</string>
     <string name="home_projected">Projected %1$s</string>
+    <string name="home_planned">Planned %1$s</string>
     <string name="home_exchange_rates_unavailable">Exchange rates unavailable</string>
     <string name="home_this_months_budget">This month\'s budget</string>
     <string name="home_percent_days_left">%1$s%% · %2$d days left</string>
@@ -32,6 +33,7 @@
     <string name="home_projected_net_worth">Projected net worth</string>
     <string name="home_projected_net_worth_description">If this month\'s budget is followed through to completion</string>
     <string name="home_current_net_worth">Current net worth</string>
+    <string name="home_planned_net_worth">Planned net worth</string>
     <string name="home_income">Income</string>
     <string name="home_income_related_expenses">Income-related expenses</string>
     <string name="home_fixed_costs">Fixed costs</string>

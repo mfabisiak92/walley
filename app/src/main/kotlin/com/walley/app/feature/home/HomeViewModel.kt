@@ -122,7 +122,10 @@ data class NetWorthState(
     val projectedBreakdown: ProjectedNetWorthBreakdown? = null,
     // net worth as of the end of the previous calendar month, from that month's financial snapshot;
     // null when the previous month's budget was never marked completed (no snapshot was ever taken)
-    val previousMonthNetWorth: BigDecimal? = null
+    val previousMonthNetWorth: BigDecimal? = null,
+    // the current calendar month's budget's own net-worth goal (Budget.plannedNetWorth); null when
+    // there's no budget for the current month, or it predates this field and hasn't been backfilled yet
+    val plannedNetWorth: BigDecimal? = null
 )
 
 /** Snapshot of the current calendar month's budget, for a compact at-a-glance card on Home. */
@@ -220,6 +223,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private val currentMonthBudgetItems = currentMonthBudget.map { it?.items ?: emptyList() }
+    private val currentMonthPlannedNetWorth = currentMonthBudget.map { it?.budget?.plannedNetWorth }
 
     private val baseCurrencyRatesAndNetWorthSettings = combine(
         baseCurrencyRates,
@@ -244,6 +248,8 @@ class HomeViewModel @Inject constructor(
         }
     }.combine(previousMonthNetWorth) { state, previous ->
         state?.copy(previousMonthNetWorth = previous)
+    }.combine(currentMonthPlannedNetWorth) { state, planned ->
+        state?.copy(plannedNetWorth = planned)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val monthBudgetSummary: StateFlow<MonthBudgetSummary?> = combine(

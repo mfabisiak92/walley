@@ -97,8 +97,25 @@ class BudgetDetailViewModel @Inject constructor(
         (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** The user's own net-worth goal for this budget's month — see [com.walley.app.domain.model.Budget.plannedNetWorth]. */
+    val plannedNetWorth: StateFlow<BigDecimal?> = budget.map { it?.budget?.plannedNetWorth }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     init {
         viewModelScope.launch { budgetRepository.checkAndAutoCompleteDueItems() }
+        // One-time backfill for a budget created before plannedNetWorth existed: as soon as both it
+        // (still null) and a computed projection are available, adopt the projection as its starting
+        // "Planned" value. Naturally stops re-firing once the write echoes back through `budget` with
+        // plannedNetWorth no longer null — no separate "already backfilled" flag needed.
+        viewModelScope.launch {
+            combine(budget, projectedNetWorth) { budgetWithItems, projected -> budgetWithItems to projected }
+                .collect { (budgetWithItems, projected) ->
+                    val currentBudget = budgetWithItems?.budget
+                    if (currentBudget != null && currentBudget.plannedNetWorth == null && projected != null) {
+                        budgetRepository.updatePlannedNetWorth(currentBudget.id, projected)
+                    }
+                }
+        }
     }
 
     private val _deleteBlockedMessage = MutableStateFlow<String?>(null)
@@ -182,5 +199,10 @@ class BudgetDetailViewModel @Inject constructor(
 
     fun markCompleted() {
         viewModelScope.launch { budgetRepository.markBudgetCompleted(budgetId) }
+    }
+
+    /** Always allowed, even for a completed budget — same as [BudgetSettingsViewModel.updatePlannedNetWorth]. */
+    fun updatePlannedNetWorth(value: BigDecimal) {
+        viewModelScope.launch { budgetRepository.updatePlannedNetWorth(budgetId, value) }
     }
 }

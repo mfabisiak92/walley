@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.walley.app.core.format.toBigDecimalOrNullLenient
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
@@ -75,6 +76,10 @@ class BudgetWizardViewModel @Inject constructor(
     var applySavingsAccountEffects by mutableStateOf(true)
     var applyInvestmentsAccountEffects by mutableStateOf(true)
 
+    /** Raw text for the mandatory "Planned net worth" field on the Summary step — any number is valid, including negative/zero. */
+    var plannedNetWorthText by mutableStateOf("")
+    val plannedNetWorth: BigDecimal? get() = plannedNetWorthText.toBigDecimalOrNullLenient()
+
     private val itemsBySection = mutableStateMapOf<BudgetSectionType, List<WizardItemDraft>>().apply {
         BudgetSectionType.entries.forEach { put(it, emptyList()) }
     }
@@ -117,6 +122,7 @@ class BudgetWizardViewModel @Inject constructor(
                 applyCostsAccountEffects = source.budget.applyCostsAccountEffects
                 applySavingsAccountEffects = source.budget.applySavingsAccountEffects
                 applyInvestmentsAccountEffects = source.budget.applyInvestmentsAccountEffects
+                plannedNetWorthText = source.budget.plannedNetWorth?.toPlainString().orEmpty()
                 loadDraftItems(source.items)
             }
         }
@@ -129,6 +135,7 @@ class BudgetWizardViewModel @Inject constructor(
                 applyCostsAccountEffects = source.budget.applyCostsAccountEffects
                 applySavingsAccountEffects = source.budget.applySavingsAccountEffects
                 applyInvestmentsAccountEffects = source.budget.applyInvestmentsAccountEffects
+                plannedNetWorthText = source.budget.plannedNetWorth?.toPlainString().orEmpty()
                 loadDraftItems(source.items)
                 // Month is already settled for a resumed draft — land straight on the first section.
                 currentStep = 1
@@ -240,7 +247,8 @@ class BudgetWizardViewModel @Inject constructor(
         viewModelScope.launch {
             draftBudgetId = budgetRepository.saveDraft(
                 draftBudgetId, year, month, collectItems(),
-                applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+                applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects,
+                plannedNetWorth
             )
         }
     }
@@ -270,11 +278,16 @@ class BudgetWizardViewModel @Inject constructor(
         return allItems
     }
 
-    /** Finalizes the wizard's budget as Active — a one-way transition out of Draft. */
+    /**
+     * Finalizes the wizard's budget as Active — a one-way transition out of Draft. The Summary step's
+     * "Create budget" button is only enabled once [plannedNetWorth] is non-null, so the fallback here
+     * is defensive, not an expected path.
+     */
     suspend fun createBudget(): Long {
         val id = budgetRepository.submitBudget(
             draftBudgetId, year, month, collectItems(),
-            applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects
+            applyIncomeAccountEffects, applyCostsAccountEffects, applySavingsAccountEffects, applyInvestmentsAccountEffects,
+            plannedNetWorth ?: BigDecimal.ZERO
         )
         draftBudgetId = id
         return id

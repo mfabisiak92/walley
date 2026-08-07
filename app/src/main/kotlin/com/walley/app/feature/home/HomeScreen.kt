@@ -168,6 +168,13 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                         color = NetWorthCardContentColor.copy(alpha = 0.75f)
                     )
                 }
+                netWorth.plannedNetWorth?.let { planned ->
+                    Text(
+                        text = stringResource(R.string.home_planned, formatMoney(planned, netWorth.currency)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NetWorthCardContentColor.copy(alpha = 0.75f)
+                    )
+                }
                 Text(
                     text = monthOverMonthChangeText(netWorth),
                     style = MaterialTheme.typography.bodySmall

@@ -122,8 +122,12 @@ fun ReviewPriceUpdatesScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            item {
-                TotalsCard(totals = currentReview.totalsByCurrency)
+            // A totals row across a single account would just repeat the one card below it, so it's
+            // only worth showing once there's more than one account to actually total together.
+            if (currentReview.accountChanges.size > 1) {
+                item {
+                    TotalsCard(totals = currentReview.totalsByCurrency)
+                }
             }
             items(currentReview.accountChanges, key = { it.accountId }) { accountChange ->
                 AccountChangeItem(
@@ -270,7 +274,7 @@ private fun AccountChangeItem(
  * a gain, blue for no change, red for a loss) right-aligned on the line below.
  */
 @Composable
-private fun BalanceChangeBlock(
+internal fun BalanceChangeBlock(
     label: String,
     before: BigDecimal,
     after: BigDecimal,
@@ -331,13 +335,13 @@ private fun BalanceChangeBlock(
 }
 
 @Composable
-private fun colorForChange(change: BigDecimal): Color = when {
+internal fun colorForChange(change: BigDecimal): Color = when {
     change > BigDecimal.ZERO -> Color(0xFF2E7D32) // Green
     change < BigDecimal.ZERO -> MaterialTheme.colorScheme.error // Red
     else -> Color(0xFF1976D2) // Blue
 }
 
-private fun changeText(change: BigDecimal, changePercent: BigDecimal?, currencySymbol: String): String {
+internal fun changeText(change: BigDecimal, changePercent: BigDecimal?, currencySymbol: String): String {
     // formatMoney already renders a leading "-" for negative amounts, so a sign is only added for
     // a genuine gain; zero and losses are left to speak for themselves.
     val sign = if (change > BigDecimal.ZERO) "+" else ""

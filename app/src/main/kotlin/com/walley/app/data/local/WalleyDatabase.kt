@@ -8,7 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
 /** Kept in sync with [WalleyDatabase]'s `@Database(version = ...)` — referenced by backups to record the schema they were taken against. */
-const val WALLEY_DB_SCHEMA_VERSION = 36
+const val WALLEY_DB_SCHEMA_VERSION = 37
 
 @Database(
     entities = [
@@ -569,5 +569,17 @@ val MIGRATION_35_36 = object : Migration(35, 36) {
         // price change from the investment detail screen. Null for existing investments until their
         // price is next updated.
         db.execSQL("ALTER TABLE investments ADD COLUMN previousPrice TEXT")
+    }
+}
+
+val MIGRATION_36_37 = object : Migration(36, 37) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // The user's own net-worth goal for a budget's month — mandatory going forward via the budget
+        // wizard, but a budget created before this field existed has no such value on record. Left
+        // null here rather than backfilled by this migration, since a meaningful default (that
+        // budget's "Projected net worth") needs live account balances and exchange rates that a raw
+        // SQL migration can't reach — BudgetDetailViewModel backfills it once, to that computed
+        // projection, the first time each such budget is next viewed.
+        db.execSQL("ALTER TABLE budgets ADD COLUMN plannedNetWorthMinorUnits INTEGER")
     }
 }

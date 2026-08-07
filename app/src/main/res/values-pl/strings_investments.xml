@@ -69,7 +69,6 @@
     <string name="investments_section_total">Razem</string>
     <string name="investments_label_current_account_balance">Bieżące saldo konta</string>
     <string name="investments_label_net_deposits">Wpłaty netto</string>
-    <string name="investments_label_total_contribution">Łączny wkład</string>
     <string name="investments_label_cost_basis">Podstawa kosztowa</string>
     <string name="investments_label_uninvested_cash">Niezainwestowana gotówka</string>
     <string name="investments_label_unrealized_gain">Niezrealizowany zysk</string>
@@ -217,6 +216,7 @@
     <string name="investments_review_total_title">Razem</string>
     <string name="investments_label_account_balance">Saldo</string>
     <string name="investments_label_net_balance">Netto</string>
+    <string name="investments_label_cash_added">Wpłacone środki (netto)</string>
     <string name="investments_cd_expand">Rozwiń</string>
     <string name="investments_cd_collapse">Zwiń</string>
 

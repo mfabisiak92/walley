@@ -140,6 +140,7 @@ fun NetWorthDetailScreen(
                         currentNetWorth = state.amount,
                         breakdown = projectedBreakdown,
                         projectedAmount = projectedAmount,
+                        plannedAmount = state.plannedNetWorth,
                         currency = state.currency
                     )
                 }
@@ -153,6 +154,7 @@ private fun ProjectedNetWorthCard(
     currentNetWorth: BigDecimal,
     breakdown: ProjectedNetWorthBreakdown,
     projectedAmount: BigDecimal,
+    plannedAmount: BigDecimal?,
     currency: Currency
 ) {
     Card(
@@ -170,6 +172,9 @@ private fun ProjectedNetWorthCard(
             }
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             ProjectedNetWorthRow(stringResource(R.string.home_projected_net_worth), projectedAmount, currency, bold = true)
+            plannedAmount?.let { planned ->
+                ProjectedNetWorthRow(stringResource(R.string.home_planned_net_worth), planned, currency)
+            }
         }
     }
 }

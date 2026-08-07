@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -45,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -119,7 +121,8 @@ fun BudgetWizardScreen(
                             else -> viewModel.goNext()
                         }
                     },
-                    enabled = step != WIZARD_STEP_MONTH || viewModel.monthTaken != 1,
+                    enabled = (step != WIZARD_STEP_MONTH || viewModel.monthTaken != 1) &&
+                        (step != WIZARD_STEP_SUMMARY || viewModel.plannedNetWorth != null),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(if (step == WIZARD_STEP_SUMMARY) "Create budget" else "Next")
@@ -530,6 +533,17 @@ private fun SummaryStep(viewModel: BudgetWizardViewModel) {
         SummaryRow("Investments", investments, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         SummaryRow("Unallocated", unallocated, baseCurrency)
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        OutlinedTextField(
+            value = viewModel.plannedNetWorthText,
+            onValueChange = { viewModel.plannedNetWorthText = it },
+            label = { Text("Planned net worth") },
+            supportingText = { Text("Your net-worth goal for this month, in $baseCurrency — required") },
+            isError = viewModel.plannedNetWorthText.isNotBlank() && viewModel.plannedNetWorth == null,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+        )
 
         if (disposable.signum() > 0 && fixed != null && other != null && savings != null && investments != null) {
             val labels = listOf("Fixed costs", "Other costs", "Savings", "Investments")

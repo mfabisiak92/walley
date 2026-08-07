@@ -16,12 +16,14 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.PriceCheck
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -58,6 +60,7 @@ import kotlinx.coroutines.launch
 fun CashOperationsScreen(
     onNavigateBack: () -> Unit,
     onOpenInvestment: (Long) -> Unit,
+    onOpenUpdatePrices: (Long) -> Unit,
     viewModel: CashOperationsViewModel = hiltViewModel()
 ) {
     val account by viewModel.account.collectAsStateWithLifecycle()
@@ -75,6 +78,8 @@ fun CashOperationsScreen(
     }
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
+    val investmentsTabIndex = 1
+    val hasOpenInvestments = investmentsInAccount.any { it.quantity.signum() != 0 }
 
     Scaffold(
         topBar = {
@@ -86,6 +91,14 @@ fun CashOperationsScreen(
                     }
                 }
             )
+        },
+        floatingActionButton = {
+            val accountId = account?.id
+            if (isInvestmentAccount && accountId != null && pagerState.currentPage == investmentsTabIndex && hasOpenInvestments) {
+                SmallFloatingActionButton(onClick = { onOpenUpdatePrices(accountId) }) {
+                    Icon(Icons.Default.PriceCheck, contentDescription = stringResource(R.string.investments_update_prices_title))
+                }
+            }
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
@@ -255,7 +268,6 @@ private fun DetailsTab(
     val currentRows = listOf(
         stringResource(R.string.investments_label_current_account_balance) to account.balance,
         stringResource(R.string.investments_label_net_deposits) to netDeposits,
-        stringResource(R.string.investments_label_total_contribution) to totalContribution,
         stringResource(R.string.investments_label_cost_basis) to account.investmentCostBasis,
         stringResource(R.string.investments_label_uninvested_cash) to account.uninvestedCash,
         stringResource(R.string.investments_label_unrealized_gain) to unrealizedGainAmount,
@@ -267,6 +279,7 @@ private fun DetailsTab(
         stringResource(R.string.investments_label_net_realized_gain) to netRealizedGainThisYear
     )
     val totalRows = listOf(
+        stringResource(R.string.investments_label_contribution) to totalContribution,
         stringResource(R.string.investments_label_realized_gain) to realizedGainAmount,
         stringResource(R.string.investments_label_net_realized_gain) to netRealizedGainAmount
     )

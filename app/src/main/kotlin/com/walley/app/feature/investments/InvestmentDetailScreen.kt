@@ -88,6 +88,14 @@ import kotlinx.coroutines.launch
 private val TABS = listOf("Overview", "Events")
 private val DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
 
+/**
+ * Scaffold's innerPadding never insets for a `floatingActionButton` (only topBar/bottomBar/system
+ * bars), so a tall enough scrollable tab can end up with its last content sitting right under the
+ * stacked Sell/Buy FABs. Both scrollable tabs below add this as extra bottom content padding instead —
+ * sized generously past the two 56dp `ExtendedFloatingActionButton`s plus their 12dp gap and margin.
+ */
+private val FAB_STACK_CLEARANCE = 160.dp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InvestmentDetailScreen(
@@ -99,6 +107,7 @@ fun InvestmentDetailScreen(
     val linkedAccount by viewModel.linkedAccount.collectAsStateWithLifecycle()
     val investmentsInAccount by viewModel.investmentsInAccount.collectAsStateWithLifecycle()
     val strategy by viewModel.strategy.collectAsStateWithLifecycle()
+    val dividendsSummary by viewModel.dividendsSummary.collectAsStateWithLifecycle()
     val marketDataConfigured by viewModel.marketDataConfigured.collectAsStateWithLifecycle()
     val isRefreshingPrice by viewModel.isRefreshingPrice.collectAsStateWithLifecycle()
     val priceNotFoundReason by viewModel.priceNotFoundReason.collectAsStateWithLifecycle()
@@ -184,6 +193,7 @@ fun InvestmentDetailScreen(
                     0 -> OverviewTab(
                         data = current,
                         strategy = strategy,
+                        dividendsSummary = dividendsSummary,
                         onClickCurrentPrice = { showUpdatePriceDialog = true },
                         onClickStrategy = onOpenEquity,
                         showRefreshPriceButton = marketDataConfigured,
@@ -287,6 +297,7 @@ fun InvestmentDetailScreen(
 private fun OverviewTab(
     data: InvestmentWithTransactions,
     strategy: WatchedEquityWithNotes?,
+    dividendsSummary: DividendsSummary,
     onClickCurrentPrice: () -> Unit,
     onClickStrategy: (Long) -> Unit,
     showRefreshPriceButton: Boolean,
@@ -298,7 +309,7 @@ private fun OverviewTab(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + FAB_STACK_CLEARANCE),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
@@ -367,6 +378,13 @@ private fun OverviewTab(
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     StatTile("First purchase", data.firstPurchaseDate?.format(DATE_FORMATTER) ?: "—")
                     StatTile("Commission paid", formatMoney(data.totalCommissionPaid, investment.currency))
+                }
+                if (dividendsSummary.gross.signum() != 0) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        StatTile("Dividends", formatMoney(dividendsSummary.gross, investment.currency))
+                        StatTile("Net dividends", formatMoney(dividendsSummary.net, investment.currency))
+                    }
                 }
                 if (data.realizedGainLoss.signum() != 0) {
                     Spacer(modifier = Modifier.height(16.dp))
@@ -495,7 +513,7 @@ private fun EventsTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + FAB_STACK_CLEARANCE),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         groupedByYear.forEach { (year, transactionsInYear) ->

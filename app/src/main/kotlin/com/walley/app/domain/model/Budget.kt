@@ -1,5 +1,6 @@
 package com.walley.app.domain.model
 
+import java.math.BigDecimal
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
@@ -13,7 +14,14 @@ data class Budget(
     val applyIncomeAccountEffects: Boolean = true,
     val applyCostsAccountEffects: Boolean = true,
     val applySavingsAccountEffects: Boolean = true,
-    val applyInvestmentsAccountEffects: Boolean = true
+    val applyInvestmentsAccountEffects: Boolean = true,
+    /**
+     * The user's own net-worth goal for this budget's month, in the Settings base currency — set
+     * during creation (mandatory going forward) and editable afterward from Budget Settings. Null
+     * only for a budget created before this field existed; [com.walley.app.feature.budget.BudgetDetailViewModel]
+     * backfills it once to that budget's already-computed "Projected net worth" the first time it's viewed.
+     */
+    val plannedNetWorth: BigDecimal? = null
 ) {
     val yearMonth: YearMonth get() = YearMonth.of(year, month)
 

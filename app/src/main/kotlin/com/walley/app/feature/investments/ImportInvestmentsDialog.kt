@@ -53,6 +53,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.walley.app.core.format.formatMoney
 import com.walley.app.core.ui.FieldHint
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.ImportRowOutcome
@@ -107,6 +108,7 @@ fun ImportInvestmentsDialog(
                         )
                         is ImportUiState.Preview -> PreviewContent(
                             outcomes = current.outcomes,
+                            balanceReview = current.balanceReview,
                             onConfirm = viewModel::confirmImport,
                             onCancel = onDismiss
                         )
@@ -231,6 +233,7 @@ private fun SelectAccountContent(
 @Composable
 private fun PreviewContent(
     outcomes: List<ImportRowOutcome>,
+    balanceReview: ImportBalanceReview,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -258,8 +261,19 @@ private fun PreviewContent(
             contentPadding = PaddingValues(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val currencySymbolByAccountId = balanceReview.accountSummaries.associate { it.accountId to it.currencySymbol }
+            if (balanceReview.accountSummaries.isNotEmpty()) {
+                items(balanceReview.accountSummaries, key = { "summary_${it.accountId}" }) { summary ->
+                    ImportAccountSummaryCard(summary)
+                }
+            }
             items(outcomes, key = { it.rowNumber }) { outcome ->
-                OutcomeRow(outcome)
+                val accountId = outcome.row?.accountId ?: outcome.cashOperation?.accountId
+                OutcomeRow(
+                    outcome = outcome,
+                    balanceChange = balanceReview.rowChangesByRowNumber[outcome.rowNumber],
+                    currencySymbol = currencySymbolByAccountId[accountId].orEmpty()
+                )
             }
         }
         Row(
@@ -290,8 +304,66 @@ private fun StatusCount(icon: ImageVector, tint: Color, count: Int, description:
     }
 }
 
+/**
+ * One touched account's overall balance/net-balance impact for this import, plus how much cash it
+ * added — the same before/after presentation [ReviewPriceUpdatesScreen] uses for price updates, so
+ * the two review-style summaries look and read the same way across the app.
+ */
 @Composable
-private fun OutcomeRow(outcome: ImportRowOutcome) {
+private fun ImportAccountSummaryCard(summary: ImportAccountSummary) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                summary.accountName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            BalanceChangeBlock(
+                label = stringResource(R.string.investments_label_account_balance),
+                before = summary.beforeBalance,
+                after = summary.afterBalance,
+                change = summary.afterBalance - summary.beforeBalance,
+                changePercent = null,
+                currencySymbol = summary.currencySymbol,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            BalanceChangeBlock(
+                label = stringResource(R.string.investments_label_net_balance),
+                before = summary.beforeNetBalance,
+                after = summary.afterNetBalance,
+                change = summary.afterNetBalance - summary.beforeNetBalance,
+                changePercent = null,
+                currencySymbol = summary.currencySymbol,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            if (summary.netCashAdded.signum() != 0) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        stringResource(R.string.investments_label_cash_added),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        formatMoney(summary.netCashAdded, summary.currencySymbol),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OutcomeRow(outcome: ImportRowOutcome, balanceChange: ImportRowBalanceChange?, currencySymbol: String) {
     val row = outcome.row
     val cashOperation = outcome.cashOperation
     Card(
@@ -328,6 +400,18 @@ private fun OutcomeRow(outcome: ImportRowOutcome) {
                     "${cashOperation.accountName} · ${cashOperation.date} · ${cashOperation.amount.toPlainString()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (balanceChange != null && balanceChange.balanceChanged) {
+                BalanceChangeBlock(
+                    label = stringResource(R.string.investments_label_account_balance),
+                    before = balanceChange.beforeBalance,
+                    after = balanceChange.afterBalance,
+                    change = balanceChange.afterBalance - balanceChange.beforeBalance,
+                    changePercent = null,
+                    currencySymbol = currencySymbol,
+                    compact = true,
+                    modifier = Modifier.padding(top = 6.dp)
                 )
             }
             val reason = (outcome.status as? ImportRowStatus.Rejected)?.reason

@@ -21,6 +21,7 @@ import com.walley.app.feature.home.NetWorthDetailScreen
 import com.walley.app.feature.investments.CashOperationsScreen
 import com.walley.app.feature.investments.EquityDetailScreen
 import com.walley.app.feature.investments.InvestmentDetailScreen
+import com.walley.app.feature.investments.NO_ACCOUNT_ID
 import com.walley.app.feature.investments.ReviewPriceUpdatesScreen
 import com.walley.app.feature.investments.UpdatePricesScreen
 import com.walley.app.feature.investments.UpdatePricesViewModel
@@ -37,7 +38,7 @@ private object WalleyDestinations {
     const val INVESTMENT_DETAIL = "investment_detail/{investmentId}"
     const val AD_HOC_WIZARD = "ad_hoc_wizard?resume={resumeBudgetId}"
     const val AD_HOC_DETAIL = "ad_hoc_detail/{adHocBudgetId}"
-    const val UPDATE_PRICES = "update_prices"
+    const val UPDATE_PRICES = "update_prices?accountId={accountId}"
     const val REVIEW_PRICES = "review_prices"
     const val BUDGET_SETTINGS = "budget_settings/{budgetId}"
     const val UPDATE_BALANCES = "update_balances/{group}"
@@ -60,6 +61,7 @@ private object WalleyDestinations {
     fun equityDetail(equityId: Long) = "equity_detail/$equityId"
     fun investmentDetail(investmentId: Long) = "investment_detail/$investmentId"
     fun adHocDetail(adHocBudgetId: Long) = "ad_hoc_detail/$adHocBudgetId"
+    fun updatePrices(accountId: Long? = null) = "update_prices?accountId=${accountId ?: NO_ACCOUNT_ID}"
 }
 
 @Composable
@@ -93,7 +95,7 @@ fun WalleyNavHost() {
                 onOpenAdHocBudget = { adHocBudgetId ->
                     navController.navigate(WalleyDestinations.adHocDetail(adHocBudgetId))
                 },
-                onOpenUpdatePrices = { navController.navigate(WalleyDestinations.UPDATE_PRICES) },
+                onOpenUpdatePrices = { navController.navigate(WalleyDestinations.updatePrices()) },
                 onOpenUpdateBalances = { group ->
                     navController.navigate(WalleyDestinations.updateBalances(group))
                 },
@@ -189,7 +191,10 @@ fun WalleyNavHost() {
         ) {
             AdHocBudgetDetailScreen(onNavigateBack = { navController.popBackStack() })
         }
-        composable(WalleyDestinations.UPDATE_PRICES) { backStackEntry ->
+        composable(
+            WalleyDestinations.UPDATE_PRICES,
+            arguments = listOf(navArgument("accountId") { type = NavType.LongType; defaultValue = NO_ACCOUNT_ID })
+        ) { backStackEntry ->
             // hiltViewModel() defaults to scoping the ViewModel to this destination's own back
             // stack entry. Passed explicitly here so the REVIEW_PRICES destination below can look
             // up this same entry and share the instance — otherwise the review screen would get a
@@ -223,7 +228,8 @@ fun WalleyNavHost() {
         ) {
             CashOperationsScreen(
                 onNavigateBack = { navController.popBackStack() },
-                onOpenInvestment = { investmentId -> navController.navigate(WalleyDestinations.investmentDetail(investmentId)) }
+                onOpenInvestment = { investmentId -> navController.navigate(WalleyDestinations.investmentDetail(investmentId)) },
+                onOpenUpdatePrices = { accountId -> navController.navigate(WalleyDestinations.updatePrices(accountId)) }
             )
         }
     }

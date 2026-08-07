@@ -1,5 +1,8 @@
 package com.walley.app.feature.investments
 
+import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.AccountType
+import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
 import java.math.RoundingMode
 
@@ -87,3 +90,67 @@ data class PriceUpdateReview(
             }
     }
 }
+
+/**
+ * Computes each of [accounts]' balance/net-balance change for a hypothetical set of [priceUpdates]
+ * (investment id to candidate new price), without writing anything. Pure and synchronous so it can
+ * drive both [UpdatePricesViewModel.generateReview]'s saved review (computed once, from freshly
+ * fetched data) and a live per-account preview header that recomputes on every keystroke — the caller
+ * decides which accounts are in scope (e.g. one, when reached from a single account's Investments tab)
+ * by what it passes in [accounts]; this function doesn't filter beyond investment type.
+ */
+fun computeAccountBalanceChanges(
+    investmentsByAccount: Map<Long, List<InvestmentWithTransactions>>,
+    accounts: List<Account>,
+    priceUpdates: Map<Long, BigDecimal>
+): List<AccountBalanceChange> =
+    accounts.filter { it.type == AccountType.INVESTMENT }.mapNotNull { account ->
+        val investmentsInAccount = investmentsByAccount[account.id].orEmpty()
+        if (investmentsInAccount.isEmpty()) return@mapNotNull null
+
+        var afterAccountValue = BigDecimal.ZERO
+        val investmentChanges = investmentsInAccount.mapNotNull { invWithTx ->
+            val investment = invWithTx.investment
+            val newPrice = priceUpdates[investment.id] ?: investment.currentPrice
+            val beforeValue = invWithTx.currentValue
+            val afterValue = invWithTx.quantity * newPrice
+            afterAccountValue += afterValue
+
+            if (beforeValue.compareTo(afterValue) != 0) {
+                InvestmentBalanceChange(
+                    investmentId = investment.id,
+                    name = investment.name,
+                    ticker = investment.ticker,
+                    beforeBalance = beforeValue,
+                    afterBalance = afterValue
+                )
+            } else {
+                null
+            }
+        }
+
+        // account.balance/uninvestedCash/investmentCostBasis already reflect the current (pre-edit)
+        // prices — repository.observeAccounts() folds live investment values into balance. Cost
+        // basis is derived from purchase price, not current price, so it (and uninvestedCash) stays
+        // put; only balance moves with the edited prices. A plain .copy(balance = ...) is therefore
+        // enough to get the "after" account's own netWorthValue — which subtracts tax owed on the
+        // unrealized gain — via the same formula Account already uses everywhere else in the app.
+        //
+        // Rounded the same way AccountRepositoryImpl.investmentsValue() rounds it for [account.balance]
+        // itself — without this, an untouched account (no priceUpdates at all, or ones that don't
+        // change anything) could still show a phantom fraction-of-a-cent "change" purely from comparing
+        // an unrounded fresh sum against the already-rounded before value.
+        val afterAccountBalance = account.uninvestedCash + afterAccountValue.setScale(2, RoundingMode.HALF_UP)
+        val afterAccount = account.copy(balance = afterAccountBalance)
+
+        AccountBalanceChange(
+            accountId = account.id,
+            accountName = account.name,
+            accountCurrencySymbol = account.currency.symbol,
+            beforeAccountBalance = account.balance,
+            afterAccountBalance = afterAccountBalance,
+            beforeNetBalance = account.netWorthValue,
+            afterNetBalance = afterAccount.netWorthValue,
+            investments = investmentChanges
+        )
+    }

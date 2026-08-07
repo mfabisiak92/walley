@@ -22,6 +22,7 @@ interface BudgetRepository {
      * Persists the wizard's current progress as a Draft (creating it if [budgetId] is null, replacing
      * its items otherwise). Drafts aren't shown as Active and never auto-pay items. [items] should
      * carry section/name/amount/currency/accountId/paymentDay; id and budgetId are ignored.
+     * [plannedNetWorth] is nullable here (unlike [submitBudget]) since a draft can still be incomplete.
      */
     suspend fun saveDraft(
         budgetId: Long?,
@@ -31,7 +32,8 @@ interface BudgetRepository {
         applyIncomeAccountEffects: Boolean,
         applyCostsAccountEffects: Boolean,
         applySavingsAccountEffects: Boolean,
-        applyInvestmentsAccountEffects: Boolean
+        applyInvestmentsAccountEffects: Boolean,
+        plannedNetWorth: BigDecimal?
     ): Long
 
     /** Finalizes a budget as Active (Draft -&gt; Active if [budgetId] is given, otherwise a brand-new Active budget). */
@@ -43,7 +45,8 @@ interface BudgetRepository {
         applyIncomeAccountEffects: Boolean,
         applyCostsAccountEffects: Boolean,
         applySavingsAccountEffects: Boolean,
-        applyInvestmentsAccountEffects: Boolean
+        applyInvestmentsAccountEffects: Boolean,
+        plannedNetWorth: BigDecimal
     ): Long
 
     suspend fun markItemPaid(itemId: Long)
@@ -97,6 +100,9 @@ interface BudgetRepository {
     suspend fun updateApplyCostsAccountEffects(budgetId: Long, enabled: Boolean)
     suspend fun updateApplySavingsAccountEffects(budgetId: Long, enabled: Boolean)
     suspend fun updateApplyInvestmentsAccountEffects(budgetId: Long, enabled: Boolean)
+
+    /** Edits the net-worth goal shown as "Planned" on the Summary tab — always allowed, even for a completed budget. */
+    suspend fun updatePlannedNetWorth(budgetId: Long, plannedNetWorth: BigDecimal)
 
     /** Auto-marks items whose payment day has passed as paid, for Active budgets only; call when a budget screen opens. */
     suspend fun checkAndAutoCompleteDueItems()

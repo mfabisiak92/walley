@@ -13,7 +13,8 @@ fun BudgetEntity.toDomain(): Budget =
         applyIncomeAccountEffects = applyIncomeAccountEffects,
         applyCostsAccountEffects = applyCostsAccountEffects,
         applySavingsAccountEffects = applySavingsAccountEffects,
-        applyInvestmentsAccountEffects = applyInvestmentsAccountEffects
+        applyInvestmentsAccountEffects = applyInvestmentsAccountEffects,
+        plannedNetWorth = plannedNetWorthMinorUnits?.let { BigDecimal(it).movePointLeft(2) }
     )
 
 fun BudgetItemEntity.toDomain(): BudgetItem = BudgetItem(

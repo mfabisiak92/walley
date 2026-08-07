@@ -69,7 +69,6 @@
     <string name="investments_section_total">Total</string>
     <string name="investments_label_current_account_balance">Current account balance</string>
     <string name="investments_label_net_deposits">Net deposits</string>
-    <string name="investments_label_total_contribution">Total contribution</string>
     <string name="investments_label_cost_basis">Cost basis</string>
     <string name="investments_label_uninvested_cash">Uninvested cash</string>
     <string name="investments_label_unrealized_gain">Unrealized gain</string>
@@ -217,6 +216,7 @@
     <string name="investments_review_total_title">Total</string>
     <string name="investments_label_account_balance">Balance</string>
     <string name="investments_label_net_balance">Net</string>
+    <string name="investments_label_cash_added">Net cash added</string>
     <string name="investments_cd_expand">Expand</string>
     <string name="investments_cd_collapse">Collapse</string>
 

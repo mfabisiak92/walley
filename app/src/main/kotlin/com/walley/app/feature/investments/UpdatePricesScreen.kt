@@ -3,6 +3,7 @@ package com.walley.app.feature.investments
 import com.walley.app.core.format.toBigDecimalOrNullLenient
 import com.walley.app.R
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.Investment
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -74,6 +77,8 @@ fun UpdatePricesScreen(
     viewModel: UpdatePricesViewModel = hiltViewModel()
 ) {
     val investments by viewModel.investments.collectAsStateWithLifecycle()
+    val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val investmentsByAccount by viewModel.investmentsByAccount.collectAsStateWithLifecycle()
     val refreshingIds by viewModel.refreshingIds.collectAsStateWithLifecycle()
     val failedRefreshReasons by viewModel.failedRefreshReasons.collectAsStateWithLifecycle()
     val fetchedPrices by viewModel.fetchedPrices.collectAsStateWithLifecycle()
@@ -114,6 +119,18 @@ fun UpdatePricesScreen(
 
     val parsedPrices = investments.associate { it.id to priceTexts[it.id]?.toBigDecimalOrNullLenient() }
     val allValid = parsedPrices.values.all { it != null && it.signum() > 0 }
+
+    // Live, unsaved preview of each account's balance/net-balance impact from whatever's currently
+    // typed — recomputed on every edit so the header below always matches what's on screen right now.
+    val livePriceUpdates = parsedPrices.mapNotNull { (id, price) -> price?.let { id to it } }.toMap()
+    val accountChanges = computeAccountBalanceChanges(investmentsByAccount, accounts, livePriceUpdates)
+    val accountChangesById = accountChanges.associateBy { it.accountId }
+    // One section per account that actually has open positions here — grouping by [accounts] (not by
+    // scanning [investments] for distinct ids) keeps section order stable and matches how the account
+    // itself is named/sorted elsewhere in the app.
+    val investmentsByAccountSection = accounts.mapNotNull { account ->
+        investments.filter { it.accountId == account.id }.takeIf { it.isNotEmpty() }?.let { account to it }
+    }
 
     Scaffold(
         snackbarHost = {
@@ -184,22 +201,136 @@ fun UpdatePricesScreen(
                     )
                 }
             }
-            itemsIndexed(investments, key = { _, investment -> investment.id }) { index, investment ->
-                if (index > 0) HorizontalDivider()
-                UpdatePriceRow(
-                    investment = investment,
-                    priceText = priceTexts[investment.id].orEmpty(),
-                    onPriceChange = { priceTexts[investment.id] = it },
-                    priceNotFoundReason = failedRefreshReasons[investment.id],
-                    showRefreshButton = marketDataConfigured,
-                    isRefreshingThis = investment.id in refreshingIds,
-                    refreshDisabled = refreshingIds.isNotEmpty(),
-                    onRefresh = { viewModel.refreshOne(investment.id) },
-                    onRevealFullLabel = onRevealFullLabel
+            investmentsByAccountSection.forEachIndexed { sectionIndex, (account, accountInvestments) ->
+                item(key = "header_${account.id}") {
+                    AccountPriceUpdateHeader(
+                        account = account,
+                        accountChange = accountChangesById[account.id],
+                        isFirst = sectionIndex == 0,
+                        showRefreshButton = marketDataConfigured,
+                        isRefreshingThis = accountInvestments.any { it.id in refreshingIds },
+                        refreshDisabled = refreshingIds.isNotEmpty(),
+                        onRefresh = { viewModel.refreshAccount(account.id) }
+                    )
+                }
+                itemsIndexed(accountInvestments, key = { _, investment -> investment.id }) { index, investment ->
+                    if (index > 0) HorizontalDivider()
+                    UpdatePriceRow(
+                        investment = investment,
+                        priceText = priceTexts[investment.id].orEmpty(),
+                        onPriceChange = { priceTexts[investment.id] = it },
+                        priceNotFoundReason = failedRefreshReasons[investment.id],
+                        showRefreshButton = marketDataConfigured,
+                        isRefreshingThis = investment.id in refreshingIds,
+                        refreshDisabled = refreshingIds.isNotEmpty(),
+                        onRefresh = { viewModel.refreshOne(investment.id) },
+                        onRevealFullLabel = onRevealFullLabel
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Section header for one account's investments on the bulk-update screen: account name (plus a
+ * refresh-this-account-from-market shortcut) on the left, that account's live (unsaved) balance and
+ * net-balance change on the right — recomputed from whatever's currently typed, so it updates as the
+ * user edits or refreshes prices, before ever reaching the Review screen. Absent (no changes yet, or
+ * this account holds nothing priced) shows just the name.
+ *
+ * Given its own tinted "chip" background (rather than plain text sitting on the same background as
+ * the rows below it), plus — for every section after the first — a colored rule above it, so the
+ * boundary between one account's investments and the next account's is unambiguous even while
+ * scrolling quickly past it.
+ */
+@Composable
+private fun AccountPriceUpdateHeader(
+    account: Account,
+    accountChange: AccountBalanceChange?,
+    isFirst: Boolean,
+    showRefreshButton: Boolean,
+    isRefreshingThis: Boolean,
+    refreshDisabled: Boolean,
+    onRefresh: () -> Unit
+) {
+    if (!isFirst) {
+        HorizontalDivider(
+            modifier = Modifier.padding(top = 12.dp),
+            thickness = 2.dp,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = if (isFirst) 0.dp else 12.dp, bottom = 12.dp)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow, shape = MaterialTheme.shapes.medium)
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Row(
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = account.name,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+            if (showRefreshButton) {
+                IconButton(onClick = onRefresh, enabled = !refreshDisabled, modifier = Modifier.size(32.dp)) {
+                    if (isRefreshingThis) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(
+                            Icons.Filled.Refresh,
+                            contentDescription = "Refresh prices for ${account.name}",
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+        if (accountChange != null) {
+            Column(horizontalAlignment = Alignment.End) {
+                AccountChangeLine(
+                    label = stringResource(R.string.investments_label_account_balance),
+                    change = accountChange.accountChange,
+                    changePercent = accountChange.accountChangePercent,
+                    currencySymbol = accountChange.accountCurrencySymbol
+                )
+                AccountChangeLine(
+                    label = stringResource(R.string.investments_label_net_balance),
+                    change = accountChange.netChange,
+                    changePercent = accountChange.netChangePercent,
+                    currencySymbol = accountChange.accountCurrencySymbol,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
         }
     }
+}
+
+@Composable
+private fun AccountChangeLine(
+    label: String,
+    change: BigDecimal,
+    changePercent: BigDecimal?,
+    currencySymbol: String,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = "$label ${changeText(change, changePercent, currencySymbol)}",
+        style = MaterialTheme.typography.labelSmall,
+        color = colorForChange(change),
+        fontWeight = FontWeight.SemiBold,
+        modifier = modifier
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -293,7 +424,11 @@ private fun UpdatePriceRow(
                 )
             }
         }
-        if (priceNotFoundReason != null || isStale) {
+        // A pending edit (typed or fetched) already shows its own "was X" line below, telling the user
+        // this price is about to change — the staleness warning would be redundant noise at that point.
+        // A failed market lookup still surfaces regardless, since that's unrelated to how stale the
+        // price is and stays true until a refresh actually succeeds.
+        if (priceNotFoundReason != null || (isStale && !hasChanged)) {
             val warningColor = MaterialTheme.colorScheme.error
             val message = when {
                 priceNotFoundReason != null -> "${investment.ticker}: $priceNotFoundReason"

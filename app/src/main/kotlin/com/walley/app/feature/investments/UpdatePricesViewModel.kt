@@ -1,13 +1,16 @@
 package com.walley.app.feature.investments
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.data.repository.AccountRepository
 import com.walley.app.data.repository.IntegrationsRepository
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.PriceFetchOutcome
+import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.Investment
+import com.walley.app.domain.model.InvestmentWithTransactions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import javax.inject.Inject
@@ -15,22 +18,41 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+/** Sentinel nav-arg default meaning "no account" — Navigation Compose has no nullable Long arg type. */
+const val NO_ACCOUNT_ID = -1L
 
 @HiltViewModel
 class UpdatePricesViewModel @Inject constructor(
     private val repository: InvestmentRepository,
     private val accountRepository: AccountRepository,
-    private val integrationsRepository: IntegrationsRepository
+    private val integrationsRepository: IntegrationsRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+
+    /** Non-null when reached from a single account's Investments tab — scopes [investments] and [generateReview] to it instead of the whole portfolio. */
+    private val accountId: Long? = savedStateHandle.get<Long>("accountId")?.takeIf { it != NO_ACCOUNT_ID }
 
     /** Closed positions (quantity 0) are excluded — their price never affects anything, since value and gain/loss are both zero regardless of it. */
     val investments: StateFlow<List<Investment>> = repository.observeInvestments()
-        .map { list -> list.filter { it.quantity.signum() != 0 }.map { it.investment } }
+        .map { list ->
+            list.filter { it.quantity.signum() != 0 && (accountId == null || it.investment.accountId == accountId) }
+                .map { it.investment }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Investment accounts this screen covers — just [accountId] when scoped to one, otherwise every investment account. Drives the per-account grouping and its live balance/net preview header. */
+    val accounts: StateFlow<List<Account>> = accountRepository.observeAccounts()
+        .map { list -> list.filter { it.type == AccountType.INVESTMENT && (accountId == null || it.id == accountId) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Full transaction history per account (not just current price) — [computeAccountBalanceChanges] needs quantity/cost basis, not just the current-price snapshot [investments] exposes. */
+    val investmentsByAccount: StateFlow<Map<Long, List<InvestmentWithTransactions>>> = repository.observeInvestments()
+        .map { list -> list.filter { it.investment.accountId != null }.groupBy { it.investment.accountId!! } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Whether a market refresh is actually usable right now — enabled in Settings. */
     val marketDataConfigured: StateFlow<Boolean> = integrationsRepository.observeYahooFinanceEnabled()
@@ -61,62 +83,13 @@ class UpdatePricesViewModel @Inject constructor(
     }
 
     /**
-     * Generates a preview of balance changes for the given price updates and stores it.
-     * Returns before/after balances for accounts and their investments.
+     * Generates a preview of balance changes for the given price updates and stores it. Reads
+     * [accounts] and [investmentsByAccount]'s current values rather than re-fetching, so the review
+     * matches exactly what this screen was showing when the user tapped "Review" — this screen can't
+     * reach the button before those flows have already emitted at least once.
      */
     suspend fun generateReview(priceUpdates: Map<Long, BigDecimal>): PriceUpdateReview {
-        val allInvestmentsWithTransactions = repository.observeInvestments().firstOrNull() ?: emptyList()
-        val accounts = accountRepository.observeAccounts().firstOrNull() ?: emptyList()
-
-        // Only investment accounts hold priced positions; other account types are unaffected by a price update.
-        val investmentAccounts = accounts.filter { it.type == AccountType.INVESTMENT }
-
-        val accountChanges = investmentAccounts.mapNotNull { account ->
-            val investmentsInAccount = allInvestmentsWithTransactions.filter { it.investment.accountId == account.id }
-            if (investmentsInAccount.isEmpty()) return@mapNotNull null
-
-            var afterAccountValue = BigDecimal.ZERO
-            val investmentChanges = investmentsInAccount.mapNotNull { invWithTx ->
-                val investment = invWithTx.investment
-                val newPrice = priceUpdates[investment.id] ?: investment.currentPrice
-                val beforeValue = invWithTx.currentValue
-                val afterValue = invWithTx.quantity * newPrice
-                afterAccountValue += afterValue
-
-                if (beforeValue.compareTo(afterValue) != 0) {
-                    InvestmentBalanceChange(
-                        investmentId = investment.id,
-                        name = investment.name,
-                        ticker = investment.ticker,
-                        beforeBalance = beforeValue,
-                        afterBalance = afterValue
-                    )
-                } else {
-                    null
-                }
-            }
-
-            // account.balance/uninvestedCash/investmentCostBasis already reflect the current (pre-edit)
-            // prices — repository.observeAccounts() folds live investment values into balance. Cost
-            // basis is derived from purchase price, not current price, so it (and uninvestedCash) stays
-            // put; only balance moves with the edited prices. A plain .copy(balance = ...) is therefore
-            // enough to get the "after" account's own netWorthValue — which subtracts tax owed on the
-            // unrealized gain — via the same formula Account already uses everywhere else in the app.
-            val afterAccountBalance = account.uninvestedCash + afterAccountValue
-            val afterAccount = account.copy(balance = afterAccountBalance)
-
-            AccountBalanceChange(
-                accountId = account.id,
-                accountName = account.name,
-                accountCurrencySymbol = account.currency.symbol,
-                beforeAccountBalance = account.balance,
-                afterAccountBalance = afterAccountBalance,
-                beforeNetBalance = account.netWorthValue,
-                afterNetBalance = afterAccount.netWorthValue,
-                investments = investmentChanges
-            )
-        }
-
+        val accountChanges = computeAccountBalanceChanges(investmentsByAccount.value, accounts.value, priceUpdates)
         val review = PriceUpdateReview(
             accountChanges = accountChanges,
             priceChanges = priceUpdates
@@ -137,6 +110,11 @@ class UpdatePricesViewModel @Inject constructor(
     /** Refreshes every currently-held investment. */
     fun refreshFromMarket() {
         refresh(investments.value.map { it.id })
+    }
+
+    /** Refreshes every currently-held investment linked to one account — used by that account's section header. */
+    fun refreshAccount(accountId: Long) {
+        refresh(investments.value.filter { it.accountId == accountId }.map { it.id })
     }
 
     /** Refreshes a single investment — used by each row's own refresh icon. */
