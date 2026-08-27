@@ -2,23 +2,31 @@ package com.walley.app.data.repository
 
 import com.walley.app.data.local.InvestmentDao
 import com.walley.app.data.local.InvestmentEntity
+import com.walley.app.data.local.InvestmentPriceHistoryDao
+import com.walley.app.data.local.InvestmentPriceHistoryEntity
 import com.walley.app.data.local.InvestmentTransactionEntity
 import com.walley.app.data.local.toDomain
 import com.walley.app.data.remote.YahooFinanceApi
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentPricePoint
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 
 class InvestmentRepositoryImpl @Inject constructor(
     private val investmentDao: InvestmentDao,
+    private val investmentPriceHistoryDao: InvestmentPriceHistoryDao,
     private val yahooFinanceApi: YahooFinanceApi,
     private val integrationsRepository: IntegrationsRepository,
     private val exchangeRateRepository: ExchangeRateRepository
@@ -102,11 +110,25 @@ class InvestmentRepositoryImpl @Inject constructor(
         } else {
             investmentDao.updateCurrentPrice(investmentId, currentPrice, today)
         }
+        recordPriceHistoryPoint(investmentId, currentPrice, today)
     }
 
     override suspend fun revertToPreviousPrice(investmentId: Long) {
-        investmentDao.revertToPreviousPrice(investmentId, LocalDate.now())
+        val today = LocalDate.now()
+        investmentDao.revertToPreviousPrice(investmentId, today)
+        val reverted = investmentDao.findById(investmentId) ?: return
+        recordPriceHistoryPoint(investmentId, reverted.currentPrice, today)
     }
+
+    /** Records today's price so the yearly-growth history stays complete without needing a backfill. */
+    private suspend fun recordPriceHistoryPoint(investmentId: Long, price: BigDecimal, date: LocalDate) {
+        investmentPriceHistoryDao.insert(InvestmentPriceHistoryEntity(investmentId = investmentId, date = date, closePrice = price))
+    }
+
+    override fun observePriceHistory(): Flow<Map<Long, List<InvestmentPricePoint>>> =
+        investmentPriceHistoryDao.observeAll().map { entities ->
+            entities.groupBy({ it.investmentId }, { it.toDomain() })
+        }
 
     override suspend fun deleteInvestment(investmentId: Long) {
         investmentDao.deleteInvestmentWithTransactions(investmentId)
@@ -128,6 +150,7 @@ class InvestmentRepositoryImpl @Inject constructor(
             } else {
                 investmentDao.updateCurrentPrice(investmentId, outcome.price, today)
             }
+            recordPriceHistoryPoint(investmentId, outcome.price, today)
         }
         return outcomes
     }
@@ -136,6 +159,65 @@ class InvestmentRepositoryImpl @Inject constructor(
         val entities = investmentIds.mapNotNull { investmentDao.findById(it) }.associateBy { it.id }
         return fetchOutcomes(investmentIds, entities)
     }
+
+    override suspend fun backfillPriceHistory(investmentIds: Collection<Long>): PriceHistoryBackfillResult {
+        if (!integrationsRepository.observeYahooFinanceEnabled().first()) {
+            return PriceHistoryBackfillResult(succeeded = 0, skipped = investmentIds.size, failed = 0)
+        }
+        var succeeded = 0
+        var skipped = 0
+        var failed = 0
+        investmentIds.forEachIndexed { index, investmentId ->
+            // A short pause between requests to this unofficial, unauthenticated endpoint — see the
+            // 429-risk note on YahooFinanceApi — since a full backfill can mean dozens of calls in a row.
+            if (index > 0) delay(250)
+            val entity = investmentDao.findById(investmentId)
+            val symbol = entity?.externalTicker?.takeIf { it.isNotBlank() } ?: entity?.ticker?.takeIf { it.isNotBlank() }
+            val firstPurchaseDate = investmentDao.observeTransactionsForInvestment(investmentId).first()
+                .filter { it.type == InvestmentTransactionType.BUY }
+                .minByOrNull { it.date }?.date
+            if (entity == null || symbol == null || firstPurchaseDate == null) {
+                skipped++
+                return@forEachIndexed
+            }
+            val points = fetchHistoryFor(entity, symbol, firstPurchaseDate)
+            if (points == null) {
+                failed++
+            } else {
+                investmentPriceHistoryDao.insertAll(points)
+                succeeded++
+            }
+        }
+        return PriceHistoryBackfillResult(succeeded, skipped, failed)
+    }
+
+    /** Null on any network/data error, or if every point ended up unusable (e.g. no FX rate to convert). */
+    private suspend fun fetchHistoryFor(
+        entity: InvestmentEntity,
+        symbol: String,
+        firstPurchaseDate: LocalDate
+    ): List<InvestmentPriceHistoryEntity>? {
+        val response = runCatching {
+            yahooFinanceApi.fetchHistory(symbol, firstPurchaseDate.toEpochSecondUtc(), LocalDate.now().toEpochSecondUtc())
+        }.getOrElse { return null }
+        if (response.chart.error != null) return null
+        val result = response.chart.result?.firstOrNull() ?: return null
+        val timestamps = result.timestamp ?: return null
+        val closes = result.indicators?.quote?.firstOrNull()?.close ?: return null
+        val points = timestamps.zip(closes).mapNotNull { (epochSeconds, close) ->
+            val rawPrice = close?.let { BigDecimal.valueOf(it) } ?: return@mapNotNull null
+            if (rawPrice.signum() <= 0) return@mapNotNull null
+            val price = resolvePrice(rawPrice, result.meta.currency, entity.currency) ?: return@mapNotNull null
+            InvestmentPriceHistoryEntity(
+                investmentId = entity.id,
+                date = Instant.ofEpochSecond(epochSeconds).atZone(ZoneOffset.UTC).toLocalDate(),
+                closePrice = price
+            )
+        }
+        return points.ifEmpty { null }
+    }
+
+    private fun LocalDate.toEpochSecondUtc(): Long = atStartOfDay(ZoneOffset.UTC).toEpochSecond()
 
     private suspend fun fetchOutcomes(
         investmentIds: Collection<Long>,
@@ -178,17 +260,25 @@ class InvestmentRepositoryImpl @Inject constructor(
             ?: return PriceFetchOutcome.NotFound("No price returned for \"$symbol\"")
         if (rawPrice.signum() <= 0) return PriceFetchOutcome.NotFound("Invalid price returned for \"$symbol\"")
 
-        val (quoteCurrency, priceDivisor) = normalizeYahooCurrency(meta.currency)
-        val price = if (priceDivisor == BigDecimal.ONE) rawPrice else rawPrice.divide(priceDivisor, 6, RoundingMode.HALF_UP)
-        if (quoteCurrency == null || quoteCurrency == entity.currency) {
-            return PriceFetchOutcome.Success(price)
-        }
-        val rate = exchangeRateRepository.observeRates(quoteCurrency).first()?.rates?.get(entity.currency)
+        val price = resolvePrice(rawPrice, meta.currency, entity.currency)
             ?: return PriceFetchOutcome.NotFound(
-                "Resolved to a $quoteCurrency instrument (expected ${entity.currency.name}), " +
-                    "and no exchange rate was available to convert it"
+                "Resolved to a foreign-currency instrument, and no exchange rate was available to convert it to ${entity.currency.name}"
             )
-        return PriceFetchOutcome.Success(price.multiply(rate).setScale(6, RoundingMode.HALF_UP))
+        return PriceFetchOutcome.Success(price)
+    }
+
+    /**
+     * Converts a Yahoo-quoted [rawPrice] denominated in [currencyCode] into [target], handling the
+     * GBp/GBX-in-pence quirk (see [normalizeYahooCurrency]) and any FX conversion needed. Null if
+     * [currencyCode] resolves to neither [target] nor a currency with a cached rate to it. Shared by
+     * both the live-quote path ([fetchOutcomeFor]) and the historical-backfill path ([fetchHistoryFor]).
+     */
+    private suspend fun resolvePrice(rawPrice: BigDecimal, currencyCode: String?, target: Currency): BigDecimal? {
+        val (quoteCurrency, priceDivisor) = normalizeYahooCurrency(currencyCode)
+        val price = if (priceDivisor == BigDecimal.ONE) rawPrice else rawPrice.divide(priceDivisor, 6, RoundingMode.HALF_UP)
+        if (quoteCurrency == null || quoteCurrency == target) return price
+        val rate = exchangeRateRepository.observeRates(quoteCurrency).first()?.rates?.get(target) ?: return null
+        return price.multiply(rate).setScale(6, RoundingMode.HALF_UP)
     }
 
     /**

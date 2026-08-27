@@ -16,7 +16,12 @@ data class YahooChartResponse(val chart: YahooChart)
 data class YahooChart(val result: List<YahooChartResult>? = null, val error: YahooChartError? = null)
 
 @Serializable
-data class YahooChartResult(val meta: YahooChartMeta)
+data class YahooChartResult(
+    val meta: YahooChartMeta,
+    /** Unix seconds, one per history point — only present when the request included period1/period2. */
+    val timestamp: List<Long>? = null,
+    val indicators: YahooChartIndicators? = null
+)
 
 @Serializable
 data class YahooChartMeta(
@@ -24,6 +29,12 @@ data class YahooChartMeta(
     val currency: String? = null,
     val regularMarketPrice: Double? = null
 )
+
+@Serializable
+data class YahooChartIndicators(val quote: List<YahooChartQuote>? = null)
+
+@Serializable
+data class YahooChartQuote(val close: List<Double?>? = null)
 
 @Serializable
 data class YahooChartError(val code: String? = null, val description: String? = null)
@@ -37,10 +48,20 @@ class YahooFinanceApi @Inject constructor() {
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun fetchQuote(symbol: String): YahooChartResponse = withContext(Dispatchers.IO) {
+    suspend fun fetchQuote(symbol: String): YahooChartResponse =
+        fetch("https://query1.finance.yahoo.com/v8/finance/chart/${URLEncoder.encode(symbol, "UTF-8")}")
+
+    /** [period1]/[period2] are Unix seconds; returns one point per calendar month in that range. */
+    suspend fun fetchHistory(symbol: String, period1: Long, period2: Long): YahooChartResponse {
         val encodedSymbol = URLEncoder.encode(symbol, "UTF-8")
-        val url = URL("https://query1.finance.yahoo.com/v8/finance/chart/$encodedSymbol")
-        val connection = url.openConnection() as HttpURLConnection
+        return fetch(
+            "https://query1.finance.yahoo.com/v8/finance/chart/$encodedSymbol" +
+                "?period1=$period1&period2=$period2&interval=1mo"
+        )
+    }
+
+    private suspend fun fetch(url: String): YahooChartResponse = withContext(Dispatchers.IO) {
+        val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000

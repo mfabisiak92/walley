@@ -4,6 +4,7 @@ import com.walley.app.data.local.AccountEntity
 import com.walley.app.data.local.AccountOperationEntity
 import com.walley.app.data.local.BudgetEntity
 import com.walley.app.data.local.BudgetItemEntity
+import com.walley.app.data.local.InvestmentPriceHistoryEntity
 import com.walley.app.data.local.InvestmentTransactionEntity
 import com.walley.app.domain.model.AccountTaxRate
 import com.walley.app.domain.model.AccountType
@@ -129,6 +130,20 @@ class BackupMappersTest {
         val restored = original.toBackupDto().toEntity(newId = original.id)
 
         assertEquals(original, restored)
+    }
+
+    @Test
+    fun `investment price history preserves BigDecimal precision through the dto`() {
+        val original = InvestmentPriceHistoryEntity(
+            id = 3,
+            investmentId = 7,
+            date = LocalDate.of(2026, 1, 31),
+            closePrice = BigDecimal("231.556000")
+        )
+
+        val restored = original.toBackupDto().toEntity(remappedInvestmentId = original.investmentId)
+
+        assertEquals(original.copy(id = 0), restored)
     }
 
     @Test

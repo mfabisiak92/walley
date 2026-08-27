@@ -34,7 +34,7 @@
     <string name="analytics_label_realized">Zrealizowane</string>
     <string name="analytics_label_unrealized">Niezrealizowane</string>
     <string name="analytics_label_invested">Zainwestowane</string>
-    <string name="analytics_label_deposited">Wpłacone</string>
+    <string name="analytics_label_deposited">Wpłaty netto</string>
     <string name="analytics_label_gain_loss">Zysk/Strata</string>
 
     <!-- AnalyticsScreen: period comparison -->
@@ -64,9 +64,13 @@
 
     <!-- AnalyticsScreen: investments breakdown -->
     <string name="analytics_all_time_gains">Zyski od początku</string>
-    <string name="analytics_performance_by_position">Wyniki według pozycji</string>
-    <string name="analytics_xirr_value">XIRR %1$s</string>
-    <string name="analytics_cagr_value">CAGR %1$s (%2$s)</string>
+    <string name="analytics_action_sync_price_history">Synchronizuj historię cen</string>
+    <string name="analytics_note_growth_estimated">* Niektóre lata są szacunkowe — zsynchronizuj historię cen dla pełnej dokładności.</string>
+    <string name="analytics_note_growth_after_tax">Wzrost jest pomniejszony o szacowany podatek od zysków kapitałowych dla kont podlegających opodatkowaniu, tak jakby wszystko sprzedano na koniec roku.</string>
+    <string name="analytics_label_growth_by_holding">Wzrost według pozycji</string>
+    <string name="analytics_label_total_growth_in_year">Łączny wzrost w %1$d</string>
+    <string name="analytics_label_dividends_and_interest">Dywidendy i odsetki</string>
+    <string name="analytics_snackbar_price_history_synced">Zsynchronizowano %1$d, pominięto %2$d bez tickera, %3$d nieudanych</string>
 
     <!-- AnalyticsViewModel -->
     <string name="analytics_unlinked_account">Niepowiązane</string>

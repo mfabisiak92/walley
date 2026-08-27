@@ -55,6 +55,13 @@ interface LiabilityDao {
                     startDate = startDate
                 )
             )
+            // Already paid off — treat that as a closed, terminal state for this year (like a
+            // completed budget elsewhere in the app) and leave it alone entirely. The estimate can
+            // still drift after the fact — e.g. importing a transaction dated before an existing
+            // sell shifts FIFO lot matching and quietly changes an already-closed year's realized
+            // gain — and re-resolving that noise into a fresh non-zero balance would silently undo
+            // the user's "mark as fully paid".
+            existing.currentBalanceMinorUnits == 0L -> Unit
             // Only reset the balance when the estimate itself moved — comparing against
             // currentBalance would stomp a manual payment/"mark as fully paid" back to the
             // unchanged estimate on the very next sync.

@@ -16,6 +16,7 @@ import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
 import com.walley.app.data.repository.InvestmentRepository
 import com.walley.app.data.repository.LiabilityRepository
+import com.walley.app.data.repository.PriceHistoryBackfillResult
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.data.repository.SnapshotRepository
 import com.walley.app.domain.model.BudgetSectionType
@@ -26,9 +27,7 @@ import com.walley.app.domain.model.ExchangeRates
 import com.walley.app.domain.model.FinancialSnapshot
 import com.walley.app.domain.model.InvestmentCategory
 import com.walley.app.domain.model.InvestmentTransactionType
-import com.walley.app.domain.model.cagr
 import com.walley.app.domain.model.displayName
-import com.walley.app.domain.model.xirr
 import com.walley.app.feature.budget.BudgetProgress
 import com.walley.app.feature.budget.SPENDING_SECTIONS
 import com.walley.app.feature.budget.budgetProgress
@@ -45,12 +44,16 @@ import java.time.format.TextStyle
 import java.util.Locale
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class BudgetHistoryPoint(
     val yearMonth: YearMonth,
@@ -79,15 +82,6 @@ data class InvestmentYearPoint(
     val growth: BigDecimal
 )
 
-/** [xirr]/[cagr] are each in [currency] (the position's own) — never converted, see their KDoc. */
-data class InvestmentPerformancePoint(
-    val name: String,
-    val ticker: String,
-    val currency: Currency,
-    val xirr: BigDecimal?,
-    val cagr: BigDecimal?
-)
-
 data class SnapshotPoint(
     val yearMonth: YearMonth,
     val label: String,
@@ -108,7 +102,7 @@ class AnalyticsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     budgetRepository: BudgetRepository,
     snapshotRepository: SnapshotRepository,
-    investmentRepository: InvestmentRepository,
+    private val investmentRepository: InvestmentRepository,
     accountRepository: AccountRepository,
     accountOperationRepository: AccountOperationRepository,
     assetRepository: AssetRepository,
@@ -342,20 +336,46 @@ class AnalyticsViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Per-position XIRR/CAGR, each in that position's own currency (never converted — see [xirr]). */
-    val investmentPerformance: StateFlow<List<InvestmentPerformancePoint>> = investmentRepository.observeInvestments()
-        .map { investments ->
-            investments.map { position ->
-                InvestmentPerformancePoint(
-                    name = position.investment.name,
-                    ticker = position.investment.ticker,
-                    currency = position.investment.currency,
-                    xirr = position.xirr(),
-                    cagr = position.cagr()
-                )
-            }
+    /**
+     * One point per calendar year, computed from actual year-start/year-end value where price history
+     * covers it (see [computeYearlyGrowth]) rather than [investmentYearlyHistory]'s purchase-year
+     * approximation. Falls back to that approximation, per holding, for any year lacking coverage.
+     * Growth is net of each holding's account's estimated capital-gains tax rate, as if it were sold
+     * at year-end — a paper gain on a taxable account is shown after tax even though none is actually
+     * owed until it's sold.
+     */
+    val investmentYearlyGrowth: StateFlow<List<InvestmentYearGrowthPoint>> = combine(
+        investmentRepository.observeInvestments(),
+        investmentRepository.observePriceHistory(),
+        accountRepository.observeAccounts(),
+        accountOperationRepository.observeAll(),
+        baseCurrencyRates
+    ) { investments, priceHistory, accounts, operations, (base, rates) ->
+        val accountCurrencyById = accounts.associate { it.id to it.currency }
+        val accountTaxRateById = accounts.associate { it.id to it.taxRate.rate }
+        computeYearlyGrowth(investments, priceHistory, operations, accountCurrencyById, accountTaxRateById, base, rates)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _isSyncingPriceHistory = MutableStateFlow(false)
+    val isSyncingPriceHistory: StateFlow<Boolean> = _isSyncingPriceHistory.asStateFlow()
+
+    private val _priceHistorySyncResult = MutableStateFlow<PriceHistoryBackfillResult?>(null)
+    val priceHistorySyncResult: StateFlow<PriceHistoryBackfillResult?> = _priceHistorySyncResult.asStateFlow()
+
+    /** Backfills historical prices for every current investment, so [investmentYearlyGrowth] can value past years accurately. */
+    fun syncPriceHistory() {
+        if (_isSyncingPriceHistory.value) return
+        viewModelScope.launch {
+            _isSyncingPriceHistory.value = true
+            val investmentIds = investmentRepository.observeInvestments().first().map { it.investment.id }
+            _priceHistorySyncResult.value = investmentRepository.backfillPriceHistory(investmentIds)
+            _isSyncingPriceHistory.value = false
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    }
+
+    fun dismissPriceHistorySyncResult() {
+        _priceHistorySyncResult.value = null
+    }
 
     /** All-time realized + unrealized gain/loss across every position, in base currency. */
     val portfolioGainsSummary: StateFlow<PortfolioGainsSummary?> = combine(

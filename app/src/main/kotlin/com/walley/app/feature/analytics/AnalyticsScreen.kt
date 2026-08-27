@@ -2,6 +2,7 @@ package com.walley.app.feature.analytics
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,19 +18,25 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -468,8 +475,10 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
     val accountBreakdown by viewModel.investmentAccountBreakdown.collectAsStateWithLifecycle()
     val currencyBreakdown by viewModel.investmentCurrencyBreakdown.collectAsStateWithLifecycle()
     val yearlyHistory by viewModel.investmentYearlyHistory.collectAsStateWithLifecycle()
+    val yearlyGrowth by viewModel.investmentYearlyGrowth.collectAsStateWithLifecycle()
+    val isSyncingPriceHistory by viewModel.isSyncingPriceHistory.collectAsStateWithLifecycle()
+    val priceHistorySyncResult by viewModel.priceHistorySyncResult.collectAsStateWithLifecycle()
     val treemap by viewModel.investmentTreemap.collectAsStateWithLifecycle()
-    val performance by viewModel.investmentPerformance.collectAsStateWithLifecycle()
     val gainsSummary by viewModel.portfolioGainsSummary.collectAsStateWithLifecycle()
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
 
@@ -478,53 +487,186 @@ private fun InvestmentsBreakdownPage(viewModel: AnalyticsViewModel) {
         return
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    val snackbarHostState = remember { SnackbarHostState() }
+    val syncedMessage = priceHistorySyncResult?.let { result ->
+        stringResource(R.string.analytics_snackbar_price_history_synced, result.succeeded, result.skipped, result.failed)
+    }
+    LaunchedEffect(syncedMessage) {
+        syncedMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.dismissPriceHistorySyncResult()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            if (treemap.isNotEmpty()) {
+                TreemapChartCard(title = stringResource(R.string.analytics_chart_investments_by_size), items = treemap)
+            }
+
+            PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_category), slices = categoryBreakdown)
+            PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_account), slices = accountBreakdown)
+            PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_currency), slices = currencyBreakdown)
+
+            if (yearlyHistory.isNotEmpty()) {
+                val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
+
+                SwipeableTrendChartCard(
+                    title = stringResource(R.string.analytics_chart_realized_gains_by_year),
+                    labels = yearlyHistory.map { it.year.toString() },
+                    series = listOf(
+                        ChartSeries(stringResource(R.string.analytics_label_realized), PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
+                    ),
+                    valueFormatter = moneyFormatter
+                )
+
+                if (yearlyGrowth.isNotEmpty()) {
+                    val growthLabels = yearlyGrowth.map { it.year.toString() }
+
+                    TrendChartCard(
+                        title = stringResource(R.string.analytics_chart_contributions_by_year),
+                        labels = growthLabels,
+                        series = listOf(
+                            ChartSeries(stringResource(R.string.analytics_label_deposited), PieChartColors[4], yearlyGrowth.map { it.deposited.toFloat() }),
+                            ChartSeries(stringResource(R.string.analytics_label_invested), PieChartColors[2], yearlyGrowth.map { it.invested.toFloat() }),
+                            ChartSeries(stringResource(R.string.analytics_label_gain_loss), PieChartColors[0], yearlyGrowth.map { it.growth.toFloat() })
+                        ),
+                        valueFormatter = moneyFormatter
+                    )
+
+                    Text(
+                        stringResource(R.string.analytics_note_growth_after_tax),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (yearlyGrowth.any { it.isEstimated }) {
+                        Text(
+                            stringResource(R.string.analytics_note_growth_estimated),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (isSyncingPriceHistory) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .padding(end = 8.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    TextButton(onClick = { viewModel.syncPriceHistory() }, enabled = !isSyncingPriceHistory) {
+                        Icon(Icons.Filled.Sync, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Text(stringResource(R.string.analytics_action_sync_price_history), modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
+
+                if (yearlyGrowth.isNotEmpty()) {
+                    HoldingGrowthCard(yearlyGrowth, baseCurrency)
+                }
+            }
+
+            if (gainsSummary != null) {
+                AllTimeGainsCard(gainsSummary!!, baseCurrency)
+            }
+        }
+
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
+    }
+}
+
+@Composable
+private fun HoldingGrowthCard(growth: List<InvestmentYearGrowthPoint>, baseCurrency: Currency) {
+    val years = remember(growth.map { it.year }) { growth.map { it.year } }
+    var selectedYear by remember(years) { mutableStateOf(years.lastOrNull()) }
+    val point = growth.firstOrNull { it.year == selectedYear } ?: return
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        if (treemap.isNotEmpty()) {
-            TreemapChartCard(title = stringResource(R.string.analytics_chart_investments_by_size), items = treemap)
-        }
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(stringResource(R.string.analytics_label_growth_by_holding), style = MaterialTheme.typography.titleMedium)
 
-        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_category), slices = categoryBreakdown)
-        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_account), slices = accountBreakdown)
-        PieChartCard(title = stringResource(R.string.analytics_chart_investments_by_currency), slices = currencyBreakdown)
-
-        if (yearlyHistory.isNotEmpty()) {
-            val labels = yearlyHistory.map { it.year.toString() }
-            val moneyFormatter = { value: Float -> formatMoney(BigDecimal.valueOf(value.toDouble()), baseCurrency) }
-
-            SwipeableTrendChartCard(
-                title = stringResource(R.string.analytics_chart_realized_gains_by_year),
-                labels = labels,
-                series = listOf(
-                    ChartSeries(stringResource(R.string.analytics_label_realized), PieChartColors[3], yearlyHistory.map { it.realizedGainLoss.toFloat() })
-                ),
-                valueFormatter = moneyFormatter
+            Text(
+                stringResource(R.string.analytics_label_total_growth_in_year, point.year),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            Text(
+                formatMoney(point.growth, baseCurrency),
+                style = MaterialTheme.typography.headlineSmall,
+                color = when {
+                    point.growth.signum() > 0 -> GainColor
+                    point.growth.signum() < 0 -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
             )
 
-            TrendChartCard(
-                title = stringResource(R.string.analytics_chart_contributions_by_year),
-                labels = labels,
-                series = listOf(
-                    ChartSeries(stringResource(R.string.analytics_label_invested), PieChartColors[2], yearlyHistory.map { it.contributions.toFloat() }),
-                    ChartSeries(stringResource(R.string.analytics_label_deposited), PieChartColors[4], yearlyHistory.map { it.deposits.toFloat() }),
-                    ChartSeries(stringResource(R.string.analytics_label_gain_loss), PieChartColors[0], yearlyHistory.map { it.growth.toFloat() })
-                ),
-                valueFormatter = moneyFormatter
-            )
-        }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                years.forEach { year ->
+                    FilterChip(
+                        selected = selectedYear == year,
+                        onClick = { selectedYear = year },
+                        label = { Text(year.toString()) }
+                    )
+                }
+            }
 
-        if (gainsSummary != null) {
-            AllTimeGainsCard(gainsSummary!!, baseCurrency)
-        }
+            point.byHolding.sortedByDescending { it.growth }.forEach { holding ->
+                GrowthRow(holding.name, holding.growth, baseCurrency)
+            }
 
-        if (performance.isNotEmpty()) {
-            PerformanceByPositionCard(performance)
+            // Dividends/interest aren't attributable to a single holding (e.g. cash-pool interest),
+            // so they're shown as their own line rather than folded into one of the rows above —
+            // together with them, this list sums to the total shown at the top of the card.
+            if (point.investmentIncome.signum() != 0) {
+                GrowthRow(stringResource(R.string.analytics_label_dividends_and_interest), point.investmentIncome, baseCurrency)
+            }
         }
+    }
+}
+
+@Composable
+private fun GrowthRow(label: String, amount: BigDecimal, currency: Currency) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp)
+        )
+        Text(
+            formatMoney(amount, currency),
+            style = MaterialTheme.typography.bodyMedium,
+            color = when {
+                amount.signum() > 0 -> GainColor
+                amount.signum() < 0 -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+        )
     }
 }
 
@@ -562,47 +704,6 @@ private fun GainStat(label: String, amount: BigDecimal, currency: Currency) {
                 else -> MaterialTheme.colorScheme.onSurface
             }
         )
-    }
-}
-
-@Composable
-private fun PerformanceByPositionCard(performance: List<InvestmentPerformancePoint>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(stringResource(R.string.analytics_performance_by_position), style = MaterialTheme.typography.titleMedium)
-            performance.forEach { point ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-                        Text(point.name, style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            point.ticker,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text(
-                            stringResource(R.string.analytics_xirr_value, point.xirr?.let { "${it.toInt()}%" } ?: "—"),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            stringResource(R.string.analytics_cagr_value, point.cagr?.let { "${it.toInt()}%" } ?: "—", point.currency.name),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

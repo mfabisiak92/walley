@@ -161,20 +161,7 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                     text = formatMoney(netWorth.amount, netWorth.currency),
                     style = MaterialTheme.typography.headlineLarge
                 )
-                netWorth.projectedAmount?.let { projected ->
-                    Text(
-                        text = stringResource(R.string.home_projected, formatMoney(projected, netWorth.currency)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NetWorthCardContentColor.copy(alpha = 0.75f)
-                    )
-                }
-                netWorth.plannedNetWorth?.let { planned ->
-                    Text(
-                        text = stringResource(R.string.home_planned, formatMoney(planned, netWorth.currency)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = NetWorthCardContentColor.copy(alpha = 0.75f)
-                    )
-                }
+                ProjectedAndPlannedRow(netWorth)
                 Text(
                     text = monthOverMonthChangeText(netWorth),
                     style = MaterialTheme.typography.bodySmall
@@ -185,6 +172,33 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge
                 )
             }
+        }
+    }
+}
+
+/**
+ * "Projected"/"Planned" side by side as a label row, with their amounts in a second row directly below
+ * each label — rather than one combined "Label: amount" line per metric, which left too little width
+ * for both to sit comfortably next to each other. Renders nothing if neither is available; renders
+ * just the one that is if only one is.
+ */
+@Composable
+private fun ProjectedAndPlannedRow(netWorth: NetWorthState) {
+    val metrics = listOfNotNull(
+        netWorth.projectedAmount?.let { stringResource(R.string.home_projected) to it },
+        netWorth.plannedNetWorth?.let { stringResource(R.string.home_planned) to it }
+    )
+    if (metrics.isEmpty()) return
+
+    val textColor = NetWorthCardContentColor.copy(alpha = 0.75f)
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        metrics.forEach { (label, _) ->
+            Text(label, style = MaterialTheme.typography.bodyMedium, color = textColor)
+        }
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        metrics.forEach { (_, amount) ->
+            Text(formatMoney(amount, netWorth.currency), style = MaterialTheme.typography.bodyMedium, color = textColor)
         }
     }
 }

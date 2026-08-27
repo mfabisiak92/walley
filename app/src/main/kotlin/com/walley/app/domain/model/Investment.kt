@@ -25,6 +25,9 @@ data class Investment(
     val previousPrice: BigDecimal? = null
 )
 
+/** One dated price point for an investment, in that investment's own currency. */
+data class InvestmentPricePoint(val date: LocalDate, val price: BigDecimal)
+
 data class InvestmentTransaction(
     val id: Long = 0,
     val investmentId: Long = 0,

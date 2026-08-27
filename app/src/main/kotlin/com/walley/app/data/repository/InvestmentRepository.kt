@@ -2,6 +2,7 @@ package com.walley.app.data.repository
 
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentCategory
+import com.walley.app.domain.model.InvestmentPricePoint
 import com.walley.app.domain.model.InvestmentTransactionType
 import com.walley.app.domain.model.InvestmentWithTransactions
 import java.math.BigDecimal
@@ -14,6 +15,9 @@ sealed interface PriceFetchOutcome {
     /** [reason] is shown to the user, e.g. an API error message or a currency mismatch explanation. */
     data class NotFound(val reason: String) : PriceFetchOutcome
 }
+
+/** Summary of a [InvestmentRepository.backfillPriceHistory] run, for a user-facing result message. */
+data class PriceHistoryBackfillResult(val succeeded: Int, val skipped: Int, val failed: Int)
 
 interface InvestmentRepository {
     fun observeInvestments(): Flow<List<InvestmentWithTransactions>>
@@ -57,6 +61,17 @@ interface InvestmentRepository {
      * update screen, where a fetched price is only a preview until the user reviews and confirms it.
      */
     suspend fun fetchMarketPrices(investmentIds: Collection<Long>): Map<Long, PriceFetchOutcome>
+
+    /** Dated price points per investment id, in each investment's own currency, oldest first. */
+    fun observePriceHistory(): Flow<Map<Long, List<InvestmentPricePoint>>>
+
+    /**
+     * Fetches historical monthly closes from Yahoo Finance for every investment in [investmentIds]
+     * that has a resolvable ticker and at least one buy, from its first purchase date to today, and
+     * stores them. Investments with no resolvable ticker (e.g. bonds, manual entries) are skipped
+     * rather than failed.
+     */
+    suspend fun backfillPriceHistory(investmentIds: Collection<Long>): PriceHistoryBackfillResult
 
     suspend fun addTransaction(
         investmentId: Long,

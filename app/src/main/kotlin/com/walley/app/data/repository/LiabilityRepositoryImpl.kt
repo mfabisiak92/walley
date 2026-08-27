@@ -67,9 +67,13 @@ class LiabilityRepositoryImpl @Inject constructor(
             }
             .toMap()
 
-        // A year that no longer owes anything (e.g. its sells were removed) shouldn't keep a stale liability around.
+        // A year that no longer owes anything (e.g. its sells were removed) shouldn't keep a stale
+        // liability around — but not if it's already fully paid: that's a closed, terminal record
+        // (see upsertEstimatedTaxLiability's matching guard), and the estimate dropping out of
+        // amountsByYear entirely (e.g. recomputing to exactly zero from unrelated FIFO drift) is
+        // exactly the same kind of noise that shouldn't erase a settled year.
         for ((year, liability) in existingByYear) {
-            if (year !in amountsByYear) {
+            if (year !in amountsByYear && liability.currentBalance.signum() != 0) {
                 deleteLiability(liability.id)
             }
         }

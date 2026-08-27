@@ -34,7 +34,7 @@
     <string name="analytics_label_realized">Realized</string>
     <string name="analytics_label_unrealized">Unrealized</string>
     <string name="analytics_label_invested">Invested</string>
-    <string name="analytics_label_deposited">Deposited</string>
+    <string name="analytics_label_deposited">Net deposits</string>
     <string name="analytics_label_gain_loss">Gain/Loss</string>
 
     <!-- AnalyticsScreen: period comparison -->
@@ -64,9 +64,13 @@
 
     <!-- AnalyticsScreen: investments breakdown -->
     <string name="analytics_all_time_gains">All-time gains</string>
-    <string name="analytics_performance_by_position">Performance by position</string>
-    <string name="analytics_xirr_value">XIRR %1$s</string>
-    <string name="analytics_cagr_value">CAGR %1$s (%2$s)</string>
+    <string name="analytics_action_sync_price_history">Sync price history</string>
+    <string name="analytics_note_growth_estimated">* Some years are estimated — sync price history for full accuracy.</string>
+    <string name="analytics_note_growth_after_tax">Growth is net of estimated capital gains tax for taxable accounts, as if everything were sold at year-end.</string>
+    <string name="analytics_label_growth_by_holding">Growth by holding</string>
+    <string name="analytics_label_total_growth_in_year">Total growth in %1$d</string>
+    <string name="analytics_label_dividends_and_interest">Dividends &amp; interest</string>
+    <string name="analytics_snackbar_price_history_synced">Synced %1$d, skipped %2$d without a ticker, %3$d failed</string>
 
     <!-- AnalyticsViewModel -->
     <string name="analytics_unlinked_account">Unlinked</string>

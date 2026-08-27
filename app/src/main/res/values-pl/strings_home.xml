@@ -4,8 +4,8 @@
     <string name="home_analytics_content_description">Analizy</string>
     <string name="home_settings_content_description">Ustawienia</string>
     <string name="home_net_worth">Wartość netto</string>
-    <string name="home_projected">Prognoza: %1$s</string>
-    <string name="home_planned">Plan: %1$s</string>
+    <string name="home_projected">Prognoza</string>
+    <string name="home_planned">Plan</string>
     <string name="home_exchange_rates_unavailable">Kursy wymiany niedostępne</string>
     <string name="home_this_months_budget">Budżet tego miesiąca</string>
     <string name="home_percent_days_left">%1$s%% · pozostało %2$d dni</string>

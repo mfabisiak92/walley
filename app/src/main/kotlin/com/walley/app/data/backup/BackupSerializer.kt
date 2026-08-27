@@ -37,6 +37,7 @@ class BackupSerializer @Inject constructor(
             accounts = database.accountDao().observeAll().first().map { it.toBackupDto() },
             investments = database.investmentDao().observeAll().first().map { it.toBackupDto() },
             investmentTransactions = database.investmentDao().observeAllTransactions().first().map { it.toBackupDto() },
+            investmentPriceHistory = database.investmentPriceHistoryDao().observeAll().first().map { it.toBackupDto() },
             assets = database.assetDao().observeAll().first().map { it.toBackupDto() },
             liabilities = database.liabilityDao().observeAll().first().map { it.toBackupDto() },
             budgets = database.budgetDao().observeBudgets().first().map { it.toBackupDto() },
@@ -75,6 +76,12 @@ class BackupSerializer @Inject constructor(
 
             database.investmentDao().insertTransactions(
                 snapshot.investmentTransactions.map {
+                    it.toEntity(remappedInvestmentId = investmentIdMap.getValue(it.investmentId))
+                }
+            )
+
+            database.investmentPriceHistoryDao().insertAll(
+                snapshot.investmentPriceHistory.map {
                     it.toEntity(remappedInvestmentId = investmentIdMap.getValue(it.investmentId))
                 }
             )

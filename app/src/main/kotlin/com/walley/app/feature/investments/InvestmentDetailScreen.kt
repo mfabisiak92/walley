@@ -2,10 +2,14 @@ package com.walley.app.feature.investments
 
 import com.walley.app.R
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -32,6 +37,8 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.GridOff
+import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.TrendingDown
@@ -43,6 +50,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,8 +74,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.core.format.formatMoney
@@ -82,11 +97,21 @@ import com.walley.app.domain.model.WatchedEquityWithNotes
 import com.walley.app.domain.model.displayName
 import java.math.BigDecimal
 import java.math.RoundingMode
+import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.log10
+import kotlin.math.pow
 import kotlinx.coroutines.launch
 
 private val TABS = listOf("Overview", "Events")
 private val DATE_FORMATTER = DateTimeFormatter.ofPattern("dd-MM-yyyy")
+private val AXIS_MONTH_FORMATTER = DateTimeFormatter.ofPattern("MMM ''yy")
 
 /**
  * Scaffold's innerPadding never insets for a `floatingActionButton` (only topBar/bottomBar/system
@@ -516,6 +541,14 @@ private fun EventsTab(
         contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + FAB_STACK_CLEARANCE),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        item(key = "price-chart") {
+            InvestmentPriceChart(
+                transactions = data.transactions,
+                currentPrice = data.investment.currentPrice,
+                currency = data.investment.currency,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
         groupedByYear.forEach { (year, transactionsInYear) ->
             item(key = "year-$year") {
                 Text(
@@ -539,6 +572,459 @@ private fun EventsTab(
             }
         }
     }
+}
+
+private enum class ChartPointKind { BUY, SELL, CURRENT }
+
+private data class ChartDataPoint(val date: LocalDate, val price: BigDecimal, val kind: ChartPointKind)
+
+private data class AxisDateTick(val date: LocalDate, val label: String)
+
+/** A selectable time window for the price chart; [days] is how far back from today to show, null meaning show everything. */
+private enum class ChartRange(val label: String, val days: Long?) {
+    ONE_MONTH("1M", 30L),
+    SIX_MONTHS("6M", 182L),
+    ONE_YEAR("1Y", 365L),
+    FIVE_YEARS("5Y", 365L * 5),
+    ALL("All", null)
+}
+
+/**
+ * Line chart of every buy/sell event's own recorded price plus today's current price, connected in
+ * chronological order — there's no separate market-price history, so this is exactly the price the
+ * user paid/received at each event. Points are evenly spaced by order (not by elapsed time) so they
+ * stay legible and tappable even when several events happened close together; once there are more
+ * than fit comfortably, the chart grows wider than the screen and scrolls horizontally instead of
+ * squeezing points together. Tapping a point shows its date and price below the chart. The x-axis
+ * ticks at a calendar cadence (month/quarter/half-year/year) chosen from the total span, and the
+ * y-axis shows rounded price ticks on the left; both can be hidden as gridlines via the toggle.
+ */
+@Composable
+private fun InvestmentPriceChart(
+    transactions: List<InvestmentTransaction>,
+    currentPrice: BigDecimal,
+    currency: Currency,
+    modifier: Modifier = Modifier
+) {
+    val allPoints = remember(transactions, currentPrice) {
+        transactions.sortedWith(compareBy({ it.date }, { it.id }))
+            .map { ChartDataPoint(it.date, it.pricePerUnit, if (it.type == InvestmentTransactionType.BUY) ChartPointKind.BUY else ChartPointKind.SELL) } +
+            ChartDataPoint(LocalDate.now(), currentPrice, ChartPointKind.CURRENT)
+    }
+    var selectedRange by remember { mutableStateOf(ChartRange.ALL) }
+    // The nominal window the range represents — NOT just the span of whatever data happens to fall in
+    // it. A short history under a long range (e.g. two months of trades under "1Y") must still show a
+    // full year on the axis, with the real events clustered wherever they actually fall in it.
+    val rangeEnd = allPoints.last().date
+    val rangeStart = if (selectedRange == ChartRange.ALL) allPoints.first().date else rangeEnd.minusDays(selectedRange.days!!)
+    val points = remember(allPoints, selectedRange, rangeStart) {
+        if (selectedRange == ChartRange.ALL) {
+            allPoints
+        } else {
+            allPoints.filter { !it.date.isBefore(rangeStart) }.ifEmpty { listOf(allPoints.last()) }
+        }
+    }
+    val hasNoEventsInRange = selectedRange != ChartRange.ALL && points.none { it.kind != ChartPointKind.CURRENT }
+    val buyColor = Color(0xFF2E7D32)
+    val sellColor = MaterialTheme.colorScheme.error
+    val currentColor = MaterialTheme.colorScheme.tertiary
+    val lineColor = MaterialTheme.colorScheme.primary
+    val labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val gridColor = MaterialTheme.colorScheme.outlineVariant
+    var selectedIndex by remember(points) { mutableStateOf<Int?>(null) }
+    var gridVisible by remember { mutableStateOf(true) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Price history", style = MaterialTheme.typography.titleSmall)
+                IconButton(onClick = { gridVisible = !gridVisible }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        if (gridVisible) Icons.Filled.GridOn else Icons.Filled.GridOff,
+                        contentDescription = if (gridVisible) "Hide grid" else "Show grid",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ChartRange.values().forEach { range ->
+                    FilterChip(
+                        selected = selectedRange == range,
+                        onClick = { selectedRange = range },
+                        label = { Text(range.label, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+            if (hasNoEventsInRange) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "No events in this period",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val density = LocalDensity.current
+            val pointRadiusPx = with(density) { 14.dp.toPx() }
+            val markerTextSizePx = with(density) { 15.sp.toPx() }
+            val axisTextSizePx = with(density) { 11.sp.toPx() }
+            val strokeWidthPx = with(density) { 2.dp.toPx() }
+            val gridStrokeWidthPx = with(density) { 1.dp.toPx() }
+            val axisLabelHeightPx = with(density) { 20.dp.toPx() }
+            val verticalMarginPx = pointRadiusPx + with(density) { 6.dp.toPx() }
+            val edgePaddingDp = 20.dp
+            val edgePaddingPx = with(density) { edgePaddingDp.toPx() }
+            val minGapPx = with(density) { 56.dp.toPx() }
+            val yAxisWidthDp = 44.dp
+            val chartHeightDp = 200.dp
+
+            val minPriceD = points.minOf { it.price }.toDouble()
+            val maxPriceD = points.maxOf { it.price }.toDouble()
+            val priceAxisTicks = remember(minPriceD, maxPriceD) { niceAxisTicks(minPriceD, maxPriceD) }
+            val scaleMin = priceAxisTicks.first()
+            val scaleMax = priceAxisTicks.last()
+            val scaleRange = (scaleMax - scaleMin).toFloat()
+
+            val dateAxisTicks = remember(rangeStart, rangeEnd) { buildDateAxisTicks(rangeStart, rangeEnd) }
+            val axisMeasurePaint = remember(axisTextSizePx) {
+                android.graphics.Paint().apply { textSize = axisTextSizePx; isAntiAlias = true }
+            }
+
+            val totalRangeDays = ChronoUnit.DAYS.between(rangeStart, rangeEnd).toFloat().coerceAtLeast(1f)
+
+            // Where a date would fall along a plot of [plotWidthPx] wide if time flowed at a constant
+            // rate — i.e. proportional to elapsed days, not to how many events happen to exist nearby.
+            fun idealXForDate(date: LocalDate, plotWidthPx: Float): Float {
+                val dayOffset = ChronoUnit.DAYS.between(rangeStart, date).toFloat().coerceIn(0f, totalRangeDays)
+                return edgePaddingPx + plotWidthPx * dayOffset / totalRangeDays
+            }
+
+            fun yForValue(value: Double, canvasHeightPx: Float): Float {
+                val plotHeight = canvasHeightPx - verticalMarginPx * 2 - axisLabelHeightPx
+                return if (scaleRange <= 0f) {
+                    verticalMarginPx + plotHeight / 2f
+                } else {
+                    verticalMarginPx + plotHeight * (1f - ((value - scaleMin) / scaleRange).toFloat())
+                }
+            }
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Canvas(
+                    modifier = Modifier
+                        .width(yAxisWidthDp)
+                        .height(chartHeightDp)
+                ) {
+                    priceAxisTicks.forEach { tick ->
+                        val y = yForValue(tick, size.height)
+                        drawContext.canvas.nativeCanvas.drawText(
+                            formatAxisNumber(tick),
+                            size.width - with(density) { 6.dp.toPx() },
+                            y + axisTextSizePx / 3f,
+                            android.graphics.Paint().apply {
+                                color = labelColor.toArgb()
+                                textSize = axisTextSizePx
+                                textAlign = android.graphics.Paint.Align.RIGHT
+                                isAntiAlias = true
+                            }
+                        )
+                    }
+                }
+
+                BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                    // "All" squeezes every point into one screen instead of spacing them out, so it never scrolls.
+                    val maxWidthPx = with(density) { maxWidth.toPx() }
+                    val allowScroll = selectedRange != ChartRange.ALL
+
+                    // Points are placed proportional to elapsed time within [rangeStart, rangeEnd] (not
+                    // evenly by order), so a short history inside a long range shows real empty space —
+                    // then nudged apart left-to-right so none sit closer than minGapPx (never overlapping,
+                    // even if several events share a date). "All" must never scroll, so if that nudging
+                    // would overflow the screen it's compressed (scaled) back down to fit instead of
+                    // growing the canvas; every other range is allowed to grow and scroll instead.
+                    val (pointX, contentWidthPx, xScale) = remember(points, rangeStart, rangeEnd, maxWidthPx, allowScroll) {
+                        val plotWidthPx = maxWidthPx - edgePaddingPx * 2
+                        val ideal = points.map { idealXForDate(it.date, plotWidthPx) }
+                        val adjusted = FloatArray(ideal.size)
+                        if (ideal.isNotEmpty()) {
+                            adjusted[0] = ideal[0]
+                            for (i in 1 until ideal.size) {
+                                adjusted[i] = if (ideal[i] - adjusted[i - 1] < minGapPx) adjusted[i - 1] + minGapPx else ideal[i]
+                            }
+                        }
+                        val neededRightEdge = if (adjusted.isEmpty()) maxWidthPx else adjusted.last() + edgePaddingPx
+                        if (neededRightEdge <= maxWidthPx || allowScroll) {
+                            Triple(adjusted.toList(), maxOf(maxWidthPx, neededRightEdge), 1f)
+                        } else {
+                            val scale = ((maxWidthPx - edgePaddingPx * 2) / (adjusted.last() - edgePaddingPx).coerceAtLeast(1f)).coerceAtMost(1f)
+                            Triple(adjusted.map { edgePaddingPx + (it - edgePaddingPx) * scale }, maxWidthPx, scale)
+                        }
+                    }
+                    val contentWidth = with(density) { contentWidthPx.toDp() }
+                    val scrollState = rememberScrollState()
+
+                    fun xForDate(date: LocalDate): Float {
+                        val raw = idealXForDate(date, maxWidthPx - edgePaddingPx * 2)
+                        return edgePaddingPx + (raw - edgePaddingPx) * xScale
+                    }
+
+                    // Open scrolled to the most recent end (today/current price) — scrolling left then reveals older history.
+                    LaunchedEffect(points, contentWidth) {
+                        scrollState.scrollTo(Int.MAX_VALUE)
+                    }
+
+                    val visibleDateAxisTicks = remember(dateAxisTicks, maxWidthPx, xScale) {
+                        val xPositions = dateAxisTicks.map { xForDate(it.date) }
+                        val minSpacingPx = (dateAxisTicks.maxOfOrNull { axisMeasurePaint.measureText(it.label) } ?: 0f) +
+                            with(density) { 12.dp.toPx() }
+                        thinAxisTicksToFit(dateAxisTicks, xPositions, minSpacingPx)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(scrollState)
+                    ) {
+                        Canvas(
+                            modifier = Modifier
+                                .width(contentWidth)
+                                .height(chartHeightDp)
+                                .pointerInput(points) {
+                                    detectTapGestures(
+                                        onTap = { tapOffset ->
+                                            val canvasHeightPx = size.height.toFloat()
+                                            val tapRadiusPx = pointRadiusPx * 2.2f
+                                            var closestIndex: Int? = null
+                                            var closestDistanceSq = Float.MAX_VALUE
+                                            points.forEachIndexed { index, point ->
+                                                val px = pointX[index]
+                                                val py = yForValue(point.price.toDouble(), canvasHeightPx)
+                                                val dx = px - tapOffset.x
+                                                val dy = py - tapOffset.y
+                                                val distanceSq = dx * dx + dy * dy
+                                                if (distanceSq < closestDistanceSq) {
+                                                    closestDistanceSq = distanceSq
+                                                    closestIndex = index
+                                                }
+                                            }
+                                            selectedIndex = closestIndex?.takeIf { closestDistanceSq <= tapRadiusPx * tapRadiusPx }
+                                                ?.let { if (selectedIndex == it) null else it }
+                                        }
+                                    )
+                                }
+                        ) {
+                            val canvasWidthPx = size.width
+                            val canvasHeightPx = size.height
+                            val plotBottomPx = canvasHeightPx - axisLabelHeightPx
+                            val offsets = points.mapIndexed { index, point ->
+                                Offset(pointX[index], yForValue(point.price.toDouble(), canvasHeightPx))
+                            }
+
+                            if (gridVisible) {
+                                priceAxisTicks.forEach { tick ->
+                                    val y = yForValue(tick, canvasHeightPx)
+                                    drawLine(
+                                        color = gridColor,
+                                        start = Offset(0f, y),
+                                        end = Offset(canvasWidthPx, y),
+                                        strokeWidth = gridStrokeWidthPx
+                                    )
+                                }
+                                visibleDateAxisTicks.forEach { tick ->
+                                    val x = xForDate(tick.date)
+                                    drawLine(
+                                        color = gridColor,
+                                        start = Offset(x, 0f),
+                                        end = Offset(x, plotBottomPx),
+                                        strokeWidth = gridStrokeWidthPx
+                                    )
+                                }
+                            }
+
+                            for (i in 0 until offsets.size - 1) {
+                                drawLine(color = lineColor, start = offsets[i], end = offsets[i + 1], strokeWidth = strokeWidthPx)
+                            }
+
+                            visibleDateAxisTicks.forEach { tick ->
+                                drawContext.canvas.nativeCanvas.drawText(
+                                    tick.label,
+                                    xForDate(tick.date),
+                                    canvasHeightPx - axisLabelHeightPx / 2f + axisTextSizePx / 3f,
+                                    android.graphics.Paint().apply {
+                                        color = labelColor.toArgb()
+                                        textSize = axisTextSizePx
+                                        textAlign = android.graphics.Paint.Align.CENTER
+                                        isAntiAlias = true
+                                    }
+                                )
+                            }
+
+                            offsets.forEachIndexed { index, point ->
+                                val color = when (points[index].kind) {
+                                    ChartPointKind.BUY -> buyColor
+                                    ChartPointKind.SELL -> sellColor
+                                    ChartPointKind.CURRENT -> currentColor
+                                }
+                                if (selectedIndex == index) {
+                                    drawCircle(
+                                        color = lineColor,
+                                        radius = pointRadiusPx + strokeWidthPx * 2,
+                                        center = point,
+                                        style = Stroke(width = strokeWidthPx)
+                                    )
+                                }
+                                drawCircle(color = color, radius = pointRadiusPx, center = point)
+                                val symbol = when (points[index].kind) {
+                                    ChartPointKind.BUY -> "+"
+                                    ChartPointKind.SELL -> "-"
+                                    ChartPointKind.CURRENT -> "?"
+                                }
+                                val symbolPaint = android.graphics.Paint().apply {
+                                    this.color = Color.White.toArgb()
+                                    textSize = markerTextSizePx
+                                    textAlign = android.graphics.Paint.Align.CENTER
+                                    isAntiAlias = true
+                                    isFakeBoldText = true
+                                }
+                                val textY = point.y - (symbolPaint.ascent() + symbolPaint.descent()) / 2f
+                                drawContext.canvas.nativeCanvas.drawText(symbol, point.x, textY, symbolPaint)
+                            }
+                        }
+                    }
+                }
+            }
+
+            val selected = selectedIndex?.let { points.getOrNull(it) }
+            if (selected != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    val kindLabel = when (selected.kind) {
+                        ChartPointKind.BUY -> "Buy"
+                        ChartPointKind.SELL -> "Sell"
+                        ChartPointKind.CURRENT -> "Current price"
+                    }
+                    Text("$kindLabel · ${selected.date.format(DATE_FORMATTER)}", style = MaterialTheme.typography.labelMedium)
+                    Text(formatMoney(selected.price, currency), style = MaterialTheme.typography.labelMedium)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Drops candidate ticks that would render closer than [minSpacingPx] to the previously kept one, so
+ * labels never overlap regardless of how many calendar ticks the cadence produced for the chart width.
+ * The final tick is always kept (swapping out its too-close predecessor if needed) since it anchors
+ * the most recent end of the timeline.
+ */
+private fun thinAxisTicksToFit(ticks: List<AxisDateTick>, xPositions: List<Float>, minSpacingPx: Float): List<AxisDateTick> {
+    if (ticks.size <= 1) return ticks
+    val keptIndices = mutableListOf(0)
+    for (i in 1 until ticks.size) {
+        if (xPositions[i] - xPositions[keptIndices.last()] >= minSpacingPx) keptIndices += i
+    }
+    val lastIndex = ticks.lastIndex
+    if (keptIndices.last() != lastIndex) {
+        // The last tick always wins over whichever kept tick it's too close to, even if that's the very first one.
+        if (xPositions[lastIndex] - xPositions[keptIndices.last()] < minSpacingPx) {
+            keptIndices.removeAt(keptIndices.lastIndex)
+        }
+        keptIndices += lastIndex
+    }
+    return keptIndices.map { ticks[it] }
+}
+
+/** Builds calendar-spaced x-axis ticks between [first] and [last], picking a cadence from the total span. */
+private fun buildDateAxisTicks(first: LocalDate, last: LocalDate): List<AxisDateTick> {
+    if (!first.isBefore(last)) return listOf(AxisDateTick(first, first.format(AXIS_MONTH_FORMATTER)))
+    val spanDays = ChronoUnit.DAYS.between(first, last)
+    val intervalMonths = when {
+        spanDays < 365 -> 1
+        spanDays < 3 * 365 -> 3
+        spanDays < 6 * 365 -> 6
+        else -> 12
+    }
+    val ticks = mutableListOf<AxisDateTick>()
+    var cursor = YearMonth.from(first)
+    val lastMonth = YearMonth.from(last)
+    var isFirst = true
+    while (!cursor.isAfter(lastMonth)) {
+        val tickDate = if (isFirst) first else cursor.atDay(1)
+        ticks += AxisDateTick(tickDate, if (intervalMonths >= 12) cursor.year.toString() else tickDate.format(AXIS_MONTH_FORMATTER))
+        isFirst = false
+        cursor = cursor.plusMonths(intervalMonths.toLong())
+    }
+    if (ticks.last().date != last) {
+        ticks += AxisDateTick(last, if (intervalMonths >= 12) last.year.toString() else last.format(AXIS_MONTH_FORMATTER))
+    }
+    return ticks
+}
+
+/** Classic Heckbert "nice numbers" step, rounded to a 1/2/5/10 multiple of its order of magnitude. */
+private fun niceNumber(range: Double, round: Boolean): Double {
+    if (range <= 0.0) return 1.0
+    val exponent = floor(log10(range))
+    val fraction = range / 10.0.pow(exponent)
+    val niceFraction = if (round) {
+        when {
+            fraction < 1.5 -> 1.0
+            fraction < 3.0 -> 2.0
+            fraction < 7.0 -> 5.0
+            else -> 10.0
+        }
+    } else {
+        when {
+            fraction <= 1.0 -> 1.0
+            fraction <= 2.0 -> 2.0
+            fraction <= 5.0 -> 5.0
+            else -> 10.0
+        }
+    }
+    return niceFraction * 10.0.pow(exponent)
+}
+
+/** Round-number y-axis ticks (e.g. 10, 20, 50, 100) spanning at least [min]..[max]. */
+private fun niceAxisTicks(min: Double, max: Double, targetTickCount: Int = 5): List<Double> {
+    if (min == max) return listOf(min - 1.0, min, min + 1.0)
+    val range = niceNumber(max - min, false)
+    val step = niceNumber(range / (targetTickCount - 1).coerceAtLeast(1), true)
+    val niceMin = floor(min / step) * step
+    val niceMax = ceil(max / step) * step
+    val ticks = mutableListOf<Double>()
+    var v = niceMin
+    while (v <= niceMax + step / 2) {
+        ticks += v
+        v += step
+    }
+    return ticks
+}
+
+/** Compact axis label for a round number, e.g. 1500.0 -> "1.5k", 10_000_000.0 -> "10M". */
+private fun formatAxisNumber(value: Double): String {
+    val absValue = abs(value)
+    val (divisor, suffix) = when {
+        absValue >= 1_000_000_000.0 -> 1_000_000_000.0 to "B"
+        absValue >= 1_000_000.0 -> 1_000_000.0 to "M"
+        absValue >= 1_000.0 -> 1_000.0 to "k"
+        else -> 1.0 to ""
+    }
+    val scaled = value / divisor
+    val text = if (scaled == floor(scaled)) scaled.toLong().toString() else String.format(Locale.US, "%.1f", scaled)
+    return text + suffix
 }
 
 @Composable

@@ -15,6 +15,8 @@ data class BackupSnapshot(
     val accounts: List<AccountBackupDto>,
     val investments: List<InvestmentBackupDto>,
     val investmentTransactions: List<InvestmentTransactionBackupDto>,
+    // Defaulted to empty so a backup taken before this table existed still restores cleanly.
+    val investmentPriceHistory: List<InvestmentPriceHistoryBackupDto> = emptyList(),
     val assets: List<AssetBackupDto>,
     val liabilities: List<LiabilityBackupDto>,
     val budgets: List<BudgetBackupDto>,
@@ -70,6 +72,14 @@ data class InvestmentTransactionBackupDto(
     val quantity: String,
     val pricePerUnit: String,
     val commission: String
+)
+
+@Serializable
+data class InvestmentPriceHistoryBackupDto(
+    val id: Long,
+    val investmentId: Long,
+    val date: String,
+    val closePrice: String
 )
 
 @Serializable

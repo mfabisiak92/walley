@@ -8,7 +8,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import java.time.LocalDate
 
 /** Kept in sync with [WalleyDatabase]'s `@Database(version = ...)` — referenced by backups to record the schema they were taken against. */
-const val WALLEY_DB_SCHEMA_VERSION = 37
+const val WALLEY_DB_SCHEMA_VERSION = 38
 
 @Database(
     entities = [
@@ -25,7 +25,8 @@ const val WALLEY_DB_SCHEMA_VERSION = 37
         AdHocBudgetEntity::class,
         AdHocBudgetItemEntity::class,
         AccountOperationEntity::class,
-        StrategyInvestmentLinkEntity::class
+        StrategyInvestmentLinkEntity::class,
+        InvestmentPriceHistoryEntity::class
     ],
     version = WALLEY_DB_SCHEMA_VERSION,
     exportSchema = false
@@ -41,6 +42,7 @@ abstract class WalleyDatabase : RoomDatabase() {
     abstract fun watchedEquityDao(): WatchedEquityDao
     abstract fun adHocBudgetDao(): AdHocBudgetDao
     abstract fun accountOperationDao(): AccountOperationDao
+    abstract fun investmentPriceHistoryDao(): InvestmentPriceHistoryDao
 }
 
 val MIGRATION_1_2 = object : Migration(1, 2) {
@@ -581,5 +583,28 @@ val MIGRATION_36_37 = object : Migration(36, 37) {
         // SQL migration can't reach — BudgetDetailViewModel backfills it once, to that computed
         // projection, the first time each such budget is next viewed.
         db.execSQL("ALTER TABLE budgets ADD COLUMN plannedNetWorthMinorUnits INTEGER")
+    }
+}
+
+val MIGRATION_37_38 = object : Migration(37, 38) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        // Dated per-investment price points, used to value a holding at a past year boundary for
+        // yearly growth analytics — something a single mutable currentPrice/previousPrice can't do.
+        // Empty on upgrade; filled in going forward by every price update, and optionally backfilled
+        // from Yahoo Finance history for investments with a resolvable ticker.
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `investment_price_history` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `investmentId` INTEGER NOT NULL,
+                `date` TEXT NOT NULL,
+                `closePrice` TEXT NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_investment_price_history_investmentId_date` " +
+                "ON `investment_price_history` (`investmentId`, `date`)"
+        )
     }
 }

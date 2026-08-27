@@ -22,6 +22,34 @@ private fun Investment.isDividendOperation(operation: AccountOperation): Boolean
         description.contains(name, ignoreCase = true)
 }
 
+/**
+ * True if [this] operation looks like investment income — a dividend or interest payout, or its
+ * paired withholding-tax row — rather than cash the user actually deposited or withdrew. Broader
+ * than [Investment.isDividendOperation]: not tied to one investment's name, since portfolio-wide
+ * interest (e.g. BOSSA's "Free funds interest" / XTB's cash-account interest) isn't attributable to
+ * any single holding. Same text-match caveats apply as [Investment.isDividendOperation] — a
+ * differently-worded import can be missed, and a real deposit whose description happens to mention
+ * one of these words could be misclassified.
+ */
+fun AccountOperation.isInvestmentIncome(): Boolean {
+    val keywords = listOf("dividend", "dywidend", "interest", "odsetk")
+    return keywords.any { description.contains(it, ignoreCase = true) }
+}
+
+/**
+ * True if [this] operation looks like a transfer between two of the user's OWN accounts rather than
+ * genuinely new money from outside — e.g. BOSSA's "Przelew wewnętrzny z rachunku kasowego" (moving
+ * cash between a brokerage's own PLN and foreign-currency sub-accounts) or XTB's "Transfer" type.
+ * Text-match only, same caveats as [isInvestmentIncome]: there's no structural link between the two
+ * sides of a real transfer in this app's data (each CSV import only ever writes to the one account
+ * the user picked), so this can miss a differently-worded transfer, or a real external deposit whose
+ * description happens to mention "transfer"/"wewnętrzny" for an unrelated reason.
+ */
+fun AccountOperation.isInternalTransfer(): Boolean {
+    val keywords = listOf("wewnętrzny", "wewnetrzny", "transfer")
+    return keywords.any { description.contains(it, ignoreCase = true) }
+}
+
 /** Gross dividends received for this investment so far, before any withholding tax — see [isDividendOperation]. */
 fun Investment.dividendsPaid(accountOperations: List<AccountOperation>): BigDecimal =
     accountOperations

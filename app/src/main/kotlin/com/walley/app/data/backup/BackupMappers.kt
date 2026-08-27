@@ -10,6 +10,7 @@ import com.walley.app.data.local.BudgetItemEntity
 import com.walley.app.data.local.EquityNoteEntity
 import com.walley.app.data.local.FinancialSnapshotEntity
 import com.walley.app.data.local.InvestmentEntity
+import com.walley.app.data.local.InvestmentPriceHistoryEntity
 import com.walley.app.data.local.InvestmentTransactionEntity
 import com.walley.app.data.local.LiabilityEntity
 import com.walley.app.data.local.StrategyInvestmentLinkEntity
@@ -103,6 +104,19 @@ fun InvestmentTransactionBackupDto.toEntity(remappedInvestmentId: Long) = Invest
     quantity = BigDecimal(quantity),
     pricePerUnit = BigDecimal(pricePerUnit),
     commission = BigDecimal(commission)
+)
+
+fun InvestmentPriceHistoryEntity.toBackupDto() = InvestmentPriceHistoryBackupDto(
+    id = id,
+    investmentId = investmentId,
+    date = date.toString(),
+    closePrice = closePrice.toPlainString()
+)
+
+fun InvestmentPriceHistoryBackupDto.toEntity(remappedInvestmentId: Long) = InvestmentPriceHistoryEntity(
+    investmentId = remappedInvestmentId,
+    date = LocalDate.parse(date),
+    closePrice = BigDecimal(closePrice)
 )
 
 fun AssetEntity.toBackupDto() = AssetBackupDto(

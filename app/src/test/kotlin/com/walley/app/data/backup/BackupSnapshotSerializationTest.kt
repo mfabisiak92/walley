@@ -52,6 +52,9 @@ class BackupSnapshotSerializationTest {
                 commission = "1.99"
             )
         ),
+        investmentPriceHistory = listOf(
+            InvestmentPriceHistoryBackupDto(id = 1, investmentId = 1, date = "2026-08-01", closePrice = "231.55")
+        ),
         assets = listOf(
             AssetBackupDto(
                 id = 1,
@@ -189,5 +192,16 @@ class BackupSnapshotSerializationTest {
         val decoded = json.decodeFromString(BackupSnapshot.serializer(), withExtraField)
 
         assertEquals(sampleSnapshot, decoded)
+    }
+
+    @Test
+    fun `a backup taken before the price history table existed restores with an empty list`() {
+        val encoded = json.encodeToString(BackupSnapshot.serializer(), sampleSnapshot)
+        val withoutPriceHistoryField = encoded.replace(Regex(""""investmentPriceHistory":\[.*?],"""), "")
+
+        val decoded = json.decodeFromString(BackupSnapshot.serializer(), withoutPriceHistoryField)
+
+        assertEquals(emptyList<InvestmentPriceHistoryBackupDto>(), decoded.investmentPriceHistory)
+        assertEquals(sampleSnapshot, decoded.copy(investmentPriceHistory = sampleSnapshot.investmentPriceHistory))
     }
 }

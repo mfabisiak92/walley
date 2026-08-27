@@ -1,6 +1,7 @@
 package com.walley.app.data.local
 
 import com.walley.app.domain.model.Investment
+import com.walley.app.domain.model.InvestmentPricePoint
 import com.walley.app.domain.model.InvestmentTransaction
 
 fun InvestmentEntity.toDomain(): Investment = Investment(
@@ -25,3 +26,5 @@ fun InvestmentTransactionEntity.toDomain(): InvestmentTransaction = InvestmentTr
     pricePerUnit = pricePerUnit,
     commission = commission
 )
+
+fun InvestmentPriceHistoryEntity.toDomain(): InvestmentPricePoint = InvestmentPricePoint(date = date, price = closePrice)
