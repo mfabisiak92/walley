@@ -23,7 +23,11 @@
     <string name="home_net_balance">Net balance</string>
     <string name="home_invested_amount">Invested amount</string>
     <string name="home_uninvested_cash">Uninvested cash</string>
-    <string name="home_by_currency">By currency</string>
+    <string name="home_net_invested">Net invested</string>
+    <string name="home_assets">Assets</string>
+    <string name="home_liabilities">Liabilities</string>
+    <string name="home_composition_title">Net worth composition</string>
+    <string name="home_net_worth_composition_cd">Show net worth composition</string>
 
     <!-- NetWorthDetailScreen -->
     <string name="home_net_worth_breakdown">Net worth breakdown</string>

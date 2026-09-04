@@ -71,9 +71,12 @@ data class HomeBalances(
     val uninvestedCash: List<CurrencyTotal> = emptyList()
 )
 
-data class NetWorthByCurrency(
-    val currency: Currency,
-    val amountInBaseCurrency: BigDecimal,
+enum class NetWorthCompositionCategory { AVAILABLE, UNINVESTED, NET_INVESTED, ASSETS, LIABILITIES }
+
+/** One slice of the net-worth composition pie chart, already converted to base currency. */
+data class NetWorthComposition(
+    val category: NetWorthCompositionCategory,
+    val amount: BigDecimal,
     val percent: BigDecimal
 )
 
@@ -109,8 +112,6 @@ data class NetWorthState(
     val amount: BigDecimal?,
     // rate date shown when a conversion actually happened
     val rateDate: String?,
-    // breakdown of net worth by the original currency of each account, converted to base currency
-    val breakdown: List<NetWorthByCurrency> = emptyList(),
     // every account and asset that contributes to net worth, for the detail/breakdown screen
     val elements: List<NetWorthElement> = emptyList(),
     // projected net worth at the end of the current calendar month if this month's budget is followed
@@ -252,6 +253,16 @@ class HomeViewModel @Inject constructor(
         state?.copy(plannedNetWorth = planned)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Null once the list would be built if a needed exchange rate is unavailable; empty if there's simply nothing to show. */
+    val netWorthComposition: StateFlow<List<NetWorthComposition>?> = combine(
+        accountRepository.observeAccounts(),
+        assetRepository.observeAssets(),
+        liabilityRepository.observeLiabilities(),
+        baseCurrencyRates
+    ) { accounts, assets, liabilities, (base, rates) ->
+        computeNetWorthComposition(accounts, assets, liabilities, base, rates)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val monthBudgetSummary: StateFlow<MonthBudgetSummary?> = combine(
         currentMonthBudgetItems,
         baseCurrencyRates
@@ -361,17 +372,6 @@ class HomeViewModel @Inject constructor(
         }
 
         val total = byCurrency.values.fold(BigDecimal.ZERO) { acc, value -> acc + value }
-        val breakdown = byCurrency.entries
-            .filter { it.value.signum() > 0 }
-            .map { (currency, amount) ->
-                val percent = if (total.signum() == 0) {
-                    BigDecimal.ZERO
-                } else {
-                    amount.divide(total, 6, RoundingMode.HALF_UP) * BigDecimal(100)
-                }
-                NetWorthByCurrency(currency, amount.setScale(2, RoundingMode.HALF_UP), percent)
-            }
-            .sortedByDescending { it.amountInBaseCurrency }
         val projectedBreakdown = if (currentMonthBudgetItems.isEmpty()) {
             null
         } else {
@@ -382,11 +382,77 @@ class HomeViewModel @Inject constructor(
             currency = base,
             amount = total.setScale(2, RoundingMode.HALF_UP),
             rateDate = if (usedRates) rates?.date else null,
-            breakdown = breakdown,
             elements = elements.sortedByDescending { it.amountInBaseCurrency },
             projectedAmount = projectedAmount,
             projectedBreakdown = projectedBreakdown
         )
+    }
+
+    /**
+     * Splits everything the user owns into [NetWorthCompositionCategory] slices, in [base] currency;
+     * null if a needed exchange rate is unavailable. Unlike [computeNetWorth], Liabilities is kept as
+     * its own positive-magnitude slice (how much is owed) rather than subtracted out — slice size is
+     * each category's share of the sum of all five magnitudes, not of net worth itself.
+     *
+     * - Available: non-virtual Checking/Cash balances minus virtual Saving envelopes' earmark — same
+     *   formula as [HomeBalances.availableBalance], "what's actually free to spend".
+     * - Uninvested: uninvested cash sitting in Investment accounts.
+     * - Net invested: the market value of Investment accounts' positions, net of tax owed on any
+     *   unrealized gain (i.e. [Account.netWorthValue] minus the account's uninvested cash).
+     */
+    private fun computeNetWorthComposition(
+        accounts: List<Account>,
+        assets: List<Asset>,
+        liabilities: List<Liability>,
+        base: Currency,
+        rates: ExchangeRates?
+    ): List<NetWorthComposition>? {
+        fun convert(amount: BigDecimal, currency: Currency): BigDecimal? = convertToCurrency(amount, currency, base, rates)
+
+        val checkingCashAccounts = accounts.filter { !it.isVirtual && (it.type == AccountType.CHECKING || it.type == AccountType.CASH) }
+        val virtualSavingsAccounts = accounts.filter { it.isVirtual && it.type == AccountType.SAVING && !it.isClosed }
+        val investmentAccounts = accounts.filter { it.type == AccountType.INVESTMENT }
+
+        var available = BigDecimal.ZERO
+        for (account in checkingCashAccounts) {
+            available += convert(account.balance, account.currency) ?: return null
+        }
+        for (account in virtualSavingsAccounts) {
+            available -= convert(account.balance, account.currency) ?: return null
+        }
+
+        var uninvested = BigDecimal.ZERO
+        var netInvested = BigDecimal.ZERO
+        for (account in investmentAccounts) {
+            uninvested += convert(account.uninvestedCash, account.currency) ?: return null
+            netInvested += convert(account.netWorthValue - account.uninvestedCash, account.currency) ?: return null
+        }
+
+        var assetsTotal = BigDecimal.ZERO
+        for (asset in assets) {
+            assetsTotal += convert(asset.currentValue, asset.currency) ?: return null
+        }
+
+        var liabilitiesTotal = BigDecimal.ZERO
+        for (liability in liabilities.filter { it.currentBalance.signum() != 0 }) {
+            liabilitiesTotal += convert(liability.currentBalance, liability.currency) ?: return null
+        }
+
+        val amountsByCategory = listOf(
+            NetWorthCompositionCategory.AVAILABLE to available,
+            NetWorthCompositionCategory.UNINVESTED to uninvested,
+            NetWorthCompositionCategory.NET_INVESTED to netInvested,
+            NetWorthCompositionCategory.ASSETS to assetsTotal,
+            NetWorthCompositionCategory.LIABILITIES to liabilitiesTotal
+        )
+        val totalMagnitude = amountsByCategory.fold(BigDecimal.ZERO) { acc, (_, amount) -> acc + amount.abs() }
+        if (totalMagnitude.signum() == 0) return emptyList()
+        return amountsByCategory
+            .filter { (_, amount) -> amount.signum() != 0 }
+            .map { (category, amount) ->
+                val percent = amount.abs().divide(totalMagnitude, 6, RoundingMode.HALF_UP) * BigDecimal(100)
+                NetWorthComposition(category, amount.setScale(2, RoundingMode.HALF_UP), percent)
+            }
     }
 
     private fun currencyTotals(

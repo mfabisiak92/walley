@@ -106,6 +106,12 @@ fun BudgetDetailScreen(
     var showAddSectionPicker by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showCompleteConfirm by remember { mutableStateOf(false) }
+    var showSurplusWizard by remember { mutableStateOf(false) }
+    val surplusAllocationError by viewModel.surplusAllocationError.collectAsStateWithLifecycle()
+    val uncategorizedLabel = stringResource(R.string.analytics_uncategorized)
+    val surplus = remember(budgetWithItems, uncategorizedLabel) {
+        budgetSurplus(budgetWithItems?.items.orEmpty(), uncategorizedLabel)
+    }
     var showEditPlannedNetWorth by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -173,7 +179,11 @@ fun BudgetDetailScreen(
                 },
                 actions = {
                     if (status == BudgetStatus.ACTIVE) {
-                        IconButton(onClick = { showCompleteConfirm = true }) {
+                        IconButton(
+                            onClick = {
+                                if (surplus.isEmpty()) showCompleteConfirm = true else showSurplusWizard = true
+                            }
+                        ) {
                             Icon(Icons.Filled.CheckCircle, contentDescription = "Mark as completed")
                         }
                     }
@@ -461,6 +471,32 @@ fun BudgetDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showCompleteConfirm = false }) { Text(stringResource(R.string.budget_cancel)) }
+            }
+        )
+    }
+
+    if (showSurplusWizard) {
+        BudgetSurplusWizardDialog(
+            surplus = surplus,
+            accounts = accounts,
+            onSkip = {
+                showSurplusWizard = false
+                showCompleteConfirm = true
+            },
+            onComplete = { allocations ->
+                showSurplusWizard = false
+                viewModel.completeBudgetWithAllocations(allocations)
+            }
+        )
+    }
+
+    surplusAllocationError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissSurplusAllocationError,
+            title = { Text(stringResource(R.string.budget_surplus_allocation_failed_title)) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissSurplusAllocationError) { Text(stringResource(R.string.budget_ok)) }
             }
         )
     }

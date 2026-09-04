@@ -10,16 +10,21 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.walley.app.core.format.toBigDecimalOrNullLenient
 import com.walley.app.data.repository.AccountRepository
+import com.walley.app.data.repository.AssetRepository
 import com.walley.app.data.repository.BudgetRepository
 import com.walley.app.data.repository.ExchangeRateRepository
+import com.walley.app.data.repository.LiabilityRepository
 import com.walley.app.data.repository.SettingsRepository
 import com.walley.app.domain.model.Account
+import com.walley.app.domain.model.Asset
 import com.walley.app.domain.model.BudgetItem
 import com.walley.app.domain.model.BudgetItemIcon
 import com.walley.app.domain.model.BudgetSectionType
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.ExchangeRates
+import com.walley.app.domain.model.Liability
 import com.walley.app.domain.model.allowedAccountTypes
+import com.walley.app.feature.home.calculateNetWorth
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -53,6 +58,8 @@ class BudgetWizardViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val budgetRepository: BudgetRepository,
     accountRepository: AccountRepository,
+    assetRepository: AssetRepository,
+    liabilityRepository: LiabilityRepository,
     settingsRepository: SettingsRepository,
     exchangeRateRepository: ExchangeRateRepository
 ) : ViewModel() {
@@ -96,6 +103,15 @@ class BudgetWizardViewModel @Inject constructor(
     private val rates: StateFlow<ExchangeRates?> = settingsRepository.observeBaseCurrency()
         .flatMapLatest { base -> exchangeRateRepository.observeRates(base) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val assets: StateFlow<List<Asset>> = assetRepository.observeAssets()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val liabilities: StateFlow<List<Liability>> = liabilityRepository.observeLiabilities()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    val includeSavingsInNetWorth: StateFlow<Boolean> = settingsRepository.observeIncludeSavingsInNetWorth()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val categoryTargets: StateFlow<Map<BudgetSectionType, BigDecimal?>> = combine(
         settingsRepository.observeCategoryTarget(BudgetSectionType.FIXED_COSTS),
@@ -239,6 +255,20 @@ class BudgetWizardViewModel @Inject constructor(
         val savings = sectionTotal(BudgetSectionType.SAVINGS) ?: return null
         val investments = sectionTotal(BudgetSectionType.INVESTMENTS) ?: return null
         return disposableIncome - fixed - other - savings - investments
+    }
+
+    /**
+     * Current net worth plus this not-yet-created budget's full planned effect — "if I follow this
+     * plan exactly". Mirrors [BudgetDetailViewModel.projectedNetWorth], but the delta is computed from
+     * the wizard's own in-progress draft items (via [collectItems]) rather than a persisted budget's,
+     * since nothing here is saved as Active yet. Null if a needed exchange rate is unavailable.
+     */
+    fun projectedNetWorth(assets: List<Asset>, liabilities: List<Liability>, includeSavings: Boolean): BigDecimal? {
+        val base = baseCurrency.value
+        val currentNetWorth = calculateNetWorth(accounts.value, assets, liabilities, base, rates.value, includeSavings)
+            ?: return null
+        val delta = projectedNetWorthDelta(collectItems(), accounts.value, base, rates.value, includeSavings) ?: return null
+        return (currentNetWorth + delta).setScale(2, RoundingMode.HALF_UP)
     }
 
     /** Fire-and-forget persistence of current progress as a Draft; safe to call frequently. */

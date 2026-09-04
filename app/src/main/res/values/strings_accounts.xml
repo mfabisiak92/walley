@@ -106,6 +106,8 @@
     <string name="accounts_transfer_exceeds_balance">Amount exceeds available balance</string>
     <string name="accounts_transfer_confirm">Transfer</string>
     <string name="accounts_transfer_failed_title">Transfer failed</string>
+    <string name="accounts_operation_transfer_to">Transfer to \"%1$s\"</string>
+    <string name="accounts_operation_transfer_from">Transfer from \"%1$s\"</string>
 
     <!-- UpdateBalancesScreen.kt -->
     <string name="accounts_cd_back">Back</string>

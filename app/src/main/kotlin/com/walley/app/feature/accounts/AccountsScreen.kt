@@ -82,6 +82,7 @@ import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.core.ui.InvestmentNeutralColor
 import com.walley.app.core.ui.RemovableChip
 import com.walley.app.core.ui.WalleyTopBar
+import com.walley.app.core.ui.paidProgressColor
 import com.walley.app.domain.model.Account
 import com.walley.app.domain.model.AccountBalanceGroup
 import com.walley.app.domain.model.AccountKindFilter
@@ -1050,14 +1051,15 @@ private fun MonthPaidRow(amount: BigDecimal, currency: Currency) {
 
 @Composable
 private fun SavingsGoalProgress(account: Account, progressPercent: BigDecimal, paidThisMonth: BigDecimal?) {
+    val progressFraction = progressPercent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f)
     Column(modifier = Modifier.padding(top = 8.dp)) {
         LinearProgressIndicator(
-            progress = { progressPercent.divide(BigDecimal(100), 4, RoundingMode.HALF_UP).toFloat().coerceIn(0f, 1f) },
+            progress = { progressFraction },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(3.dp)),
-            color = if (account.targetReached) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+            color = paidProgressColor(progressFraction)
         )
         Row(
             modifier = Modifier

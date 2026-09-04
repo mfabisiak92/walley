@@ -106,6 +106,8 @@
     <string name="accounts_transfer_exceeds_balance">Kwota przekracza dostępne saldo</string>
     <string name="accounts_transfer_confirm">Przelej</string>
     <string name="accounts_transfer_failed_title">Przelew nie powiódł się</string>
+    <string name="accounts_operation_transfer_to">Przelew na \"%1$s\"</string>
+    <string name="accounts_operation_transfer_from">Przelew z \"%1$s\"</string>
 
     <!-- UpdateBalancesScreen.kt -->
     <string name="accounts_cd_back">Wstecz</string>

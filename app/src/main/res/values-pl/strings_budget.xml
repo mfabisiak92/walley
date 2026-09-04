@@ -42,6 +42,20 @@
     <string name="budget_mark_completed_common_note">To jednokierunkowa zmiana. Po zakończeniu ten budżet i jego pozycje staną się tylko do odczytu — nie będzie można niczego opłacić, usunąć ani zmienić, a sam budżet nie będzie już mógł zostać usunięty.</string>
     <string name="budget_mark_completed_button">Oznacz jako zakończony</string>
 
+    <!-- BudgetSurplusWizardDialog.kt -->
+    <string name="budget_surplus_wizard_title">Rozdysponuj pozostałe środki</string>
+    <string name="budget_surplus_wizard_add_allocation">Dodaj przydział</string>
+    <string name="budget_surplus_wizard_to_account">Na konto</string>
+    <string name="budget_surplus_wizard_from_account">Z konta</string>
+    <string name="budget_surplus_wizard_amount">Kwota</string>
+    <string name="budget_surplus_wizard_unallocated">Nierozdysponowane: %1$s</string>
+    <string name="budget_surplus_wizard_skip">Pomiń</string>
+    <string name="budget_surplus_wizard_complete">Zakończ</string>
+    <string name="budget_surplus_wizard_remove_allocation">Usuń przydział</string>
+    <string name="budget_surplus_wizard_no_savings_accounts">Brak konta oszczędnościowego w walucie %1$s</string>
+    <string name="budget_surplus_allocation_failed_title">Nie udało się rozdysponować środków</string>
+    <string name="budget_surplus_operation_description">Nadwyżka budżetowa</string>
+
     <!-- Summary row labels (BudgetDetailScreen, BudgetWizardScreen) -->
     <string name="budget_summary_projected_net_worth">Prognozowana wartość netto</string>
     <string name="budget_summary_planned_disposable_income">Planowany dochód rozporządzalny</string>

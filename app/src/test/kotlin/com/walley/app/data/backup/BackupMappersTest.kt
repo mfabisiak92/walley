@@ -99,6 +99,43 @@ class BackupMappersTest {
     }
 
     @Test
+    fun `budget item with zero planned amount and a paid amount round trips both`() {
+        // The shape a Budget Surplus Wizard allocation creates for a Savings account not yet in the
+        // budget: nothing was planned, but money was actually contributed.
+        val original = BudgetItemEntity(
+            id = 11,
+            budgetId = 10,
+            section = BudgetSectionType.SAVINGS,
+            name = "Emergency fund",
+            amountMinorUnits = 0,
+            currency = Currency.PLN,
+            accountId = 2,
+            paidAmountMinorUnits = 20_000
+        )
+
+        val restored = original.toBackupDto().toEntity(remappedBudgetId = 10, remappedAccountId = 2)
+
+        assertEquals(original.copy(id = 0), restored)
+    }
+
+    @Test
+    fun `budget item with paid amount exceeding the planned amount round trips both`() {
+        val original = BudgetItemEntity(
+            id = 12,
+            budgetId = 10,
+            section = BudgetSectionType.FIXED_COSTS,
+            name = "Groceries",
+            amountMinorUnits = 10_000,
+            currency = Currency.PLN,
+            paidAmountMinorUnits = 15_000
+        )
+
+        val restored = original.toBackupDto().toEntity(remappedBudgetId = 10, remappedAccountId = null)
+
+        assertEquals(original.copy(id = 0), restored)
+    }
+
+    @Test
     fun `budget entity preserves a set planned net worth through the dto`() {
         val original = BudgetEntity(
             id = 8,

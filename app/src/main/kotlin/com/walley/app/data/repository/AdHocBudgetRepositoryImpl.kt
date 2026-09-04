@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.first
 
 class AdHocBudgetRepositoryImpl @Inject constructor(
     private val dao: AdHocBudgetDao,
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val accountOperationRepository: AccountOperationRepository
 ) : AdHocBudgetRepository {
 
     override fun observeAdHocBudgetsWithItems(): Flow<List<AdHocBudgetWithItems>> =
@@ -101,23 +102,18 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
         dao.updateItemPaidAmount(itemId, item.amount.toMinorUnits())
     }
 
+    /** [paidAmount] may exceed the item's planned amount — an item stays free to keep taking payments past what was planned. */
     override suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal) {
         val item = dao.getItem(itemId).toDomain()
-        val clamped = paidAmount.coerceIn(BigDecimal.ZERO, item.amount)
+        val clamped = paidAmount.coerceAtLeast(BigDecimal.ZERO)
         val delta = clamped - item.paidAmount
         applyAccountDelta(item, delta)
         dao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
     }
 
+    /** Editing the planned amount never touches what's already been paid — an overpayment isn't clawed back by shrinking the plan. */
     override suspend fun updateItemAmount(itemId: Long, amount: BigDecimal) {
-        val item = dao.getItem(itemId).toDomain()
         dao.updateItemAmount(itemId, amount.toMinorUnits())
-        val clampedPaidAmount = item.paidAmount.coerceAtMost(amount)
-        if (clampedPaidAmount != item.paidAmount) {
-            val delta = clampedPaidAmount - item.paidAmount
-            applyAccountDelta(item, delta)
-            dao.updateItemPaidAmount(itemId, clampedPaidAmount.toMinorUnits())
-        }
     }
 
     override suspend fun updateItemIcon(itemId: Long, icon: BudgetItemIcon?) {
@@ -180,6 +176,6 @@ class AdHocBudgetRepositoryImpl @Inject constructor(
                 throw InsufficientAccountBalanceException(account.name, account.balance, delta, account.currency)
             }
         }
-        accountRepository.addToBalance(accountId, delta.negate())
+        accountOperationRepository.recordAndApply(accountId, LocalDate.now(), item.name, delta.negate())
     }
 }

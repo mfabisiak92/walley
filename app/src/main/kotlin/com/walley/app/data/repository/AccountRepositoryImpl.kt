@@ -1,8 +1,11 @@
 package com.walley.app.data.repository
 
+import android.content.Context
+import com.walley.app.R
 import com.walley.app.data.local.AccountDao
 import com.walley.app.data.local.AccountEntity
 import com.walley.app.data.local.AccountOperationDao
+import com.walley.app.data.local.AccountOperationEntity
 import com.walley.app.data.local.AdHocBudgetDao
 import com.walley.app.data.local.BudgetDao
 import com.walley.app.data.local.InvestmentDao
@@ -14,6 +17,7 @@ import com.walley.app.domain.model.AccountType
 import com.walley.app.domain.model.BudgetStatus
 import com.walley.app.domain.model.Currency
 import com.walley.app.domain.model.InvestmentWithTransactions
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.LocalDate
@@ -26,8 +30,17 @@ class AccountRepositoryImpl @Inject constructor(
     private val investmentDao: InvestmentDao,
     private val accountOperationDao: AccountOperationDao,
     private val budgetDao: BudgetDao,
-    private val adHocBudgetDao: AdHocBudgetDao
+    private val adHocBudgetDao: AdHocBudgetDao,
+    @ApplicationContext private val context: Context
 ) : AccountRepository {
+
+    /** Records a ledger entry for [accountId] and applies [amount] to its stored balance. */
+    private suspend fun recordOperation(accountId: Long, description: String, amount: BigDecimal) {
+        accountOperationDao.insert(
+            AccountOperationEntity(accountId = accountId, date = LocalDate.now(), description = description, amount = amount)
+        )
+        accountDao.addToBalance(accountId, amount.toMinorUnits())
+    }
 
     // Investment accounts' displayed balance is uninvested cash (the stored balance column)
     // plus the current market value of the investments associated with them.
@@ -169,8 +182,9 @@ class AccountRepositoryImpl @Inject constructor(
             if (entity.isVirtual) {
                 require(destination.isVirtual) { "A virtual account can only transfer to another virtual account" }
             }
-            accountDao.addToBalance(accountId, -entity.balanceMinorUnits)
-            accountDao.addToBalance(transferToAccountId, entity.balanceMinorUnits)
+            val transferAmount = BigDecimal(entity.balanceMinorUnits).movePointLeft(2)
+            recordOperation(accountId, context.getString(R.string.accounts_operation_transfer_to, destination.name), transferAmount.negate())
+            recordOperation(transferToAccountId, context.getString(R.string.accounts_operation_transfer_from, entity.name), transferAmount)
         }
         accountDao.setClosed(accountId, true)
         // Checking/Cash accounts can be the default account (see AccountsScreen's canBeDefault), so
@@ -200,8 +214,8 @@ class AccountRepositoryImpl @Inject constructor(
         // never the market value of linked investments.
         val amountMinorUnits = amount.toMinorUnits()
         require(amountMinorUnits <= source.balanceMinorUnits) { "Amount exceeds the source account's available balance" }
-        accountDao.addToBalance(fromAccountId, -amountMinorUnits)
-        accountDao.addToBalance(toAccountId, amountMinorUnits)
+        recordOperation(fromAccountId, context.getString(R.string.accounts_operation_transfer_to, destination.name), amount.negate())
+        recordOperation(toAccountId, context.getString(R.string.accounts_operation_transfer_from, source.name), amount)
     }
 
     override suspend fun addToBalance(accountId: Long, delta: BigDecimal) {

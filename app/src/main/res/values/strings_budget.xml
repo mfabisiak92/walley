@@ -42,6 +42,20 @@
     <string name="budget_mark_completed_common_note">This is a one-way change. Once completed, this budget and its items become read-only — nothing can be paid, deleted, or otherwise changed, and the budget itself can no longer be deleted.</string>
     <string name="budget_mark_completed_button">Mark completed</string>
 
+    <!-- BudgetSurplusWizardDialog.kt -->
+    <string name="budget_surplus_wizard_title">Allocate leftover money</string>
+    <string name="budget_surplus_wizard_add_allocation">Add allocation</string>
+    <string name="budget_surplus_wizard_to_account">To account</string>
+    <string name="budget_surplus_wizard_from_account">From account</string>
+    <string name="budget_surplus_wizard_amount">Amount</string>
+    <string name="budget_surplus_wizard_unallocated">Unallocated: %1$s</string>
+    <string name="budget_surplus_wizard_skip">Skip</string>
+    <string name="budget_surplus_wizard_complete">Complete</string>
+    <string name="budget_surplus_wizard_remove_allocation">Remove allocation</string>
+    <string name="budget_surplus_wizard_no_savings_accounts">No savings account available in %1$s</string>
+    <string name="budget_surplus_allocation_failed_title">Couldn\'t allocate money</string>
+    <string name="budget_surplus_operation_description">Budget surplus</string>
+
     <!-- Summary row labels (BudgetDetailScreen, BudgetWizardScreen) -->
     <string name="budget_summary_projected_net_worth">Projected net worth</string>
     <string name="budget_summary_planned_disposable_income">Planned disposable income</string>

@@ -66,8 +66,7 @@ fun MarkPaidDialog(
     val exceedsSavingsBalance = item.section.isAccountWithdrawal && linkedAccount?.type == AccountType.SAVING &&
         additionalWithdrawal != null && additionalWithdrawal > linkedAccount.balance
     val isValid = !item.isFinalized && parsedPaid != null && parsedPlanned != null &&
-        parsedPaid.signum() >= 0 && parsedPlanned.signum() > 0 &&
-        parsedPaid <= parsedPlanned && !exceedsSavingsBalance
+        parsedPaid.signum() >= 0 && parsedPlanned.signum() > 0 && !exceedsSavingsBalance
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -107,7 +106,7 @@ fun MarkPaidDialog(
                         label = { Text(stringResource(R.string.budget_paid_label)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        isError = parsedPaid == null || (parsedPlanned != null && parsedPaid > parsedPlanned),
+                        isError = parsedPaid == null || parsedPaid.signum() < 0,
                         modifier = Modifier.weight(1f)
                     )
                     Text("/", style = MaterialTheme.typography.titleMedium)

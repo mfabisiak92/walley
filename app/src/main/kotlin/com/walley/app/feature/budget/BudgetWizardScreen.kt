@@ -505,12 +505,16 @@ private fun SectionFooter(viewModel: BudgetWizardViewModel, section: BudgetSecti
 private fun SummaryStep(viewModel: BudgetWizardViewModel) {
     // Collected (not just read via .value) so this composable recomposes once rates load.
     val baseCurrency by viewModel.baseCurrency.collectAsStateWithLifecycle()
+    val assets by viewModel.assets.collectAsStateWithLifecycle()
+    val liabilities by viewModel.liabilities.collectAsStateWithLifecycle()
+    val includeSavingsInNetWorth by viewModel.includeSavingsInNetWorth.collectAsStateWithLifecycle()
     val fixed = viewModel.sectionTotal(BudgetSectionType.FIXED_COSTS)
     val other = viewModel.sectionTotal(BudgetSectionType.OTHER_COSTS)
     val savings = viewModel.sectionTotal(BudgetSectionType.SAVINGS)
     val investments = viewModel.sectionTotal(BudgetSectionType.INVESTMENTS)
     val unallocated = viewModel.unallocatedAmount()
     val disposable = viewModel.disposableIncome
+    val projectedNetWorth = viewModel.projectedNetWorth(assets, liabilities, includeSavingsInNetWorth)
 
     Column(
         modifier = Modifier
@@ -534,6 +538,7 @@ private fun SummaryStep(viewModel: BudgetWizardViewModel) {
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
         SummaryRow("Unallocated", unallocated, baseCurrency)
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        SummaryRow("Projected net worth", projectedNetWorth, baseCurrency)
         OutlinedTextField(
             value = viewModel.plannedNetWorthText,
             onValueChange = { viewModel.plannedNetWorthText = it },

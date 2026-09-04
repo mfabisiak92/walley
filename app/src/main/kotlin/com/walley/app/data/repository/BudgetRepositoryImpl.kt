@@ -171,24 +171,21 @@ class BudgetRepositoryImpl @Inject constructor(
         autoFinalizeIfEligible(item)
     }
 
+    /** [paidAmount] may exceed the item's planned amount — an item stays free to keep taking payments past what was planned. */
     override suspend fun markItemPartiallyPaid(itemId: Long, paidAmount: BigDecimal) {
         val item = budgetDao.getItem(itemId).toDomain()
         if (item.isFinalized) return
-        val clamped = paidAmount.coerceIn(BigDecimal.ZERO, item.amount)
+        val clamped = paidAmount.coerceAtLeast(BigDecimal.ZERO)
         val delta = clamped - item.paidAmount
         budgetDao.updateItemPaidAmount(itemId, clamped.toMinorUnits())
         applyAccountDelta(item, delta)
     }
 
+    /** Editing the planned amount never touches what's already been paid — an overpayment isn't clawed back by shrinking the plan. */
     override suspend fun updateItemAmount(itemId: Long, amount: BigDecimal) {
         val item = budgetDao.getItem(itemId).toDomain()
         if (item.isFinalized) return
         budgetDao.updateItemAmount(itemId, amount.toMinorUnits())
-        val clampedPaidAmount = item.paidAmount.coerceAtMost(amount)
-        if (clampedPaidAmount != item.paidAmount) {
-            budgetDao.updateItemPaidAmount(itemId, clampedPaidAmount.toMinorUnits())
-            applyAccountDelta(item, clampedPaidAmount - item.paidAmount)
-        }
     }
 
     override suspend fun finalizeItem(itemId: Long) {
@@ -211,10 +208,10 @@ class BudgetRepositoryImpl @Inject constructor(
         if (item.accountId == accountId) return
         if (item.paidAmount.signum() > 0 && accountEffectsEnabledFor(item.budgetId, item.section)) {
             item.accountId?.let { oldAccountId ->
-                applyAccountDeltaForAccount(item.section, oldAccountId, item.paidAmount.negate())
+                applyAccountDeltaForAccount(item.section, oldAccountId, item.paidAmount.negate(), item.name)
             }
             accountId?.let { newAccountId ->
-                applyAccountDeltaForAccount(item.section, newAccountId, item.paidAmount)
+                applyAccountDeltaForAccount(item.section, newAccountId, item.paidAmount, item.name)
             }
         }
         // Savings/Investments items are defined by their account — its name and currency come along with it.
@@ -293,6 +290,47 @@ class BudgetRepositoryImpl @Inject constructor(
         captureSnapshot(budgetId)
     }
 
+    override suspend fun allocateSurplusToSavings(
+        budgetId: Long,
+        toAccountId: Long,
+        amount: BigDecimal,
+        fromAccountId: Long?,
+        operationDescription: String
+    ) {
+        require(amount.signum() > 0) { "Amount must be positive" }
+        val destination = accountRepository.observeAccounts().first().first { it.id == toAccountId }
+        require(destination.type == AccountType.SAVING) { "Destination must be a Saving account" }
+        require(!destination.isClosed) { "Destination account can't be closed" }
+        if (destination.isVirtual) {
+            // A virtual account isn't backed by any one specific real account (its balance is only netted
+            // against the sum of all non-virtual checking/cash accounts for display), so there's no correct
+            // "from" account to debit here — just credit it directly, like a normal Savings item payment.
+            accountOperationRepository.recordAndApply(toAccountId, LocalDate.now(), operationDescription, amount)
+        } else {
+            requireNotNull(fromAccountId) { "A source account is required for a non-virtual destination" }
+            accountRepository.transferBetweenAccounts(fromAccountId, toAccountId, amount)
+        }
+        val items = budgetDao.observeItemsForBudget(budgetId).first()
+        val existingItem = items.find { it.section == BudgetSectionType.SAVINGS && it.accountId == toAccountId }
+        if (existingItem != null) {
+            // Deliberately bypasses the usual paidAmount <= amount clamp — overpaying a Savings item this
+            // way (contributing more than was planned) is allowed here.
+            budgetDao.updateItemPaidAmount(existingItem.id, (existingItem.toDomain().paidAmount + amount).toMinorUnits())
+        } else {
+            budgetDao.insertItem(
+                BudgetItemEntity(
+                    budgetId = budgetId,
+                    section = BudgetSectionType.SAVINGS,
+                    name = destination.name,
+                    amountMinorUnits = 0,
+                    currency = destination.currency,
+                    accountId = toAccountId,
+                    paidAmountMinorUnits = amount.toMinorUnits()
+                )
+            )
+        }
+    }
+
     override suspend fun updateApplyIncomeAccountEffects(budgetId: Long, enabled: Boolean) {
         budgetDao.updateApplyIncomeAccountEffects(budgetId, enabled)
     }
@@ -347,20 +385,22 @@ class BudgetRepositoryImpl @Inject constructor(
         if (delta.signum() == 0) return
         val accountId = item.accountId ?: return
         if (!accountEffectsEnabledFor(item.budgetId, item.section)) return
-        applyAccountDeltaForAccount(item.section, accountId, delta)
+        applyAccountDeltaForAccount(item.section, accountId, delta, item.name)
     }
 
     private suspend fun accountEffectsEnabledFor(budgetId: Long, section: BudgetSectionType): Boolean =
         budgetDao.observeBudgetById(budgetId).first()?.toDomain()?.accountEffectsEnabled(section.accountEffectsGroup) ?: true
 
-    private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal) {
+    /** Applies a budget item's effect on [accountId]'s balance, recording it in the account's operation ledger. */
+    private suspend fun applyAccountDeltaForAccount(section: BudgetSectionType, accountId: Long, delta: BigDecimal, description: String) {
         if (delta.signum() == 0) return
-        when {
-            section.isAccountWithdrawal -> accountRepository.addToBalance(accountId, delta.negate())
+        val signedAmount = when {
+            section.isAccountWithdrawal -> delta.negate()
             section == BudgetSectionType.SAVINGS || section == BudgetSectionType.INVESTMENTS ||
-                section == BudgetSectionType.INCOME -> accountRepository.addToBalance(accountId, delta)
-            else -> Unit
+                section == BudgetSectionType.INCOME -> delta
+            else -> return
         }
+        accountOperationRepository.recordAndApply(accountId, LocalDate.now(), description, signedAmount)
     }
 
     /**

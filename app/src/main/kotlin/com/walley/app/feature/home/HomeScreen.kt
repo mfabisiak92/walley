@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Payments
+import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -31,12 +31,16 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.walley.app.R
@@ -48,7 +52,9 @@ import com.walley.app.core.ui.InvestmentGainColor
 import com.walley.app.core.ui.InvestmentNeutralColor
 import com.walley.app.core.ui.NetWorthCardContainerColor
 import com.walley.app.core.ui.NetWorthCardContentColor
+import com.walley.app.core.ui.PieChartCard
 import com.walley.app.core.ui.PieChartColors
+import com.walley.app.core.ui.PieSlice
 import com.walley.app.core.ui.WalleyTopBar
 import com.walley.app.core.ui.paidProgressColor
 import com.walley.app.domain.model.BudgetItemIcon
@@ -67,9 +73,11 @@ fun HomeScreen(
 ) {
     val homeBalances by viewModel.homeBalances.collectAsStateWithLifecycle()
     val netWorth by viewModel.netWorth.collectAsStateWithLifecycle()
+    val netWorthComposition by viewModel.netWorthComposition.collectAsStateWithLifecycle()
     val monthBudgetSummary by viewModel.monthBudgetSummary.collectAsStateWithLifecycle()
     val upcomingItems by viewModel.upcomingItems.collectAsStateWithLifecycle()
     val showBackupWarning by viewModel.showBackupWarning.collectAsStateWithLifecycle()
+    var showCompositionDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier,
@@ -100,13 +108,28 @@ fun HomeScreen(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                netWorth?.let { NetWorthCard(it, onClick = onNavigateToNetWorthDetail) }
+                netWorth?.let {
+                    NetWorthCard(
+                        it,
+                        onClick = onNavigateToNetWorthDetail,
+                        onShowComposition = { showCompositionDialog = true }
+                    )
+                }
                 monthBudgetSummary?.let { MonthBudgetCard(it) }
                 if (upcomingItems.isNotEmpty()) {
                     UpcomingItemsCard(upcomingItems)
                 }
                 BalanceStatsRow(homeBalances)
-                netWorth?.let { if (it.breakdown.isNotEmpty()) CurrencyBreakdownCard(it.breakdown) }
+            }
+        }
+    }
+
+    if (showCompositionDialog) {
+        val composition = netWorthComposition
+        val currency = netWorth?.currency
+        if (!composition.isNullOrEmpty() && currency != null) {
+            Dialog(onDismissRequest = { showCompositionDialog = false }) {
+                NetWorthCompositionCard(composition, currency)
             }
         }
     }
@@ -141,7 +164,7 @@ private fun BackupWarningBanner(onClick: () -> Unit) {
 }
 
 @Composable
-private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
+private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit, onShowComposition: () -> Unit) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -155,7 +178,20 @@ private fun NetWorthCard(netWorth: NetWorthState, onClick: () -> Unit) {
             modifier = Modifier.padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(stringResource(R.string.home_net_worth), style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.home_net_worth), style = MaterialTheme.typography.titleMedium)
+                IconButton(onClick = onShowComposition, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Filled.PieChart,
+                        contentDescription = stringResource(R.string.home_net_worth_composition_cd),
+                        tint = NetWorthCardContentColor
+                    )
+                }
+            }
             if (netWorth.amount != null) {
                 Text(
                     text = formatMoney(netWorth.amount, netWorth.currency),
@@ -504,53 +540,37 @@ private fun InvestmentsCard(balances: HomeBalances) {
     }
 }
 
+/** Stable per-category color, independent of which categories happen to be present — green reads as growth, red as debt, regardless of list order/index. */
+private fun NetWorthCompositionCategory.color(): Color = when (this) {
+    NetWorthCompositionCategory.AVAILABLE -> PieChartColors[2]
+    NetWorthCompositionCategory.UNINVESTED -> PieChartColors[1]
+    NetWorthCompositionCategory.NET_INVESTED -> PieChartColors[5]
+    NetWorthCompositionCategory.ASSETS -> PieChartColors[4]
+    NetWorthCompositionCategory.LIABILITIES -> PieChartColors[3]
+}
+
 @Composable
-private fun CurrencyBreakdownCard(breakdown: List<NetWorthByCurrency>) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(stringResource(R.string.home_by_currency), style = MaterialTheme.typography.titleMedium)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-            ) {
-                breakdown.forEachIndexed { index, slice ->
-                    val weight = slice.percent.toFloat().coerceAtLeast(0.1f)
-                    Box(
-                        modifier = Modifier
-                            .weight(weight)
-                            .fillMaxHeight()
-                            .background(PieChartColors[index % PieChartColors.size])
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                breakdown.forEachIndexed { index, slice ->
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .clip(CircleShape)
-                                .background(PieChartColors[index % PieChartColors.size])
-                        )
-                        Text(
-                            "${slice.currency.name} ${slice.percent.setScale(0, RoundingMode.HALF_UP)}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-            }
-        }
+private fun NetWorthCompositionCategory.displayName(): String = when (this) {
+    NetWorthCompositionCategory.AVAILABLE -> stringResource(R.string.home_available)
+    NetWorthCompositionCategory.UNINVESTED -> stringResource(R.string.home_uninvested_cash)
+    NetWorthCompositionCategory.NET_INVESTED -> stringResource(R.string.home_net_invested)
+    NetWorthCompositionCategory.ASSETS -> stringResource(R.string.home_assets)
+    NetWorthCompositionCategory.LIABILITIES -> stringResource(R.string.home_liabilities)
+}
+
+/**
+ * Replaces the old "By currency" bar with a real pie chart splitting everything the user owns into
+ * Available/Uninvested/Net invested/Assets/Liabilities — see [HomeViewModel.computeNetWorthComposition].
+ */
+@Composable
+private fun NetWorthCompositionCard(composition: List<NetWorthComposition>, currency: Currency) {
+    val slices = composition.map { entry ->
+        PieSlice(
+            label = entry.category.displayName(),
+            value = formatMoney(entry.amount, currency),
+            percent = entry.percent.toFloat(),
+            color = entry.category.color()
+        )
     }
+    PieChartCard(title = stringResource(R.string.home_composition_title), slices = slices)
 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 
 val PieChartColors = listOf(
     Color(0xFF00695C),
@@ -123,7 +124,7 @@ private fun PieChartBody(slices: List<PieSlice>, pieSize: Dp, modifier: Modifier
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "${slice.value} · ${slice.percent.toInt()}%",
+                            text = "${slice.value} · ${String.format(Locale.US, "%.2f", slice.percent)}%",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

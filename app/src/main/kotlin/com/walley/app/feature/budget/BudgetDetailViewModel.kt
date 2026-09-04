@@ -201,6 +201,35 @@ class BudgetDetailViewModel @Inject constructor(
         viewModelScope.launch { budgetRepository.markBudgetCompleted(budgetId) }
     }
 
+    data class SurplusAllocationDraft(val toAccountId: Long, val amount: BigDecimal, val fromAccountId: Long?)
+
+    private val _surplusAllocationError = MutableStateFlow<String?>(null)
+    val surplusAllocationError: StateFlow<String?> = _surplusAllocationError.asStateFlow()
+
+    fun dismissSurplusAllocationError() {
+        _surplusAllocationError.value = null
+    }
+
+    /** Applies each leftover allocation (see [SurplusAllocationDraft]), then completes the budget — unless one fails. */
+    fun completeBudgetWithAllocations(allocations: List<SurplusAllocationDraft>) {
+        viewModelScope.launch {
+            try {
+                allocations.forEach { allocation ->
+                    budgetRepository.allocateSurplusToSavings(
+                        budgetId,
+                        allocation.toAccountId,
+                        allocation.amount,
+                        allocation.fromAccountId,
+                        context.getString(R.string.budget_surplus_operation_description)
+                    )
+                }
+                budgetRepository.markBudgetCompleted(budgetId)
+            } catch (e: IllegalArgumentException) {
+                _surplusAllocationError.value = e.message
+            }
+        }
+    }
+
     /** Always allowed, even for a completed budget — same as [BudgetSettingsViewModel.updatePlannedNetWorth]. */
     fun updatePlannedNetWorth(value: BigDecimal) {
         viewModelScope.launch { budgetRepository.updatePlannedNetWorth(budgetId, value) }

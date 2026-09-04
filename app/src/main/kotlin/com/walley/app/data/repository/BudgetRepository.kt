@@ -93,6 +93,23 @@ interface BudgetRepository {
     suspend fun markBudgetCompleted(budgetId: Long)
 
     /**
+     * Moves leftover budget money into a [BudgetSectionType.SAVINGS] account: a real paired transfer from
+     * [fromAccountId] for a non-virtual [toAccountId] (required in that case), or a single credit with no
+     * "from" side when [toAccountId] is virtual (it isn't backed by any one specific real account —
+     * [operationDescription] is only used for that ledger entry). Also reflects the contribution on this
+     * budget: adds to an existing SAVINGS item's paidAmount for that account (even past its planned amount),
+     * or creates a new zero-planned item if the account wasn't part of the budget yet.
+     * @throws IllegalArgumentException on an invalid destination, currency mismatch, or insufficient balance.
+     */
+    suspend fun allocateSurplusToSavings(
+        budgetId: Long,
+        toAccountId: Long,
+        amount: BigDecimal,
+        fromAccountId: Long?,
+        operationDescription: String
+    )
+
+    /**
      * Toggles, per section group, whether paying/editing/un-paying an item moves money in its
      * linked account. Only affects future actions — balance changes already applied are left as-is.
      */

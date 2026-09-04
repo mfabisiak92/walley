@@ -23,7 +23,11 @@
     <string name="home_net_balance">Saldo netto</string>
     <string name="home_invested_amount">Zainwestowana kwota</string>
     <string name="home_uninvested_cash">Niezainwestowana gotówka</string>
-    <string name="home_by_currency">Według waluty</string>
+    <string name="home_net_invested">Netto zainwestowane</string>
+    <string name="home_assets">Aktywa</string>
+    <string name="home_liabilities">Zobowiązania</string>
+    <string name="home_composition_title">Skład wartości netto</string>
+    <string name="home_net_worth_composition_cd">Pokaż skład wartości netto</string>
 
     <!-- NetWorthDetailScreen -->
     <string name="home_net_worth_breakdown">Podział wartości netto</string>
